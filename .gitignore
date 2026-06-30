@@ -1,0 +1,12 @@
+# Laravel
+backend-laravel/vendor/
+backend-laravel/.env
+backend-laravel/storage/*.key
+
+# Flask
+ai-service-flask/venv/
+ai-service-flask/__pycache__/
+
+# General
+.DS_Store
+*.log
