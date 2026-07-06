@@ -34,5 +34,7 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
+    'flask' => [
+    'url' => env('FLASK_URL', 'http://127.0.0.1:5000'),
+    ],
 ];

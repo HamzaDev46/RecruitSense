@@ -5,13 +5,22 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\JobPosting;
+use App\Models\Resume;
+use App\Models\SkillGap;
 use App\Mail\ShortlistMail;
+use App\Services\FlaskAIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Validator;
 
 class ApplicationController extends Controller
 {
+    protected FlaskAIService $flaskService;
+
+    public function __construct(FlaskAIService $flaskService)
+    {
+        $this->flaskService = $flaskService;
+    }
+
     /**
      * Job seeker applies to a job
      */
@@ -34,14 +43,68 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'You have already applied to this job'], 409);
         }
 
+        // Check if job seeker has uploaded resume
+        $resume = Resume::where('job_seeker_id', $user->jobSeeker->id)->first();
+
+        if (!$resume) {
+            return response()->json(['message' => 'Please upload your resume before applying'], 422);
+        }
+
+        // Create application
         $application = Application::create([
             'job_seeker_id' => $user->jobSeeker->id,
             'job_id' => $job->id,
             'status' => 'pending',
         ]);
 
+        // Call Flask AI Service
+        $aiResult = $this->flaskService->analyzeResume(
+            $resume->file_path,
+            $job->description,
+            $job->required_skills
+        );
+
+        // Save AI results if successful
+        if (!isset($aiResult['error'])) {
+            $similarityScore = $aiResult['similarity_score'] ?? 0;
+            $skillGapScore = $aiResult['skill_gap_score'] ?? 0;
+
+            // Calculate final score (60% similarity + 40% skill gap)
+            $finalScore = round(($similarityScore * 0.6) + ($skillGapScore * 0.4), 2);
+
+            $application->update([
+                'similarity_score' => $similarityScore,
+                'final_score' => $finalScore,
+            ]);
+
+            // Save missing skills (skill gaps)
+            if (!empty($aiResult['missing_skills'])) {
+                foreach ($aiResult['missing_skills'] as $missingSkill) {
+                    SkillGap::create([
+                        'application_id' => $application->id,
+                        'missing_skill' => $missingSkill,
+                        'recommendation' => 'Consider learning ' . $missingSkill . ' to improve your chances.',
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'message' => 'Application submitted successfully',
+                'application' => $application,
+                'ai_analysis' => [
+                    'similarity_score' => $similarityScore,
+                    'skill_gap_score' => $skillGapScore,
+                    'final_score' => $finalScore,
+                    'matched_skills' => $aiResult['matched_skills'] ?? [],
+                    'missing_skills' => $aiResult['missing_skills'] ?? [],
+                    'bonus_skills' => $aiResult['bonus_skills'] ?? [],
+                ],
+            ], 201);
+        }
+
+        // If AI fails, still save application (without scores)
         return response()->json([
-            'message' => 'Application submitted successfully',
+            'message' => 'Application submitted successfully (AI analysis pending)',
             'application' => $application,
         ], 201);
     }
@@ -100,7 +163,6 @@ class ApplicationController extends Controller
         $application->status = 'shortlisted';
         $application->save();
 
-        // Send shortlist email
         Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
 
         return response()->json([
