@@ -13,7 +13,7 @@ class Application extends Model
 
     protected $fillable = [
         'job_seeker_id', 'job_id', 'similarity_score',
-        'soft_skill_score', 'final_score', 'status'
+        'skill_gap_score', 'soft_skill_score', 'final_score', 'status'
     ];
 
     public function jobSeeker(): BelongsTo

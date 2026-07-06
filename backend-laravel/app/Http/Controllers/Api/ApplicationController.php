@@ -69,12 +69,17 @@ class ApplicationController extends Controller
             $similarityScore = $aiResult['similarity_score'] ?? 0;
             $skillGapScore = $aiResult['skill_gap_score'] ?? 0;
 
-            // Calculate final score (60% similarity + 40% skill gap)
-            $finalScore = round(($similarityScore * 0.6) + ($skillGapScore * 0.4), 2);
+            // Calculate final score: 50% similarity + 30% skill gap + 20% soft skill
+            // Soft skill = 0 initially (quiz baad mein hota hai)
+            $finalScore = round(
+                ($similarityScore * 0.50) + ($skillGapScore * 0.30) + (0 * 0.20),
+                2
+            );
 
             $application->update([
                 'similarity_score' => $similarityScore,
-                'final_score' => $finalScore,
+                'skill_gap_score'  => $skillGapScore,
+                'final_score'      => $finalScore,
             ]);
 
             // Save missing skills (skill gaps)
@@ -82,29 +87,29 @@ class ApplicationController extends Controller
                 foreach ($aiResult['missing_skills'] as $missingSkill) {
                     SkillGap::create([
                         'application_id' => $application->id,
-                        'missing_skill' => $missingSkill,
+                        'missing_skill'  => $missingSkill,
                         'recommendation' => 'Consider learning ' . $missingSkill . ' to improve your chances.',
                     ]);
                 }
             }
 
             return response()->json([
-                'message' => 'Application submitted successfully',
+                'message'     => 'Application submitted successfully',
                 'application' => $application,
                 'ai_analysis' => [
                     'similarity_score' => $similarityScore,
-                    'skill_gap_score' => $skillGapScore,
-                    'final_score' => $finalScore,
-                    'matched_skills' => $aiResult['matched_skills'] ?? [],
-                    'missing_skills' => $aiResult['missing_skills'] ?? [],
-                    'bonus_skills' => $aiResult['bonus_skills'] ?? [],
+                    'skill_gap_score'  => $skillGapScore,
+                    'final_score'      => $finalScore,
+                    'matched_skills'   => $aiResult['matched_skills'] ?? [],
+                    'missing_skills'   => $aiResult['missing_skills'] ?? [],
+                    'bonus_skills'     => $aiResult['bonus_skills'] ?? [],
                 ],
             ], 201);
         }
 
         // If AI fails, still save application (without scores)
         return response()->json([
-            'message' => 'Application submitted successfully (AI analysis pending)',
+            'message'     => 'Application submitted successfully (AI analysis pending)',
             'application' => $application,
         ], 201);
     }
@@ -166,7 +171,7 @@ class ApplicationController extends Controller
         Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
 
         return response()->json([
-            'message' => 'Candidate shortlisted and notified successfully',
+            'message'     => 'Candidate shortlisted and notified successfully',
             'application' => $application,
         ]);
     }
@@ -187,7 +192,7 @@ class ApplicationController extends Controller
         $application->save();
 
         return response()->json([
-            'message' => 'Candidate rejected',
+            'message'     => 'Candidate rejected',
             'application' => $application,
         ]);
     }
