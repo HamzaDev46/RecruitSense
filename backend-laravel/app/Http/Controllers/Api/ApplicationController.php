@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\Resume;
@@ -165,10 +166,22 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $previousStatus = $application->status;
         $application->status = 'shortlisted';
         $application->save();
 
         Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
+
+        if ($previousStatus !== 'shortlisted') {
+            $this->createNotification(
+                $application->jobSeeker->user->id,
+                $user->id,
+                'application_shortlisted',
+                'Application shortlisted',
+                'Your application for ' . $application->jobPosting->title . ' has been shortlisted.',
+                ['link' => '/my-applications', 'application_id' => $application->id]
+            );
+        }
 
         return response()->json([
             'message'     => 'Candidate shortlisted and notified successfully',
@@ -182,18 +195,46 @@ class ApplicationController extends Controller
     public function reject(Request $request, $applicationId)
     {
         $user = $request->user();
-        $application = Application::with('jobPosting')->findOrFail($applicationId);
+        $application = Application::with('jobPosting', 'jobSeeker.user')->findOrFail($applicationId);
 
         if ($user->role !== 'company' || $application->jobPosting->company_id !== $user->company->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $previousStatus = $application->status;
         $application->status = 'rejected';
         $application->save();
+
+        if ($previousStatus !== 'rejected') {
+            $this->createNotification(
+                $application->jobSeeker->user->id,
+                $user->id,
+                'application_rejected',
+                'Application update',
+                'Your application for ' . $application->jobPosting->title . ' was not selected.',
+                ['link' => '/my-applications', 'application_id' => $application->id]
+            );
+        }
 
         return response()->json([
             'message'     => 'Candidate rejected',
             'application' => $application,
+        ]);
+    }
+
+    private function createNotification(int $userId, ?int $actorId, string $type, string $title, string $message, array $data = []): void
+    {
+        if ($actorId && $userId === $actorId) {
+            return;
+        }
+
+        AppNotification::create([
+            'user_id' => $userId,
+            'actor_id' => $actorId,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'data' => $data,
         ]);
     }
 }

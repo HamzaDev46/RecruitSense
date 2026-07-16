@@ -13,7 +13,7 @@ const Footer = () => {
           </span>
         </div>
         <p className="text-gray-400 text-sm">
-          © {new Date().getFullYear()} RecruitSense — AI-Powered Recruitment Decision Support
+          (c) {new Date().getFullYear()} RecruitSense - AI-Powered Recruitment Decision Support
         </p>
         <div className="flex gap-6 text-gray-400 text-sm">
           <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>

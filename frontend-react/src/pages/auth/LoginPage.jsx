@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 
 const LoginPage = () => {
   const navigate = useNavigate()

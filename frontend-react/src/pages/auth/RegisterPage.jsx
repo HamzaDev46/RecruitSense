@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Brain, Mail, Lock, User, Eye, EyeOff, ArrowRight, Briefcase, UserCheck } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -63,7 +63,7 @@ const RegisterPage = () => {
             <Brain className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 text-sm mt-1">Join RecruitSense today — it's free</p>
+          <p className="text-gray-500 text-sm mt-1">Join RecruitSense today - it's free</p>
         </div>
 
         {/* Role Selector */}

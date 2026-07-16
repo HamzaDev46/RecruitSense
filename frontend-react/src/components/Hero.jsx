@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Briefcase, Sparkles } from 'lucide-react'
+import { ArrowRight, Briefcase, CheckCircle, Sparkles } from 'lucide-react'
 
 const Hero = () => {
   const navigate = useNavigate()
@@ -46,7 +46,7 @@ const Hero = () => {
           className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed"
         >
           RecruitSense uses advanced NLP and machine learning to match candidates
-          with the right jobs — transparently, fairly, and intelligently.
+          with the right jobs in a transparent, fair, and intelligent way.
         </motion.p>
 
         {/* Buttons */}
@@ -77,8 +77,11 @@ const Hero = () => {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-gray-400"
         >
-          {['✅ AI-Powered Matching', '✅ Transparent Scoring', '✅ Skill Gap Analysis', '✅ Free to Use'].map((item, i) => (
-            <span key={i} className="font-medium">{item}</span>
+          {['AI-Powered Matching', 'Transparent Scoring', 'Skill Gap Analysis', 'Free to Use'].map((item, i) => (
+            <span key={i} className="font-medium flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              {item}
+            </span>
           ))}
         </motion.div>
 

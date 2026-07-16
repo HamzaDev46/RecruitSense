@@ -22,4 +22,9 @@ class JobPosting extends Model
     {
         return $this->hasMany(Application::class, 'job_id');
     }
+
+    public function savedJobs(): HasMany
+    {
+        return $this->hasMany(SavedJob::class, 'job_id');
+    }
 }

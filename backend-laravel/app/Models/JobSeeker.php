@@ -12,7 +12,21 @@ class JobSeeker extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'education', 'experience'];
+    protected $fillable = [
+        'user_id',
+        'headline',
+        'location',
+        'phone',
+        'website',
+        'company',
+        'education',
+        'experience',
+        'about',
+        'skills',
+        'profile_image',
+        'cover_image',
+        'cover_position',
+    ];
 
     public function user(): BelongsTo
     {
@@ -27,5 +41,15 @@ class JobSeeker extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    public function experiences(): HasMany
+    {
+        return $this->hasMany(JobExperience::class)->latest('start_date');
+    }
+
+    public function savedJobs(): HasMany
+    {
+        return $this->hasMany(SavedJob::class);
     }
 }
