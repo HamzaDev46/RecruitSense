@@ -12,6 +12,10 @@ use App\Http\Controllers\Api\NetworkController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SavedJobController;
+use App\Http\Controllers\Api\JobSeekerDashboardController;
+use App\Http\Controllers\Api\RecommendedJobController;
+use App\Http\Controllers\Api\JobAlertController;
+use App\Http\Controllers\Api\ResumeInsightController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -27,6 +31,7 @@ Route::get('/jobs/{id}', [JobPostingController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/dashboard/jobseeker', [JobSeekerDashboardController::class, 'summary']);
 
     // Job seeker profile routes
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -54,6 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/saved-jobs/{job}', [SavedJobController::class, 'store']);
     Route::delete('/saved-jobs/{job}', [SavedJobController::class, 'destroy']);
 
+    // Recommended job routes
+    Route::get('/recommended-jobs', [RecommendedJobController::class, 'index']);
+
+    // Job alert routes
+    Route::get('/job-alerts', [JobAlertController::class, 'index']);
+    Route::post('/job-alerts', [JobAlertController::class, 'store']);
+    Route::put('/job-alerts/{jobAlert}', [JobAlertController::class, 'update']);
+    Route::delete('/job-alerts/{jobAlert}', [JobAlertController::class, 'destroy']);
+
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
@@ -79,12 +93,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/jobs/{jobId}/apply', [ApplicationController::class, 'apply']);
     Route::get('/my-applications', [ApplicationController::class, 'myApplications']);
     Route::get('/jobs/{jobId}/applicants', [ApplicationController::class, 'jobApplicants']);
+    Route::post('/applications/{application}/withdraw', [ApplicationController::class, 'withdraw']);
     Route::post('/applications/{applicationId}/shortlist', [ApplicationController::class, 'shortlist']);
     Route::post('/applications/{applicationId}/reject', [ApplicationController::class, 'reject']);
 
     // Resume routes
     Route::post('/resume/upload', [ResumeController::class, 'upload']);
     Route::get('/my-resume', [ResumeController::class, 'myResume']);
+    Route::get('/resume-insights', [ResumeInsightController::class, 'show']);
     Route::delete('/resume', [ResumeController::class, 'destroy']);
     
     // Quiz routes — Company manages questions

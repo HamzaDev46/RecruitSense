@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JobPosting;
+use App\Services\JobAlertMatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -54,10 +55,12 @@ class JobPostingController extends Controller
             'description' => $request->description,
             'required_skills' => $request->required_skills,
         ]);
+        $alertNotifications = app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'));
 
         return response()->json([
             'message' => 'Job posted successfully',
             'job' => $job,
+            'job_alert_notifications' => $alertNotifications,
         ], 201);
     }
 

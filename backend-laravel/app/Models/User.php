@@ -72,4 +72,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(AppNotification::class, 'actor_id');
     }
+
+    public function jobAlerts(): HasMany
+    {
+        return $this->hasMany(JobAlert::class);
+    }
 }

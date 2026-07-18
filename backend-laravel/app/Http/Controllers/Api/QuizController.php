@@ -7,6 +7,7 @@ use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class QuizController extends Controller
@@ -143,14 +144,18 @@ class QuizController extends Controller
     public function submitAnswers(Request $request, $applicationId)
     {
         $user = $request->user();
-        $application = Application::findOrFail($applicationId);
+        $application = Application::with('jobPosting')->findOrFail($applicationId);
 
         if ($user->role !== 'jobseeker' || $application->job_seeker_id !== $user->jobSeeker->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        if ($application->quizResponses()->exists()) {
+            return response()->json(['message' => 'Quiz already submitted for this application'], 409);
+        }
+
         $validator = Validator::make($request->all(), [
-            'answers'                      => 'required|array',
+            'answers'                      => 'required|array|min:1',
             'answers.*.question_id'        => 'required|exists:quiz_questions,id',
             'answers.*.selected_answer'    => 'required|string',
         ]);
@@ -159,28 +164,43 @@ class QuizController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $totalCorrect = 0;
-        $totalQuestions = count($request->answers);
+        $answers = collect($request->answers);
+        $questionIds = $answers->pluck('question_id');
 
-        foreach ($request->answers as $answer) {
-            $question  = QuizQuestion::find($answer['question_id']);
-            $isCorrect = $question->correct_answer === $answer['selected_answer'];
-
-            if ($isCorrect) {
-                $totalCorrect++;
-            }
-
-            QuizResponse::create([
-                'application_id'  => $application->id,
-                'question_id'     => $answer['question_id'],
-                'selected_answer' => $answer['selected_answer'],
-                'is_correct'      => $isCorrect,
-            ]);
+        if ($questionIds->unique()->count() !== $questionIds->count()) {
+            return response()->json(['message' => 'Each quiz question can only be answered once'], 422);
         }
 
-        // Calculate soft skill score
+        $questions = QuizQuestion::whereIn('id', $questionIds->all())->get()->keyBy('id');
+        $companyId = $application->jobPosting->company_id;
+
+        if ($questions->contains(fn ($question) => $question->company_id !== $companyId)) {
+            return response()->json(['message' => 'Invalid quiz question for this application'], 422);
+        }
+
+        $totalCorrect = 0;
+        $totalQuestions = $answers->count();
+
         $softSkillScore = $totalQuestions > 0
-            ? round(($totalCorrect / $totalQuestions) * 100, 2)
+            ? DB::transaction(function () use ($answers, $application, $questions, $totalQuestions, &$totalCorrect) {
+                foreach ($answers as $answer) {
+                    $question = $questions->get($answer['question_id']);
+                    $isCorrect = trim((string) $question->correct_answer) === trim((string) $answer['selected_answer']);
+
+                    if ($isCorrect) {
+                        $totalCorrect++;
+                    }
+
+                    QuizResponse::create([
+                        'application_id'  => $application->id,
+                        'question_id'     => $answer['question_id'],
+                        'selected_answer' => $answer['selected_answer'],
+                        'is_correct'      => $isCorrect,
+                    ]);
+                }
+
+                return round(($totalCorrect / $totalQuestions) * 100, 2);
+            })
             : 0;
 
         // Recalculate final score: 50% similarity + 30% skill gap + 20% soft skill
@@ -205,6 +225,7 @@ class QuizController extends Controller
             'final_score'     => $finalScore,
             'correct_answers' => $totalCorrect,
             'total_questions' => $totalQuestions,
+            'quiz_submitted'  => true,
         ]);
     }
 }

@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Briefcase, MapPin, Clock, ChevronRight, Bookmark, BookmarkCheck, X } from 'lucide-react'
+import { useParams } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
 const BrowseJobs = () => {
+  const { jobId } = useParams()
   const [jobs, setJobs] = useState([])
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(jobId ? Number(jobId) : null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)

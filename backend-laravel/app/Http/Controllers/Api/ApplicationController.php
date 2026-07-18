@@ -38,6 +38,7 @@ class ApplicationController extends Controller
         // Prevent duplicate applications
         $existing = Application::where('job_seeker_id', $user->jobSeeker->id)
             ->where('job_id', $job->id)
+            ->whereIn('status', ['pending', 'shortlisted', 'rejected'])
             ->first();
 
         if ($existing) {
@@ -126,7 +127,8 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'Only job seekers can access this'], 403);
         }
 
-        $applications = Application::with('jobPosting.company')
+        $applications = Application::with(['jobPosting.company', 'skillGaps'])
+            ->withCount('quizResponses')
             ->where('job_seeker_id', $user->jobSeeker->id)
             ->latest()
             ->get();
@@ -148,6 +150,7 @@ class ApplicationController extends Controller
 
         $applications = Application::with('jobSeeker.user')
             ->where('job_id', $job->id)
+            ->where('status', '!=', 'withdrawn')
             ->orderByDesc('final_score')
             ->get();
 
@@ -164,6 +167,10 @@ class ApplicationController extends Controller
 
         if ($user->role !== 'company' || $application->jobPosting->company_id !== $user->company->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($application->status === 'withdrawn') {
+            return response()->json(['message' => 'This application has been withdrawn'], 422);
         }
 
         $previousStatus = $application->status;
@@ -201,6 +208,10 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        if ($application->status === 'withdrawn') {
+            return response()->json(['message' => 'This application has been withdrawn'], 422);
+        }
+
         $previousStatus = $application->status;
         $application->status = 'rejected';
         $application->save();
@@ -218,6 +229,31 @@ class ApplicationController extends Controller
 
         return response()->json([
             'message'     => 'Candidate rejected',
+            'application' => $application,
+        ]);
+    }
+
+    /**
+     * Job seeker withdraws a pending application
+     */
+    public function withdraw(Request $request, Application $application)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'jobseeker' || !$user->jobSeeker || $application->job_seeker_id !== $user->jobSeeker->id) {
+            return response()->json(['message' => 'Application not found'], 404);
+        }
+
+        if ($application->status !== 'pending') {
+            return response()->json(['message' => 'Only pending applications can be withdrawn'], 422);
+        }
+
+        $application->status = 'withdrawn';
+        $application->save();
+        $application->load('jobPosting.company', 'skillGaps')->loadCount('quizResponses');
+
+        return response()->json([
+            'message' => 'Application withdrawn successfully',
             'application' => $application,
         ]);
     }

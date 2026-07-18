@@ -8,10 +8,13 @@ import FeedPage from './pages/jobseeker/FeedPage'
 import BrowseJobs from './pages/jobseeker/BrowseJobs'
 import MyApplications from './pages/jobseeker/MyApplications'
 import ResumeUpload from './pages/jobseeker/ResumeUpload'
+import ResumeCoach from './pages/jobseeker/ResumeCoach'
 import ProfilePage from './pages/jobseeker/ProfilePage'
 import MyNetwork from './pages/jobseeker/MyNetwork'
 import NotificationsPage from './pages/jobseeker/NotificationsPage'
 import SavedJobs from './pages/jobseeker/SavedJobs'
+import RecommendedJobs from './pages/jobseeker/RecommendedJobs'
+import JobAlerts from './pages/jobseeker/JobAlerts'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -37,6 +40,21 @@ function App() {
             <BrowseJobs />
           </ProtectedRoute>
         } />
+        <Route path="/jobs/:jobId" element={
+          <ProtectedRoute role="jobseeker">
+            <BrowseJobs />
+          </ProtectedRoute>
+        } />
+        <Route path="/recommended-jobs" element={
+          <ProtectedRoute role="jobseeker">
+            <RecommendedJobs />
+          </ProtectedRoute>
+        } />
+        <Route path="/job-alerts" element={
+          <ProtectedRoute role="jobseeker">
+            <JobAlerts />
+          </ProtectedRoute>
+        } />
         <Route path="/network" element={
           <ProtectedRoute role="jobseeker">
             <MyNetwork />
@@ -60,6 +78,11 @@ function App() {
         <Route path="/resume" element={
           <ProtectedRoute role="jobseeker">
             <ResumeUpload />
+          </ProtectedRoute>
+        } />
+        <Route path="/resume-coach" element={
+          <ProtectedRoute role="jobseeker">
+            <ResumeCoach />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={

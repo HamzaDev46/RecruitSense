@@ -1,15 +1,46 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Bookmark, Briefcase, ClipboardList, Star, TrendingUp, Clock, ChevronRight } from 'lucide-react'
+import {
+  BarChart3,
+  Bell,
+  Bookmark,
+  Briefcase,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  Eye,
+  FileText,
+  Sparkles,
+  Star,
+  Users,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
+const initialStats = {
+  totalJobs: 0,
+  myApplications: 0,
+  savedJobs: 0,
+  shortlisted: 0,
+  pending: 0,
+  rejected: 0,
+  profileViews: 0,
+  postImpressions: 0,
+  searchAppearances: 0,
+  connections: 0,
+  pendingInvitations: 0,
+  unreadNotifications: 0,
+  averageScore: 0,
+}
+
 const Dashboard = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState({ totalJobs: 0, myApplications: 0, shortlisted: 0, savedJobs: 0 })
+  const [stats, setStats] = useState(initialStats)
+  const [profileStrength, setProfileStrength] = useState(0)
+  const [profileTasks, setProfileTasks] = useState([])
   const [recentJobs, setRecentJobs] = useState([])
   const [recentApps, setRecentApps] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,34 +48,36 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [jobsRes, appsRes, savedJobsRes] = await Promise.all([
-          api.get('/jobs'),
-          api.get('/my-applications'),
-          api.get('/saved-jobs')
-        ])
-        const jobs = jobsRes.data
-        const apps = appsRes.data
-        const savedJobs = savedJobsRes.data
-        setStats({
-          totalJobs: jobs.length,
-          myApplications: apps.length,
-          shortlisted: apps.filter(a => a.status === 'shortlisted').length,
-          savedJobs: savedJobs.length
-        })
-        setRecentJobs(jobs.slice(0, 5))
-        setRecentApps(apps.slice(0, 3))
+        const res = await api.get('/dashboard/jobseeker')
+        const summary = res.data || {}
+        const strength = summary.profile_strength || {}
+
+        setStats({ ...initialStats, ...(summary.stats || {}) })
+        setProfileStrength(strength.completion || 0)
+        setProfileTasks(strength.missing_tasks || [])
+        setRecentJobs(summary.recent_jobs || [])
+        setRecentApps(summary.recent_applications || [])
       } catch (err) {
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
+
     fetchData()
   }, [])
+
+  const pipelineTotal = Math.max(stats.myApplications, 1)
+  const pipeline = useMemo(() => ([
+    { label: 'Pending', value: stats.pending, color: 'bg-amber-500' },
+    { label: 'Shortlisted', value: stats.shortlisted, color: 'bg-emerald-500' },
+    { label: 'Rejected', value: stats.rejected, color: 'bg-red-500' },
+  ]), [stats.pending, stats.rejected, stats.shortlisted])
 
   const getStatusColor = (status) => {
     if (status === 'shortlisted') return 'bg-emerald-100 text-emerald-700'
     if (status === 'rejected') return 'bg-red-100 text-red-600'
+    if (status === 'withdrawn') return 'bg-gray-100 text-gray-600'
     return 'bg-amber-100 text-amber-700'
   }
 
@@ -56,37 +89,42 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto">
-
-        {/* Welcome Banner */}
+      <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-2xl p-6 mb-6 text-white relative overflow-hidden"
+          className="bg-gradient-to-r from-indigo-600 via-purple-600 to-sky-700 rounded-2xl p-6 mb-6 text-white relative overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-64 h-full opacity-10">
-            <div className="w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-72 h-full opacity-10">
+            <div className="w-72 h-72 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
           </div>
-          <div className="relative z-10">
-            <p className="text-indigo-200 text-sm font-medium mb-1">Welcome back</p>
-            <h1 className="text-2xl font-bold mb-1">{user?.name}</h1>
-            <p className="text-indigo-200 text-sm">Your AI-powered job search dashboard</p>
+          <div className="relative z-10 flex items-center justify-between gap-6">
+            <div>
+              <p className="text-indigo-100 text-sm font-medium mb-1">Welcome back</p>
+              <h1 className="text-2xl font-bold mb-1">{user?.name}</h1>
+              <p className="text-indigo-100 text-sm">Track your job search, profile reach, and network activity.</p>
+            </div>
+            <button
+              onClick={() => navigate('/profile')}
+              className="px-4 py-2 rounded-full bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50"
+            >
+              Improve profile
+            </button>
           </div>
         </motion.div>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Available Jobs', value: stats.totalJobs, icon: <Briefcase className="w-5 h-5" />, color: 'text-indigo-600', bg: 'bg-indigo-50', path: '/jobs' },
-            { label: 'My Applications', value: stats.myApplications, icon: <ClipboardList className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50', path: '/my-applications' },
+            { label: 'Applications', value: stats.myApplications, icon: <ClipboardList className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50', path: '/my-applications' },
             { label: 'Saved Jobs', value: stats.savedJobs, icon: <Bookmark className="w-5 h-5" />, color: 'text-sky-600', bg: 'bg-sky-50', path: '/saved-jobs' },
             { label: 'Shortlisted', value: stats.shortlisted, icon: <Star className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', path: '/my-applications' },
-          ].map((stat, i) => (
+          ].map((stat, index) => (
             <motion.div
-              key={i}
+              key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              transition={{ delay: index * 0.06 }}
               onClick={() => navigate(stat.path)}
               className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
             >
@@ -99,11 +137,85 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Main Content - 2 Column */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Profile Views', value: stats.profileViews, icon: <Eye className="w-5 h-5" />, path: '/profile' },
+            { label: 'Post Impressions', value: stats.postImpressions, icon: <BarChart3 className="w-5 h-5" />, path: '/feed' },
+            { label: 'Connections', value: stats.connections, icon: <Users className="w-5 h-5" />, path: '/network' },
+            { label: 'Notifications', value: stats.unreadNotifications, icon: <Bell className="w-5 h-5" />, path: '/notifications' },
+          ].map((stat) => (
+            <button
+              key={stat.label}
+              onClick={() => navigate(stat.path)}
+              className="bg-white rounded-2xl p-4 border border-gray-100 text-left hover:border-sky-200 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-gray-500">{stat.icon}</div>
+                <span className="text-2xl font-bold text-gray-900">{loading ? '-' : stat.value}</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">{stat.label}</p>
+            </button>
+          ))}
+        </div>
 
-          {/* Left - Job Feed (LinkedIn style) */}
+        <div className="grid grid-cols-3 gap-6">
           <div className="col-span-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-gray-900">Application Pipeline</h2>
+                  <span className="text-sm text-gray-500">{stats.myApplications} total</span>
+                </div>
+                <div className="space-y-4">
+                  {pipeline.map((item) => (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="font-medium text-gray-700">{item.label}</span>
+                        <span className="text-gray-500">{loading ? '-' : item.value}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className={`h-full ${item.color}`}
+                          style={{ width: `${Math.round((item.value / pipelineTotal) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-gray-900">Profile Strength</h2>
+                  <span className="text-2xl font-bold text-gray-900">{loading ? '-' : `${profileStrength}%`}</span>
+                </div>
+                <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-sky-500 to-indigo-600"
+                    style={{ width: `${profileStrength}%` }}
+                  />
+                </div>
+                <div className="mt-4">
+                  {profileTasks.length === 0 ? (
+                    <p className="text-sm text-emerald-600 font-semibold">Your profile is complete.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {profileTasks.slice(0, 3).map((task) => (
+                        <button
+                          key={task}
+                          onClick={() => navigate(task === 'Upload resume' ? '/resume' : '/profile')}
+                          className="w-full text-left text-sm text-gray-600 hover:text-indigo-600 flex items-center gap-2"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                          {task}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h2 className="font-bold text-gray-900">Latest Job Openings</h2>
@@ -117,7 +229,7 @@ const Dashboard = () => {
 
               {loading ? (
                 <div className="p-6 space-y-4">
-                  {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+                  {[1, 2, 3].map((item) => <div key={item} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
                 </div>
               ) : recentJobs.length === 0 ? (
                 <div className="p-10 text-center text-gray-400">
@@ -132,7 +244,6 @@ const Dashboard = () => {
                       onClick={() => navigate(`/jobs/${job.id}`)}
                       className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-all cursor-pointer group"
                     >
-                      {/* Company Initial Avatar */}
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                         {job.company?.name?.charAt(0) || job.title?.charAt(0)}
                       </div>
@@ -141,8 +252,8 @@ const Dashboard = () => {
                         <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{job.title}</p>
                         <p className="text-sm text-gray-500 truncate">{job.company?.name}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {job.required_skills?.split(',').slice(0, 3).map((skill, i) => (
-                            <span key={i} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium border border-indigo-100">
+                          {job.required_skills?.split(',').slice(0, 3).map((skill, index) => (
+                            <span key={index} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium border border-indigo-100">
                               {skill.trim()}
                             </span>
                           ))}
@@ -150,10 +261,10 @@ const Dashboard = () => {
                       </div>
 
                       <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${job.id}`) }}
+                        onClick={(event) => { event.stopPropagation(); navigate(`/jobs/${job.id}`) }}
                         className="flex-shrink-0 text-xs font-semibold text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
                       >
-                        Apply
+                        View
                       </button>
                     </div>
                   ))}
@@ -162,53 +273,31 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Right Sidebar */}
           <div className="space-y-4">
-
-            {/* Quick Actions */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <button
-                  onClick={() => navigate('/resume')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 text-gray-700 hover:text-indigo-600 transition-all text-sm font-medium group"
-                >
-                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
-                    <TrendingUp className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  Upload Resume
-                </button>
-                <button
-                  onClick={() => navigate('/jobs')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 text-gray-700 hover:text-purple-600 transition-all text-sm font-medium group"
-                >
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    <Briefcase className="w-4 h-4 text-purple-600" />
-                  </div>
-                  Browse All Jobs
-                </button>
-                <button
-                  onClick={() => navigate('/saved-jobs')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-sky-50 text-gray-700 hover:text-sky-600 transition-all text-sm font-medium group"
-                >
-                  <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center group-hover:bg-sky-200 transition-colors">
-                    <Bookmark className="w-4 h-4 text-sky-600" />
-                  </div>
-                  Saved Jobs
-                </button>
-                <button
-                  onClick={() => navigate('/my-applications')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 text-gray-700 hover:text-emerald-600 transition-all text-sm font-medium group"
-                >
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                    <ClipboardList className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  My Applications
-                </button>
+                {[
+                  { label: 'Upload Resume', path: '/resume', icon: <FileText className="w-4 h-4 text-indigo-600" />, bg: 'bg-indigo-100', hover: 'hover:bg-indigo-50 hover:text-indigo-600' },
+                  { label: 'Recommended Jobs', path: '/recommended-jobs', icon: <Sparkles className="w-4 h-4 text-fuchsia-600" />, bg: 'bg-fuchsia-100', hover: 'hover:bg-fuchsia-50 hover:text-fuchsia-600' },
+                  { label: 'Browse All Jobs', path: '/jobs', icon: <Briefcase className="w-4 h-4 text-purple-600" />, bg: 'bg-purple-100', hover: 'hover:bg-purple-50 hover:text-purple-600' },
+                  { label: 'Saved Jobs', path: '/saved-jobs', icon: <Bookmark className="w-4 h-4 text-sky-600" />, bg: 'bg-sky-100', hover: 'hover:bg-sky-50 hover:text-sky-600' },
+                  { label: 'My Applications', path: '/my-applications', icon: <ClipboardList className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-100', hover: 'hover:bg-emerald-50 hover:text-emerald-600' },
+                ].map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => navigate(action.path)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-gray-700 transition-all text-sm font-medium group ${action.hover}`}
+                  >
+                    <div className={`w-8 h-8 ${action.bg} rounded-lg flex items-center justify-center`}>
+                      {action.icon}
+                    </div>
+                    {action.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Recent Applications */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900">Recent Applications</h3>
@@ -222,7 +311,7 @@ const Dashboard = () => {
 
               {loading ? (
                 <div className="space-y-3">
-                  {[1,2].map(i => <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />)}
+                  {[1, 2].map((item) => <div key={item} className="h-12 bg-gray-100 rounded-lg animate-pulse" />)}
                 </div>
               ) : recentApps.length === 0 ? (
                 <div className="text-center py-4 text-gray-400">
@@ -253,6 +342,27 @@ const Dashboard = () => {
               )}
             </div>
 
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <h3 className="font-bold text-gray-900 mb-4">Performance Summary</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Avg. match</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.averageScore ? `${stats.averageScore}%` : '-'}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Invites</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.pendingInvitations}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Search views</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.searchAppearances}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <p className="text-gray-500">Network</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.connections}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

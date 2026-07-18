@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Bell, Bookmark, Brain, LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, Newspaper, User, Users } from 'lucide-react'
+import { Bell, BellRing, Bookmark, Brain, LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, Newspaper, Sparkles, User, Users } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
@@ -11,9 +11,12 @@ const navItems = [
   { icon: <Users className="w-5 h-5" />, label: 'My Network', path: '/network', badgeKey: 'pending_invitations_count' },
   { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: '/notifications', badgeKey: 'unread_notifications_count' },
   { icon: <Briefcase className="w-5 h-5" />, label: 'Browse Jobs', path: '/jobs' },
+  { icon: <Sparkles className="w-5 h-5" />, label: 'Recommended', path: '/recommended-jobs' },
+  { icon: <BellRing className="w-5 h-5" />, label: 'Job Alerts', path: '/job-alerts' },
   { icon: <Bookmark className="w-5 h-5" />, label: 'Saved Jobs', path: '/saved-jobs' },
   { icon: <ClipboardList className="w-5 h-5" />, label: 'My Applications', path: '/my-applications' },
   { icon: <FileText className="w-5 h-5" />, label: 'My Resume', path: '/resume' },
+  { icon: <Sparkles className="w-5 h-5" />, label: 'Resume Coach', path: '/resume-coach' },
   { icon: <User className="w-5 h-5" />, label: 'Profile', path: '/profile' },
 ]
 
