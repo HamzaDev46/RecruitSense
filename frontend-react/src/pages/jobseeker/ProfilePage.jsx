@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   BarChart3,
   Briefcase,
@@ -7,8 +7,12 @@ import {
   Camera,
   Check,
   Clock,
+  Copy,
   Eye,
+  ExternalLink,
   GraduationCap,
+  Globe2,
+  Lock,
   Mail,
   MapPin,
   MessageCircle,
@@ -16,10 +20,12 @@ import {
   Plus,
   Save,
   Search,
+  Share2,
   Trash2,
   Upload,
   UserCheck,
   UserPlus,
+  Users,
   X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -40,6 +46,7 @@ const emptyProfile = {
   about: '',
   skills: '',
   cover_position: 'center center',
+  profile_visibility: 'public',
 }
 
 const emptyExperience = {
@@ -163,6 +170,7 @@ const normalizeProfilePayload = (data) => ({
     about: data.profile?.about || '',
     skills: data.profile?.skills || '',
     cover_position: data.profile?.cover_position || 'center center',
+    profile_visibility: data.profile?.profile_visibility || 'public',
   },
   images: {
     profile: data.profile?.profile_image_url || '',
@@ -180,11 +188,14 @@ const normalizeProfilePayload = (data) => ({
 const ProfilePage = () => {
   const { user, updateUser } = useAuth()
   const { userId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const profileImageInput = useRef(null)
   const coverImageInput = useRef(null)
-  const canEdit = !userId || String(userId) === String(user?.id)
-  const profileEndpoint = canEdit ? '/profile' : `/profiles/${userId}`
+  const isOwnerProfile = !userId || String(userId) === String(user?.id)
+  const previewMode = isOwnerProfile && searchParams.get('preview') === 'public'
+  const canEdit = isOwnerProfile && !previewMode
+  const profileEndpoint = isOwnerProfile ? '/profile' : `/profiles/${userId}`
   const viewedUserId = userId || user?.id
 
   const [loading, setLoading] = useState(true)
@@ -229,6 +240,57 @@ const ProfilePage = () => {
     () => (profile.skills || '').split(',').map((skill) => skill.trim()).filter(Boolean),
     [profile.skills]
   )
+
+  const profileUrl = viewedUserId ? `${window.location.origin}/profile/${viewedUserId}` : ''
+  const visibilityDetails = {
+    public: {
+      label: 'Public profile',
+      description: 'Anyone with the link can view it.',
+      icon: <Globe2 className="w-4 h-4" />,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    },
+    network: {
+      label: 'Network only',
+      description: 'Only accepted connections can view it.',
+      icon: <Users className="w-4 h-4" />,
+      className: 'bg-sky-50 text-sky-700 border-sky-100',
+    },
+    private: {
+      label: 'Private profile',
+      description: 'Only you can view this profile.',
+      icon: <Lock className="w-4 h-4" />,
+      className: 'bg-gray-100 text-gray-700 border-gray-200',
+    },
+  }
+  const visibility = visibilityDetails[profile.profile_visibility] || visibilityDetails.public
+
+  const copyProfileLink = async () => {
+    if (!profileUrl) return
+
+    try {
+      await navigator.clipboard.writeText(profileUrl)
+      toast.success('Profile link copied')
+    } catch {
+      const textArea = document.createElement('textarea')
+      textArea.value = profileUrl
+      textArea.setAttribute('readonly', '')
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      toast.success('Profile link copied')
+    }
+  }
+
+  const openPublicPreview = () => {
+    navigate('/profile?preview=public')
+  }
+
+  const closePublicPreview = () => {
+    navigate('/profile')
+  }
 
   const loadProfile = async () => {
     try {
@@ -437,6 +499,33 @@ const ProfilePage = () => {
     setExperienceModalOpen(true)
   }
 
+  useEffect(() => {
+    if (!canEdit || loading) return
+
+    const setupTarget = searchParams.get('setup') || searchParams.get('edit')
+    if (!setupTarget) return
+
+    const timer = window.setTimeout(() => {
+      if (setupTarget === 'experience') {
+        setEditingExperienceId(null)
+        setExperienceForm(emptyExperience)
+        setExperienceModalOpen(true)
+      } else if (setupTarget === 'profile') {
+        setForm(profile)
+        setFiles({ profile_image: null, cover_image: null })
+        setPreviews({ profile: '', cover: '' })
+        setProfileModalOpen(true)
+      }
+
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('setup')
+      nextParams.delete('edit')
+      setSearchParams(nextParams, { replace: true })
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [canEdit, loading, profile, searchParams, setSearchParams])
+
   const saveExperience = async () => {
     try {
       if (editingExperienceId) {
@@ -563,7 +652,7 @@ const ProfilePage = () => {
   }
 
   const networkAction = () => {
-    if (canEdit) return null
+    if (canEdit || isOwnerProfile) return null
 
     if (!connection) {
       return (
@@ -646,6 +735,22 @@ const ProfilePage = () => {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-6">
+        {previewMode && (
+          <div className="col-span-12 bg-sky-50 border border-sky-100 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-sky-900">Public preview mode</p>
+              <p className="text-xs text-sky-700 mt-0.5">Editing and private analytics are hidden so you can review how others see this profile.</p>
+            </div>
+            <button
+              type="button"
+              onClick={closePublicPreview}
+              className="px-4 py-2 rounded-full bg-white border border-sky-200 text-sky-700 text-sm font-semibold hover:bg-sky-100"
+            >
+              Exit preview
+            </button>
+          </div>
+        )}
+
         <aside className="col-span-4 space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
             <div
@@ -653,7 +758,11 @@ const ProfilePage = () => {
               style={coverBackground(profileImages.cover, profile.cover_position)}
             />
             <div className="px-5 pb-5">
-              <button onClick={openProfileModal} className="-mt-10 mb-3 block relative z-10">
+              <button
+                type="button"
+                onClick={canEdit ? openProfileModal : undefined}
+                className={`-mt-10 mb-3 block relative z-10 ${canEdit ? '' : 'cursor-default'}`}
+              >
                 {profileImages.profile ? (
                   <img src={profileImages.profile} alt={profile.name} className="w-24 h-24 rounded-full object-cover object-top border-4 border-white shadow-sm" />
                 ) : (
@@ -665,6 +774,10 @@ const ProfilePage = () => {
               <h1 className="text-2xl font-bold text-gray-900 leading-tight">{profile.name}</h1>
               <p className="text-sm text-gray-700 mt-1 line-clamp-2">{profile.headline || 'Add your headline'}</p>
               <p className="text-sm text-gray-500 mt-2">{profile.location || 'Add location'}</p>
+              <div className={`inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full border text-xs font-semibold ${visibility.className}`}>
+                {visibility.icon}
+                {visibility.label}
+              </div>
               <div className="flex items-center gap-3 mt-4 text-sm font-semibold text-gray-800">
                 <Building2 className="w-5 h-5 text-gray-400" />
                 {profile.company || 'Add company'}
@@ -683,6 +796,49 @@ const ProfilePage = () => {
               </button>
             ) : (
               <p className="text-sm text-gray-500">Analytics are private to the profile owner.</p>
+            )}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-gray-900">Share profile</h3>
+                <p className="text-xs text-gray-500 mt-1">{visibility.description}</p>
+              </div>
+              <Share2 className="w-5 h-5 text-gray-400" />
+            </div>
+
+            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-xs text-gray-500 truncate">
+              {profileUrl || 'Profile link unavailable'}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={copyProfileLink}
+                className="px-3 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center justify-center gap-1.5"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => profileUrl && window.open(profileUrl, '_blank', 'noopener,noreferrer')}
+                className="px-3 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-1.5"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open
+              </button>
+            </div>
+
+            {isOwnerProfile && !previewMode && (
+              <button
+                type="button"
+                onClick={() => navigate('/settings')}
+                className="mt-3 text-xs font-semibold text-sky-700 hover:text-sky-800"
+              >
+                Manage visibility
+              </button>
             )}
           </div>
         </aside>
@@ -706,7 +862,11 @@ const ProfilePage = () => {
 
             <div className="px-6 pb-6">
               <div className="flex items-end justify-between -mt-16">
-                <button onClick={openProfileModal} className="relative z-10">
+                <button
+                  type="button"
+                  onClick={canEdit ? openProfileModal : undefined}
+                  className={`relative z-10 ${canEdit ? '' : 'cursor-default'}`}
+                >
                   {profileImages.profile ? (
                     <img src={profileImages.profile} alt={profile.name} className="w-32 h-32 rounded-full object-cover object-top border-4 border-white shadow-sm" />
                   ) : (
@@ -716,20 +876,45 @@ const ProfilePage = () => {
                   )}
                 </button>
 
-                {canEdit && (
+                <div className="mb-3 flex flex-wrap justify-end gap-2">
+                  {isOwnerProfile && !previewMode && (
+                    <button
+                      type="button"
+                      onClick={openPublicPreview}
+                      className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Preview
+                    </button>
+                  )}
                   <button
-                    onClick={openProfileModal}
-                    className="mb-3 px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                    type="button"
+                    onClick={copyProfileLink}
+                    className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
                   >
-                    <Pencil className="w-4 h-4" />
-                    Edit profile
+                    <Share2 className="w-4 h-4" />
+                    Share profile
                   </button>
-                )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={openProfileModal}
+                      className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit profile
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="mt-4 flex items-start justify-between gap-6">
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900">{profile.name}</h2>
+                  <div className={`inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full border text-xs font-semibold ${visibility.className}`}>
+                    {visibility.icon}
+                    {visibility.label}
+                  </div>
                   <p className="text-gray-800 mt-1">{profile.headline || 'Add your professional headline'}</p>
                   <p className="text-sm text-gray-500 mt-2 flex items-center gap-1.5">
                     <MapPin className="w-4 h-4" />
@@ -767,24 +952,26 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="font-bold text-gray-900">Analytics</h3>
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              {[
-                { icon: <Eye className="w-5 h-5" />, title: `${analytics.views_count} profile views`, desc: 'Discover who viewed your profile.' },
-                { icon: <BarChart3 className="w-5 h-5" />, title: `${analytics.post_impressions_count || 0} post impressions`, desc: 'See how many people viewed your posts.' },
-                { icon: <Search className="w-5 h-5" />, title: `${analytics.search_appearances_count || 0} search appearances`, desc: 'See how recruiters find you.' },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-3">
-                  <div className="text-gray-700">{item.icon}</div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{item.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+          {canEdit && (
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <h3 className="font-bold text-gray-900">Analytics</h3>
+              <div className="grid grid-cols-3 gap-4 mt-4">
+                {[
+                  { icon: <Eye className="w-5 h-5" />, title: `${analytics.views_count} profile views`, desc: 'Discover who viewed your profile.' },
+                  { icon: <BarChart3 className="w-5 h-5" />, title: `${analytics.post_impressions_count || 0} post impressions`, desc: 'See how many people viewed your posts.' },
+                  { icon: <Search className="w-5 h-5" />, title: `${analytics.search_appearances_count || 0} search appearances`, desc: 'See how recruiters find you.' },
+                ].map((item) => (
+                  <div key={item.title} className="flex gap-3">
+                    <div className="text-gray-700">{item.icon}</div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{item.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
             <div className="flex items-center justify-between mb-3">

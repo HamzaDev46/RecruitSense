@@ -6,6 +6,8 @@ import {
   Bookmark,
   Briefcase,
   ChevronRight,
+  CheckCircle2,
+  Circle,
   ClipboardList,
   Clock,
   Eye,
@@ -41,6 +43,10 @@ const Dashboard = () => {
   const [stats, setStats] = useState(initialStats)
   const [profileStrength, setProfileStrength] = useState(0)
   const [profileTasks, setProfileTasks] = useState([])
+  const [profileSteps, setProfileSteps] = useState([])
+  const [nextProfileTask, setNextProfileTask] = useState(null)
+  const [completedProfileTasks, setCompletedProfileTasks] = useState(0)
+  const [totalProfileTasks, setTotalProfileTasks] = useState(0)
   const [recentJobs, setRecentJobs] = useState([])
   const [recentApps, setRecentApps] = useState([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +61,10 @@ const Dashboard = () => {
         setStats({ ...initialStats, ...(summary.stats || {}) })
         setProfileStrength(strength.completion || 0)
         setProfileTasks(strength.missing_tasks || [])
+        setProfileSteps(strength.tasks || [])
+        setNextProfileTask(strength.next_task || null)
+        setCompletedProfileTasks(strength.completed_tasks || 0)
+        setTotalProfileTasks(strength.total_tasks || 0)
         setRecentJobs(summary.recent_jobs || [])
         setRecentApps(summary.recent_applications || [])
       } catch (err) {
@@ -73,6 +83,31 @@ const Dashboard = () => {
     { label: 'Shortlisted', value: stats.shortlisted, color: 'bg-emerald-500' },
     { label: 'Rejected', value: stats.rejected, color: 'bg-red-500' },
   ]), [stats.pending, stats.rejected, stats.shortlisted])
+
+  const profileChecklist = useMemo(() => {
+    if (profileSteps.length > 0) return profileSteps
+
+    return profileTasks.map((task) => ({
+      id: task,
+      task,
+      description: 'Complete this step to improve your profile.',
+      complete: false,
+      action_path: task === 'Upload resume' ? '/resume' : '/profile?setup=profile',
+    }))
+  }, [profileSteps, profileTasks])
+
+  const visibleProfileChecklist = profileChecklist.slice(0, 5)
+  const nextSetupTask = nextProfileTask || profileChecklist.find((task) => !task.complete)
+  const completedSteps = totalProfileTasks > 0
+    ? completedProfileTasks
+    : profileChecklist.filter((task) => task.complete).length
+  const totalSteps = totalProfileTasks || profileChecklist.length
+
+  const openSetupTask = (task) => {
+    if (!task) return
+
+    navigate(task.action_path || (task.task === 'Upload resume' ? '/resume' : '/profile?setup=profile'))
+  }
 
   const getStatusColor = (status) => {
     if (status === 'shortlisted') return 'bg-emerald-100 text-emerald-700'
@@ -185,32 +220,66 @@ const Dashboard = () => {
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold text-gray-900">Profile Strength</h2>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="font-bold text-gray-900">Profile Setup</h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {loading ? 'Checking your profile...' : `${completedSteps} of ${totalSteps} steps complete`}
+                    </p>
+                  </div>
                   <span className="text-2xl font-bold text-gray-900">{loading ? '-' : `${profileStrength}%`}</span>
                 </div>
+
                 <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-sky-500 to-indigo-600"
+                    className="h-full bg-gradient-to-r from-sky-500 to-indigo-600 transition-all"
                     style={{ width: `${profileStrength}%` }}
                   />
                 </div>
-                <div className="mt-4">
-                  {profileTasks.length === 0 ? (
-                    <p className="text-sm text-emerald-600 font-semibold">Your profile is complete.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {profileTasks.slice(0, 3).map((task) => (
-                        <button
-                          key={task}
-                          onClick={() => navigate(task === 'Upload resume' ? '/resume' : '/profile')}
-                          className="w-full text-left text-sm text-gray-600 hover:text-indigo-600 flex items-center gap-2"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                          {task}
-                        </button>
-                      ))}
+
+                {!loading && nextSetupTask && (
+                  <button
+                    type="button"
+                    onClick={() => openSetupTask(nextSetupTask)}
+                    className="mt-4 w-full rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-left hover:bg-indigo-100 transition-colors"
+                  >
+                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide">Next step</p>
+                    <div className="mt-1 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{nextSetupTask.task}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{nextSetupTask.description}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-indigo-500 shrink-0" />
                     </div>
+                  </button>
+                )}
+
+                <div className="mt-4 space-y-2">
+                  {loading ? (
+                    [1, 2, 3].map((item) => <div key={item} className="h-8 rounded-lg bg-gray-100 animate-pulse" />)
+                  ) : profileChecklist.length === 0 || profileChecklist.every((task) => task.complete) ? (
+                    <p className="text-sm text-emerald-600 font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Your profile is complete.
+                    </p>
+                  ) : (
+                    visibleProfileChecklist.map((task) => (
+                      <button
+                        key={task.id || task.task}
+                        type="button"
+                        onClick={() => !task.complete && openSetupTask(task)}
+                        className={`w-full flex items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                          task.complete ? 'cursor-default text-gray-400' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                        }`}
+                      >
+                        {task.complete ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                        ) : (
+                          <Circle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
+                        )}
+                        <span className="text-sm font-medium">{task.task}</span>
+                      </button>
+                    ))
                   )}
                 </div>
               </div>

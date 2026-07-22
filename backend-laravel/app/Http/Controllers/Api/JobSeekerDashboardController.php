@@ -10,6 +10,7 @@ use App\Models\JobPosting;
 use App\Models\PostImpression;
 use App\Models\ProfileView;
 use App\Models\SavedJob;
+use App\Models\SearchAppearance;
 use Illuminate\Http\Request;
 
 class JobSeekerDashboardController extends Controller
@@ -55,7 +56,7 @@ class JobSeekerDashboardController extends Controller
                 'postImpressions' => PostImpression::whereHas('post', function ($query) use ($user) {
                     $query->where('user_id', $user->id);
                 })->count(),
-                'searchAppearances' => 0,
+                'searchAppearances' => SearchAppearance::where('profile_user_id', $user->id)->count(),
                 'connections' => $this->connectionsCount($user->id),
                 'pendingInvitations' => Connection::where('receiver_id', $user->id)
                     ->where('status', 'pending')
@@ -84,25 +85,96 @@ class JobSeekerDashboardController extends Controller
     private function profileStrength($jobSeeker): array
     {
         $checks = [
-            ['complete' => (bool) $jobSeeker->headline, 'task' => 'Add headline'],
-            ['complete' => (bool) $jobSeeker->location, 'task' => 'Add location'],
-            ['complete' => (bool) $jobSeeker->phone, 'task' => 'Add phone number'],
-            ['complete' => (bool) $jobSeeker->company, 'task' => 'Add company'],
-            ['complete' => (bool) $jobSeeker->education, 'task' => 'Add education'],
-            ['complete' => (bool) $jobSeeker->about, 'task' => 'Add about section'],
-            ['complete' => (bool) $jobSeeker->skills, 'task' => 'Add skills'],
-            ['complete' => (bool) $jobSeeker->profile_image, 'task' => 'Upload profile photo'],
-            ['complete' => (bool) $jobSeeker->cover_image, 'task' => 'Upload cover photo'],
-            ['complete' => $jobSeeker->experiences->isNotEmpty(), 'task' => 'Add experience'],
-            ['complete' => (bool) $jobSeeker->resume, 'task' => 'Upload resume'],
+            [
+                'id' => 'headline',
+                'complete' => (bool) $jobSeeker->headline,
+                'task' => 'Add headline',
+                'description' => 'Tell companies what role you are targeting.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'location',
+                'complete' => (bool) $jobSeeker->location,
+                'task' => 'Add location',
+                'description' => 'Help recruiters understand where you are based.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'phone',
+                'complete' => (bool) $jobSeeker->phone,
+                'task' => 'Add phone number',
+                'description' => 'Keep contact information ready for companies.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'company',
+                'complete' => (bool) $jobSeeker->company,
+                'task' => 'Add company',
+                'description' => 'Show your current workplace or professional status.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'education',
+                'complete' => (bool) $jobSeeker->education,
+                'task' => 'Add education',
+                'description' => 'Add your degree, institute, or relevant education.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'about',
+                'complete' => (bool) $jobSeeker->about,
+                'task' => 'Add about section',
+                'description' => 'Write a short summary recruiters can scan quickly.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'skills',
+                'complete' => (bool) $jobSeeker->skills,
+                'task' => 'Add skills',
+                'description' => 'Skills improve recommendations and match scores.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'profile_image',
+                'complete' => (bool) $jobSeeker->profile_image,
+                'task' => 'Upload profile photo',
+                'description' => 'Make your profile recognizable across the network.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'cover_image',
+                'complete' => (bool) $jobSeeker->cover_image,
+                'task' => 'Upload cover photo',
+                'description' => 'Give your profile a professional first impression.',
+                'action_path' => '/profile?setup=profile',
+            ],
+            [
+                'id' => 'experience',
+                'complete' => $jobSeeker->experiences->isNotEmpty(),
+                'task' => 'Add experience',
+                'description' => 'Add work, internship, freelance, or project experience.',
+                'action_path' => '/profile?setup=experience',
+            ],
+            [
+                'id' => 'resume',
+                'complete' => (bool) $jobSeeker->resume,
+                'task' => 'Upload resume',
+                'description' => 'Resume powers AI job matching and application scoring.',
+                'action_path' => '/resume',
+            ],
         ];
 
         $completed = collect($checks)->where('complete', true)->count();
+        $tasks = collect($checks)->values();
+        $missingTasks = $tasks->where('complete', false)->values();
 
         return [
             'completion' => (int) round(($completed / count($checks)) * 100),
-            'missing_tasks' => collect($checks)
-                ->where('complete', false)
+            'completed_tasks' => $completed,
+            'total_tasks' => count($checks),
+            'tasks' => $tasks->all(),
+            'next_task' => $missingTasks->first(),
+            'missing_tasks' => $missingTasks
                 ->pluck('task')
                 ->values()
                 ->all(),

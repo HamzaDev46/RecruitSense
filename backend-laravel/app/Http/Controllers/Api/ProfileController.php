@@ -316,6 +316,7 @@ class ProfileController extends Controller
                 'profile_image' => $jobSeeker->profile_image,
                 'cover_image' => $jobSeeker->cover_image,
                 'cover_position' => $jobSeeker->cover_position ?: 'center center',
+                'profile_visibility' => $jobSeeker->profile_visibility ?: 'public',
                 'profile_image_url' => $jobSeeker->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
                 'cover_image_url' => $jobSeeker->cover_image ? $storageUrl . $jobSeeker->cover_image : null,
             ],
