@@ -5,8 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\Connection;
+use App\Models\SearchAppearance;
 use App\Models\User;
+use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class NetworkController extends Controller
 {
@@ -14,29 +19,41 @@ class NetworkController extends Controller
     {
         $user = $request->user();
         $userId = $user->id;
-        $connectedIds = $this->activeNetworkUserIds($userId);
+        $this->removeOrphanedConnectionsFor($userId);
 
-        $connectionsCount = Connection::where('status', 'accepted')
-            ->where(function ($query) use ($userId) {
-                $query->where('requester_id', $userId)
-                    ->orWhere('receiver_id', $userId);
-            })
-            ->count();
+        return response()->json(Cache::remember(
+            UserCache::networkSummary($userId),
+            UserCache::NETWORK_SUMMARY_TTL,
+            function () use ($userId) {
+                $connectedIds = $this->activeNetworkUserIds($userId);
 
-        $pendingInvitationsCount = Connection::where('receiver_id', $userId)
-            ->where('status', 'pending')
-            ->count();
+                $connectionsCount = Connection::where('status', 'accepted')
+                    ->whereHas('requester')
+                    ->whereHas('receiver')
+                    ->where(function ($query) use ($userId) {
+                        $query->where('requester_id', $userId)
+                            ->orWhere('receiver_id', $userId);
+                    })
+                    ->count();
 
-        $suggestionsCount = User::where('id', '!=', $userId)
-            ->where('role', 'jobseeker')
-            ->whereNotIn('id', $connectedIds)
-            ->count();
+                $pendingInvitationsCount = Connection::where('receiver_id', $userId)
+                    ->whereHas('requester')
+                    ->where('status', 'pending')
+                    ->count();
 
-        return response()->json([
-            'connections_count' => $connectionsCount,
-            'pending_invitations_count' => $pendingInvitationsCount,
-            'suggestions_count' => $suggestionsCount,
-        ]);
+                $suggestionsCount = User::where('id', '!=', $userId)
+                    ->where('role', 'jobseeker')
+                    ->whereNotIn('id', $connectedIds)
+                    ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
+                    ->count();
+
+                return [
+                    'connections_count' => $connectionsCount,
+                    'pending_invitations_count' => $pendingInvitationsCount,
+                    'suggestions_count' => $suggestionsCount,
+                ];
+            }
+        ));
     }
 
     public function suggestions(Request $request)
@@ -48,6 +65,7 @@ class NetworkController extends Controller
             ->where('id', '!=', $user->id)
             ->where('role', 'jobseeker')
             ->whereNotIn('id', $connectedIds)
+            ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
             ->latest()
             ->limit(20)
             ->get()
@@ -56,18 +74,59 @@ class NetworkController extends Controller
         return response()->json($users);
     }
 
+    public function search(Request $request)
+    {
+        $user = $request->user();
+        $term = Str::of((string) $request->query('query', ''))
+            ->squish()
+            ->limit(80, '')
+            ->toString();
+
+        if (Str::length($term) < 2) {
+            return response()->json([]);
+        }
+
+        $connectedIds = $this->activeNetworkUserIds($user->id);
+        $likeTerm = '%' . $term . '%';
+
+        $users = User::with('jobSeeker')
+            ->where('id', '!=', $user->id)
+            ->where('role', 'jobseeker')
+            ->whereNotIn('id', $connectedIds)
+            ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
+            ->where(function ($query) use ($likeTerm) {
+                $query->where('name', 'like', $likeTerm)
+                    ->orWhereHas('jobSeeker', function ($jobSeekerQuery) use ($likeTerm) {
+                        $jobSeekerQuery->where('headline', 'like', $likeTerm)
+                            ->orWhere('company', 'like', $likeTerm)
+                            ->orWhere('location', 'like', $likeTerm)
+                            ->orWhere('skills', 'like', $likeTerm);
+                    });
+            })
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        $this->recordSearchAppearances($users, $request, $term);
+
+        return response()->json($users->map(fn ($resultUser) => $this->userCard($resultUser, $request))->values());
+    }
+
     public function invitations(Request $request)
     {
         $connections = Connection::with('requester.jobSeeker')
+            ->whereHas('requester')
             ->where('receiver_id', $request->user()->id)
             ->where('status', 'pending')
             ->latest()
             ->get()
+            ->filter(fn ($connection) => $connection->requester)
             ->map(fn ($connection) => [
                 'connection_id' => $connection->id,
                 'status' => $connection->status,
                 'user' => $this->userCard($connection->requester, $request),
-            ]);
+            ])
+            ->values();
 
         return response()->json($connections);
     }
@@ -78,12 +137,15 @@ class NetworkController extends Controller
 
         $connections = Connection::with(['requester.jobSeeker', 'receiver.jobSeeker'])
             ->where('status', 'accepted')
+            ->whereHas('requester')
+            ->whereHas('receiver')
             ->where(function ($query) use ($userId) {
                 $query->where('requester_id', $userId)
                     ->orWhere('receiver_id', $userId);
             })
             ->latest()
             ->get()
+            ->filter(fn ($connection) => $connection->requester && $connection->receiver)
             ->map(function ($connection) use ($request, $userId) {
                 $otherUser = $connection->requester_id === $userId
                     ? $connection->receiver
@@ -94,7 +156,8 @@ class NetworkController extends Controller
                     'status' => $connection->status,
                     'user' => $this->userCard($otherUser, $request),
                 ];
-            });
+            })
+            ->values();
 
         return response()->json($connections);
     }
@@ -120,6 +183,7 @@ class NetworkController extends Controller
                     'receiver_id' => $user->id,
                     'status' => 'pending',
                 ]);
+                UserCache::forgetNetworkForUsers([$currentUser->id, $user->id]);
                 $this->createNotification(
                     $user->id,
                     $currentUser->id,
@@ -141,6 +205,7 @@ class NetworkController extends Controller
             'receiver_id' => $user->id,
             'status' => 'pending',
         ]);
+        UserCache::forgetNetworkForUsers([$currentUser->id, $user->id]);
 
         $this->createNotification(
             $user->id,
@@ -164,6 +229,7 @@ class NetworkController extends Controller
         }
 
         $connection->update(['status' => 'accepted']);
+        UserCache::forgetNetworkForUsers([$connection->requester_id, $connection->receiver_id]);
 
         $this->createNotification(
             $connection->requester_id,
@@ -187,6 +253,7 @@ class NetworkController extends Controller
         }
 
         $connection->update(['status' => 'rejected']);
+        UserCache::forgetNetworkForUsers([$connection->requester_id, $connection->receiver_id]);
 
         return response()->json(['message' => 'Connection request ignored']);
     }
@@ -200,6 +267,7 @@ class NetworkController extends Controller
         }
 
         $connection->delete();
+        UserCache::forgetNetworkForUsers([$connection->requester_id, $connection->receiver_id]);
 
         return response()->json(['message' => 'Connection removed']);
     }
@@ -218,6 +286,8 @@ class NetworkController extends Controller
     private function activeNetworkUserIds(int $userId): array
     {
         return Connection::query()
+            ->whereHas('requester')
+            ->whereHas('receiver')
             ->whereIn('status', ['pending', 'accepted'])
             ->where(function ($query) use ($userId) {
                 $query->where('requester_id', $userId)
@@ -229,6 +299,31 @@ class NetworkController extends Controller
                 : $connection->requester_id)
             ->values()
             ->all();
+    }
+
+    private function removeOrphanedConnectionsFor(int $userId): void
+    {
+        $orphanedConnections = Connection::with(['requester', 'receiver'])
+            ->where(function ($query) use ($userId) {
+                $query->where('requester_id', $userId)
+                    ->orWhere('receiver_id', $userId);
+            })
+            ->get()
+            ->filter(fn ($connection) => !$connection->requester || !$connection->receiver);
+
+        if ($orphanedConnections->isEmpty()) {
+            return;
+        }
+
+        $affectedUserIds = $orphanedConnections
+            ->flatMap(fn ($connection) => [$connection->requester_id, $connection->receiver_id])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        Connection::whereIn('id', $orphanedConnections->pluck('id'))->delete();
+        UserCache::forgetNetworkForUsers($affectedUserIds);
     }
 
     private function findConnection(int $firstUserId, int $secondUserId): ?Connection
@@ -287,9 +382,39 @@ class NetworkController extends Controller
         ];
     }
 
+    private function recordSearchAppearances(Collection $users, Request $request, string $term): void
+    {
+        $searcher = $request->user();
+        $normalizedTerm = Str::of($term)->lower()->squish()->toString();
+        $queryHash = hash('sha256', $normalizedTerm);
+
+        foreach ($users as $resultUser) {
+            if ($resultUser->id === $searcher->id || !$resultUser->jobSeeker?->allow_search_appearance_tracking) {
+                continue;
+            }
+
+            $appearance = SearchAppearance::firstOrCreate([
+                'profile_user_id' => $resultUser->id,
+                'searcher_user_id' => $searcher->id,
+                'query_hash' => $queryHash,
+                'appeared_on' => now()->toDateString(),
+            ], [
+                'query' => $normalizedTerm,
+            ]);
+
+            if ($appearance->wasRecentlyCreated) {
+                UserCache::forgetProfile($resultUser->id);
+            }
+        }
+    }
+
     private function createNotification(int $userId, ?int $actorId, string $type, string $title, string $message, array $data = []): void
     {
         if ($actorId && $userId === $actorId) {
+            return;
+        }
+
+        if (\App\Models\User::with('jobSeeker')->find($userId)?->notificationEnabledFor($type) === false) {
             return;
         }
 
@@ -301,5 +426,6 @@ class NetworkController extends Controller
             'message' => $message,
             'data' => $data,
         ]);
+        UserCache::forgetUnreadNotifications($userId);
     }
 }

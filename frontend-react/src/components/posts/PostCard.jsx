@@ -43,7 +43,29 @@ const PostCard = ({ post, onPostUpdated, onPostDeleted }) => {
   const navigate = useNavigate()
   const [commentBody, setCommentBody] = useState('')
   const [busy, setBusy] = useState(false)
-  const localPost = post
+
+  if (!post) return null
+
+  const localPost = {
+    ...post,
+    author: post.author || { name: 'RecruitSense member' },
+    media: Array.isArray(post.media) ? post.media : [],
+    comments: Array.isArray(post.comments)
+      ? post.comments.map((comment) => ({
+        ...comment,
+        author: comment.author || { name: 'Deleted member' },
+      }))
+      : [],
+    likes_count: post.likes_count || 0,
+    comments_count: post.comments_count || 0,
+    impressions_count: post.impressions_count || 0,
+  }
+
+  const openAuthorProfile = (author) => {
+    if (author?.id) {
+      navigate(`/profile/${author.id}`)
+    }
+  }
 
   const updatePost = (nextPost) => {
     onPostUpdated?.(nextPost)
@@ -112,11 +134,11 @@ const PostCard = ({ post, onPostUpdated, onPostDeleted }) => {
     <article className="bg-white border border-gray-100 rounded-lg overflow-hidden">
       <div className="p-5">
         <div className="flex items-start gap-3">
-          <button type="button" onClick={() => navigate(`/profile/${localPost.author.id}`)}>
+          <button type="button" onClick={() => openAuthorProfile(localPost.author)}>
             <Avatar user={localPost.author} />
           </button>
 
-          <button type="button" onClick={() => navigate(`/profile/${localPost.author.id}`)} className="min-w-0 flex-1 text-left">
+          <button type="button" onClick={() => openAuthorProfile(localPost.author)} className="min-w-0 flex-1 text-left">
             <p className="font-bold text-gray-900 truncate">{localPost.author.name}</p>
             <p className="text-sm text-gray-500 truncate">{localPost.author.headline || localPost.author.company || 'RecruitSense member'}</p>
             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">

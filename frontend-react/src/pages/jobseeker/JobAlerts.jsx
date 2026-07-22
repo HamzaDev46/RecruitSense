@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -41,6 +42,7 @@ const JobAlerts = () => {
   const [profileSkills, setProfileSkills] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState(null)
@@ -88,6 +90,7 @@ const JobAlerts = () => {
   const resetForm = () => {
     setForm(emptyForm)
     setEditingId(null)
+    setDeleteTarget(null)
   }
 
   const handleChange = (event) => {
@@ -152,12 +155,17 @@ const JobAlerts = () => {
     }
   }
 
-  const deleteAlert = async (alertId) => {
-    setBusyId(alertId)
+  const requestDeleteAlert = (alert) => {
+    setDeleteTarget(alert)
+  }
+
+  const deleteAlert = async (alert) => {
+    setBusyId(alert.id)
     try {
-      await api.delete(`/job-alerts/${alertId}`)
-      setAlerts((current) => current.filter((alert) => alert.id !== alertId))
-      if (editingId === alertId) resetForm()
+      await api.delete(`/job-alerts/${alert.id}`)
+      setAlerts((current) => current.filter((item) => item.id !== alert.id))
+      setDeleteTarget(null)
+      if (editingId === alert.id) resetForm()
       toast.success('Job alert deleted')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete alert')
@@ -371,7 +379,7 @@ const JobAlerts = () => {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => deleteAlert(alert.id)}
+                          onClick={() => requestDeleteAlert(alert)}
                           disabled={busyId === alert.id}
                           className="w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center disabled:opacity-60"
                           title="Delete alert"
@@ -436,6 +444,53 @@ const JobAlerts = () => {
           </div>
         </div>
       </div>
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/45 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-100 shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Delete job alert?</h2>
+                <p className="text-sm text-gray-500 mt-1">{deleteTarget.keyword || 'Profile skill alert'}</p>
+              </div>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={busyId === deleteTarget.id}
+                aria-label="Close delete confirmation"
+                className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-60 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mb-4">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <p className="text-sm text-gray-600">
+                This alert will stop watching for matching jobs. Existing notifications and saved jobs will stay as they are.
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={busyId === deleteTarget.id}
+                  className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteAlert(deleteTarget)}
+                  disabled={busyId === deleteTarget.id}
+                  className="px-4 py-2 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 flex items-center gap-2"
+                >
+                  {busyId === deleteTarget.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {busyId === deleteTarget.id ? 'Deleting...' : 'Delete alert'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

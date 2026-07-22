@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\Application;
+use App\Models\Connection;
 use App\Models\JobExperience;
 use App\Models\PostImpression;
 use App\Models\ProfileView;
+use App\Models\SearchAppearance;
 use App\Models\User;
+use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -24,13 +28,21 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Only job seekers can access this profile'], 403);
         }
 
-        return response()->json($this->profilePayload($user, $request));
+        return response()->json(Cache::remember(
+            UserCache::profile($user->id),
+            UserCache::PROFILE_TTL,
+            fn () => $this->profilePayload($user->fresh()->load('jobSeeker.experiences'), $request)
+        ));
     }
 
     public function showByUser(Request $request, User $user)
     {
         if ($user->role !== 'jobseeker' || !$user->jobSeeker) {
             return response()->json(['message' => 'Profile not found'], 404);
+        }
+
+        if (!$this->canViewProfile($request, $user)) {
+            return response()->json(['message' => 'This profile is private'], 403);
         }
 
         $this->recordProfileView($request, $user);
@@ -96,6 +108,8 @@ class ProfileController extends Controller
         }
 
         $jobSeeker->save();
+        UserCache::forgetProfile($user->id);
+        UserCache::forgetNetworkSummary($user->id);
 
         return response()->json($this->profilePayload($user->fresh()->load('jobSeeker.experiences'), $request));
     }
@@ -115,9 +129,18 @@ class ProfileController extends Controller
             ->get()
             ->map(fn ($view) => $this->profileViewerPayload($view, $request));
 
+        $searchAppearances = SearchAppearance::with('searcherUser.jobSeeker')
+            ->where('profile_user_id', $user->id)
+            ->latest()
+            ->limit(30)
+            ->get()
+            ->map(fn ($appearance) => $this->searchAppearancePayload($appearance, $request));
+
         return response()->json([
             'total' => ProfileView::where('profile_user_id', $user->id)->count(),
             'viewers' => $views,
+            'search_appearances_total' => SearchAppearance::where('profile_user_id', $user->id)->count(),
+            'search_appearances' => $searchAppearances,
         ]);
     }
 
@@ -132,6 +155,7 @@ class ProfileController extends Controller
         $data = $this->validateExperience($request);
 
         $experience = $user->jobSeeker->experiences()->create($data);
+        UserCache::forgetProfile($user->id);
 
         return response()->json($experience, 201);
     }
@@ -145,6 +169,7 @@ class ProfileController extends Controller
         }
 
         $experience->update($this->validateExperience($request));
+        UserCache::forgetProfile($user->id);
 
         return response()->json($experience);
     }
@@ -158,6 +183,7 @@ class ProfileController extends Controller
         }
 
         $experience->delete();
+        UserCache::forgetProfile($user->id);
 
         return response()->json(['message' => 'Experience deleted successfully']);
     }
@@ -199,6 +225,8 @@ class ProfileController extends Controller
             return;
         }
 
+        $profileUser->loadMissing('jobSeeker');
+
         $profileView = ProfileView::firstOrCreate([
             'profile_user_id' => $profileUser->id,
             'viewer_user_id' => $viewer->id,
@@ -207,7 +235,7 @@ class ProfileController extends Controller
             'viewer_ip' => $request->ip(),
         ]);
 
-        if ($profileView->wasRecentlyCreated) {
+        if ($profileView->wasRecentlyCreated && $profileUser->jobSeeker?->show_profile_view_notifications) {
             $this->createNotification(
                 $profileUser->id,
                 $viewer->id,
@@ -217,6 +245,42 @@ class ProfileController extends Controller
                 ['link' => '/profile/' . $viewer->id]
             );
         }
+
+        if ($profileView->wasRecentlyCreated) {
+            UserCache::forgetProfile($profileUser->id);
+        }
+    }
+
+    private function canViewProfile(Request $request, User $profileUser): bool
+    {
+        $viewer = $request->user();
+
+        if ($viewer?->id === $profileUser->id) {
+            return true;
+        }
+
+        $profileUser->loadMissing('jobSeeker');
+        $visibility = $profileUser->jobSeeker?->profile_visibility ?: 'public';
+
+        if ($visibility === 'public') {
+            return true;
+        }
+
+        if ($visibility === 'private' || !$viewer) {
+            return false;
+        }
+
+        return Connection::where('status', 'accepted')
+            ->where(function ($query) use ($viewer, $profileUser) {
+                $query->where(function ($inner) use ($viewer, $profileUser) {
+                    $inner->where('requester_id', $viewer->id)
+                        ->where('receiver_id', $profileUser->id);
+                })->orWhere(function ($inner) use ($viewer, $profileUser) {
+                    $inner->where('requester_id', $profileUser->id)
+                        ->where('receiver_id', $viewer->id);
+                });
+            })
+            ->exists();
     }
 
     private function profilePayload($user, Request $request): array
@@ -227,6 +291,7 @@ class ProfileController extends Controller
         $postImpressionsCount = PostImpression::whereHas('post', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })->count();
+        $searchAppearancesCount = SearchAppearance::where('profile_user_id', $user->id)->count();
         $applicationsCount = $jobSeeker
             ? Application::where('job_seeker_id', $jobSeeker->id)->count()
             : 0;
@@ -254,12 +319,24 @@ class ProfileController extends Controller
                 'profile_image_url' => $jobSeeker->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
                 'cover_image_url' => $jobSeeker->cover_image ? $storageUrl . $jobSeeker->cover_image : null,
             ],
-            'experiences' => $jobSeeker->experiences,
+            'experiences' => $jobSeeker->experiences->values()->map(fn ($experience) => [
+                'id' => $experience->id,
+                'title' => $experience->title,
+                'company' => $experience->company,
+                'employment_type' => $experience->employment_type,
+                'location' => $experience->location,
+                'start_date' => $experience->start_date,
+                'end_date' => $experience->end_date,
+                'is_current' => (bool) $experience->is_current,
+                'description' => $experience->description,
+                'created_at' => $experience->created_at?->toISOString(),
+                'updated_at' => $experience->updated_at?->toISOString(),
+            ])->all(),
             'analytics' => [
                 'views_count' => $viewsCount,
                 'post_impressions_count' => $postImpressionsCount,
                 'applications_count' => $applicationsCount,
-                'search_appearances_count' => 0,
+                'search_appearances_count' => $searchAppearancesCount,
             ],
             'is_owner' => $request->user()?->id === $user->id,
         ];
@@ -287,9 +364,35 @@ class ProfileController extends Controller
         ];
     }
 
+    private function searchAppearancePayload(SearchAppearance $appearance, Request $request): array
+    {
+        $searcher = $appearance->searcherUser;
+        $jobSeeker = $searcher?->jobSeeker;
+        $storageUrl = $request->getSchemeAndHttpHost() . '/storage/';
+
+        return [
+            'id' => $appearance->id,
+            'query' => $appearance->query,
+            'appeared_on' => $appearance->appeared_on?->format('Y-m-d'),
+            'appeared_at' => $appearance->created_at?->toISOString(),
+            'user' => $searcher ? [
+                'id' => $searcher->id,
+                'name' => $searcher->name,
+                'headline' => $jobSeeker?->headline,
+                'location' => $jobSeeker?->location,
+                'company' => $jobSeeker?->company,
+                'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            ] : null,
+        ];
+    }
+
     private function createNotification(int $userId, ?int $actorId, string $type, string $title, string $message, array $data = []): void
     {
         if ($actorId && $userId === $actorId) {
+            return;
+        }
+
+        if (\App\Models\User::with('jobSeeker')->find($userId)?->notificationEnabledFor($type) === false) {
             return;
         }
 
@@ -301,5 +404,6 @@ class ProfileController extends Controller
             'message' => $message,
             'data' => $data,
         ]);
+        UserCache::forgetUnreadNotifications($userId);
     }
 }

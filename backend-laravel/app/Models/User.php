@@ -77,4 +77,32 @@ class User extends Authenticatable
     {
         return $this->hasMany(JobAlert::class);
     }
+
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function notificationEnabledFor(string $type): bool
+    {
+        if ($this->role !== 'jobseeker') {
+            return true;
+        }
+
+        $this->loadMissing('jobSeeker');
+
+        if (!$this->jobSeeker) {
+            return true;
+        }
+
+        return match (true) {
+            str_starts_with($type, 'application_') => (bool) $this->jobSeeker->notify_application_updates,
+            $type === 'message_received' => (bool) $this->jobSeeker->notify_messages,
+            in_array($type, ['connection_request', 'connection_accepted'], true) => (bool) $this->jobSeeker->notify_connections,
+            $type === 'job_alert_match' => (bool) $this->jobSeeker->notify_job_alerts,
+            in_array($type, ['post_like', 'post_comment'], true) => (bool) $this->jobSeeker->notify_post_activity,
+            $type === 'profile_view' => (bool) $this->jobSeeker->show_profile_view_notifications,
+            default => true,
+        };
+    }
 }

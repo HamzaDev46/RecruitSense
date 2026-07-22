@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, Check, Clock, MapPin, Search, UserCheck, UserPlus, Users, X } from 'lucide-react'
+import { Building2, Check, Clock, MapPin, MessageCircle, Search, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
@@ -58,6 +58,10 @@ const MyNetwork = () => {
   const [invitations, setInvitations] = useState([])
   const [connections, setConnections] = useState([])
   const [search, setSearch] = useState('')
+  const [peopleSearch, setPeopleSearch] = useState('')
+  const [peopleSearchResults, setPeopleSearchResults] = useState([])
+  const [peopleSearchLoading, setPeopleSearchLoading] = useState(false)
+  const [messageLoadingId, setMessageLoadingId] = useState(null)
 
   const loadNetwork = async () => {
     try {
@@ -115,10 +119,57 @@ const MyNetwork = () => {
     )
   }, [connections, search])
 
+  const visibleSuggestions = useMemo(() => {
+    return peopleSearch.trim().length >= 2 ? peopleSearchResults : suggestions
+  }, [peopleSearch, peopleSearchResults, suggestions])
+
+  const handlePeopleSearchChange = (event) => {
+    const nextSearch = event.target.value
+
+    setPeopleSearch(nextSearch)
+
+    if (nextSearch.trim().length < 2) {
+      setPeopleSearchResults([])
+      setPeopleSearchLoading(false)
+      return
+    }
+
+    setPeopleSearchLoading(true)
+  }
+
+  useEffect(() => {
+    const query = peopleSearch.trim()
+
+    if (query.length < 2) {
+      return undefined
+    }
+
+    let active = true
+
+    const timer = setTimeout(() => {
+      api.get('/network/search', { params: { query } })
+        .then((res) => {
+          if (active) setPeopleSearchResults(res.data || [])
+        })
+        .catch((err) => {
+          if (active) toast.error(err.response?.data?.message || 'Failed to search people')
+        })
+        .finally(() => {
+          if (active) setPeopleSearchLoading(false)
+        })
+    }, 350)
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [peopleSearch])
+
   const handleConnect = async (userId) => {
     try {
       await api.post(`/network/connect/${userId}`)
       setSuggestions(suggestions.filter((user) => user.id !== userId))
+      setPeopleSearchResults((current) => current.filter((user) => user.id !== userId))
       window.dispatchEvent(new CustomEvent('recruitsense-network-updated'))
       toast.success('Connection request sent')
     } catch (err) {
@@ -158,6 +209,18 @@ const MyNetwork = () => {
       await loadNetwork()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to remove connection')
+    }
+  }
+
+  const handleMessage = async (userId) => {
+    setMessageLoadingId(userId)
+    try {
+      const res = await api.post(`/messages/start/${userId}`)
+      navigate(`/messages?conversation=${res.data.conversation.id}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to start conversation')
+    } finally {
+      setMessageLoadingId(null)
     }
   }
 
@@ -269,6 +332,14 @@ const MyNetwork = () => {
                         <PersonMeta user={connection.user} />
                       </button>
                       <button
+                        onClick={() => handleMessage(connection.user.id)}
+                        disabled={messageLoadingId === connection.user.id}
+                        className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        {messageLoadingId === connection.user.id ? 'Opening...' : 'Message'}
+                      </button>
+                      <button
                         onClick={() => handleRemove(connection.connection_id)}
                         className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50"
                       >
@@ -286,18 +357,39 @@ const MyNetwork = () => {
               <h2 className="font-bold text-gray-900">People you may know</h2>
               <p className="text-sm text-gray-500 mt-1 mb-4">Connect with other RecruitSense members.</p>
 
-              {loading ? (
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  value={peopleSearch}
+                  onChange={handlePeopleSearchChange}
+                  placeholder="Search people, skills, company..."
+                  className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                {peopleSearch && (
+                  <button
+                    onClick={() => setPeopleSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear people search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {loading || peopleSearchLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((item) => <div key={item} className="h-24 bg-gray-100 rounded-lg animate-pulse" />)}
                 </div>
-              ) : suggestions.length === 0 ? (
+              ) : visibleSuggestions.length === 0 ? (
                 <div className="border border-dashed border-gray-200 rounded-lg p-6 text-center">
                   <Users className="w-9 h-9 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No suggestions right now.</p>
+                  <p className="text-sm text-gray-500">
+                    {peopleSearch.trim().length >= 2 ? 'No people matched your search.' : 'No suggestions right now.'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {suggestions.map((user) => (
+                  {visibleSuggestions.map((user) => (
                     <div key={user.id} className="border border-gray-100 rounded-lg p-4">
                       <button onClick={() => navigate(`/profile/${user.id}`)} className="w-full flex items-center gap-3 text-left">
                         <PersonAvatar user={user} size="w-12 h-12" textSize="text-base" />

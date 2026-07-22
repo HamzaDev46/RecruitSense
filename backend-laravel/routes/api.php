@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\JobSeekerDashboardController;
 use App\Http\Controllers\Api\RecommendedJobController;
 use App\Http\Controllers\Api\JobAlertController;
 use App\Http\Controllers\Api\ResumeInsightController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\AccountSettingsController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -32,6 +34,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/dashboard/jobseeker', [JobSeekerDashboardController::class, 'summary']);
+    Route::get('/settings', [AccountSettingsController::class, 'show']);
+    Route::put('/settings/account', [AccountSettingsController::class, 'updateAccount']);
+    Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);
+    Route::put('/settings/preferences', [AccountSettingsController::class, 'updatePreferences']);
+    Route::delete('/settings/account', [AccountSettingsController::class, 'destroyAccount']);
 
     // Job seeker profile routes
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -46,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Network routes
     Route::get('/network/summary', [NetworkController::class, 'summary']);
     Route::get('/network/suggestions', [NetworkController::class, 'suggestions']);
+    Route::get('/network/search', [NetworkController::class, 'search']);
     Route::get('/network/invitations', [NetworkController::class, 'invitations']);
     Route::get('/network/connections', [NetworkController::class, 'connections']);
     Route::get('/network/status/{user}', [NetworkController::class, 'status']);
@@ -72,7 +80,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::delete('/notifications', [NotificationController::class, 'clearAll']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
+    // Messaging routes
+    Route::get('/messages/conversations', [MessageController::class, 'conversations']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::post('/messages/start/{user}', [MessageController::class, 'start']);
+    Route::get('/messages/conversations/{conversation}', [MessageController::class, 'show']);
+    Route::post('/messages/conversations/{conversation}', [MessageController::class, 'store']);
+    Route::put('/messages/{message}', [MessageController::class, 'update']);
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
 
     // Social feed routes
     Route::get('/posts/feed', [PostController::class, 'feed']);

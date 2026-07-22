@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\User;
+use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends Controller
 {
@@ -23,11 +25,17 @@ class NotificationController extends Controller
 
     public function unreadCount(Request $request)
     {
-        return response()->json([
-            'unread_count' => AppNotification::where('user_id', $request->user()->id)
-                ->whereNull('read_at')
-                ->count(),
-        ]);
+        $userId = $request->user()->id;
+
+        return response()->json(Cache::remember(
+            UserCache::unreadNotifications($userId),
+            UserCache::UNREAD_COUNT_TTL,
+            fn () => [
+                'unread_count' => AppNotification::where('user_id', $userId)
+                    ->whereNull('read_at')
+                    ->count(),
+            ]
+        ));
     }
 
     public function markRead(Request $request, AppNotification $notification)
@@ -37,6 +45,7 @@ class NotificationController extends Controller
         }
 
         $notification->update(['read_at' => $notification->read_at ?: now()]);
+        UserCache::forgetUnreadNotifications($request->user()->id);
 
         return response()->json([
             'message' => 'Notification marked as read',
@@ -49,8 +58,29 @@ class NotificationController extends Controller
         AppNotification::where('user_id', $request->user()->id)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
+        UserCache::forgetUnreadNotifications($request->user()->id);
 
         return response()->json(['message' => 'All notifications marked as read']);
+    }
+
+    public function destroy(Request $request, AppNotification $notification)
+    {
+        if ($notification->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Notification not found'], 404);
+        }
+
+        $notification->delete();
+        UserCache::forgetUnreadNotifications($request->user()->id);
+
+        return response()->json(['message' => 'Notification deleted successfully']);
+    }
+
+    public function clearAll(Request $request)
+    {
+        AppNotification::where('user_id', $request->user()->id)->delete();
+        UserCache::forgetUnreadNotifications($request->user()->id);
+
+        return response()->json(['message' => 'Notifications cleared successfully']);
     }
 
     private function notificationPayload(AppNotification $notification, Request $request): array

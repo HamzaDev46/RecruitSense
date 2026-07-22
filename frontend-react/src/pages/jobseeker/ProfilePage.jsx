@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Mail,
   MapPin,
+  MessageCircle,
   Pencil,
   Plus,
   Save,
@@ -202,6 +203,7 @@ const ProfilePage = () => {
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [profileViewers, setProfileViewers] = useState([])
+  const [searchAppearances, setSearchAppearances] = useState([])
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [experienceModalOpen, setExperienceModalOpen] = useState(false)
   const [editingExperienceId, setEditingExperienceId] = useState(null)
@@ -212,6 +214,7 @@ const ProfilePage = () => {
   const [coverDrag, setCoverDrag] = useState(null)
   const [connection, setConnection] = useState(null)
   const [networkActionLoading, setNetworkActionLoading] = useState(false)
+  const [messageActionLoading, setMessageActionLoading] = useState(false)
 
   const initials = useMemo(() => {
     return (profile.name || user?.name || 'User')
@@ -466,9 +469,11 @@ const ProfilePage = () => {
       const res = await api.get('/profile/viewers')
 
       setProfileViewers(res.data.viewers || [])
+      setSearchAppearances(res.data.search_appearances || [])
       setAnalytics((current) => ({
         ...current,
         views_count: res.data.total ?? current.views_count,
+        search_appearances_count: res.data.search_appearances_total ?? current.search_appearances_count,
       }))
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load analytics')
@@ -543,6 +548,20 @@ const ProfilePage = () => {
     }
   }
 
+  const startConversation = async () => {
+    if (!userId) return
+
+    setMessageActionLoading(true)
+    try {
+      const res = await api.post(`/messages/start/${userId}`)
+      navigate(`/messages?conversation=${res.data.conversation.id}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to start conversation')
+    } finally {
+      setMessageActionLoading(false)
+    }
+  }
+
   const networkAction = () => {
     if (canEdit) return null
 
@@ -561,10 +580,20 @@ const ProfilePage = () => {
 
     if (connection.status === 'accepted') {
       return (
-        <button className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold flex items-center gap-2">
-          <UserCheck className="w-4 h-4" />
-          Connected
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold flex items-center gap-2">
+            <UserCheck className="w-4 h-4" />
+            Connected
+          </button>
+          <button
+            onClick={startConversation}
+            disabled={messageActionLoading}
+            className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            {messageActionLoading ? 'Opening...' : 'Message'}
+          </button>
+        </div>
       )
     }
 
@@ -884,65 +913,131 @@ const ProfilePage = () => {
 
         {canEdit && analyticsModalOpen && (
           <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center px-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
               <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Profile viewers</h3>
-                  <p className="text-sm text-gray-500 mt-1">{analytics.views_count} total views</p>
+                  <h3 className="text-xl font-bold text-gray-900">Profile analytics</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {analytics.views_count} profile views and {analytics.search_appearances_count || 0} search appearances
+                  </p>
                 </div>
                 <button onClick={() => setAnalyticsModalOpen(false)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 max-h-[65vh] overflow-y-auto">
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
                 {analyticsLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((item) => (
                       <div key={item} className="h-20 rounded-lg bg-gray-100 animate-pulse" />
                     ))}
                   </div>
-                ) : profileViewers.length === 0 ? (
-                  <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center">
-                    <Eye className="w-9 h-9 text-gray-300 mx-auto mb-2" />
-                    <p className="font-semibold text-gray-900">No profile views yet</p>
-                    <p className="text-sm text-gray-500 mt-1">Views will appear here when another user opens your profile.</p>
-                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    {profileViewers.map((view) => (
-                      <div key={view.id} className="flex items-center gap-4 border border-gray-100 rounded-lg p-4">
-                        {view.user?.profile_image_url ? (
-                          <img
-                            src={view.user.profile_image_url}
-                            alt={view.user.name}
-                            className="w-12 h-12 rounded-full object-cover object-top border border-gray-100"
-                          />
+                  <div className="space-y-5">
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      {[
+                        { label: 'Profile views', value: analytics.views_count || 0, icon: <Eye className="w-4 h-4" /> },
+                        { label: 'Post impressions', value: analytics.post_impressions_count || 0, icon: <BarChart3 className="w-4 h-4" /> },
+                        { label: 'Search appearances', value: analytics.search_appearances_count || 0, icon: <Search className="w-4 h-4" /> },
+                      ].map((item) => (
+                        <div key={item.label} className="border border-gray-100 rounded-lg p-4">
+                          <div className="text-sky-600 mb-2">{item.icon}</div>
+                          <p className="text-2xl font-bold text-gray-900">{item.value}</p>
+                          <p className="text-xs font-semibold text-gray-500 mt-1">{item.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-5">
+                      <section>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-gray-900">Profile viewers</h4>
+                          <span className="text-xs font-semibold text-gray-500">{profileViewers.length} recent</span>
+                        </div>
+                        {profileViewers.length === 0 ? (
+                          <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center">
+                            <Eye className="w-9 h-9 text-gray-300 mx-auto mb-2" />
+                            <p className="font-semibold text-gray-900">No profile views yet</p>
+                            <p className="text-sm text-gray-500 mt-1">Views will appear here when another user opens your profile.</p>
+                          </div>
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">
-                            {personInitials(view.user?.name || 'User')}
+                          <div className="space-y-3">
+                            {profileViewers.map((view) => (
+                              <div key={view.id} className="flex items-center gap-3 border border-gray-100 rounded-lg p-4">
+                                {view.user?.profile_image_url ? (
+                                  <img
+                                    src={view.user.profile_image_url}
+                                    alt={view.user.name}
+                                    className="w-11 h-11 rounded-full object-cover object-top border border-gray-100"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">
+                                    {personInitials(view.user?.name || 'User')}
+                                  </div>
+                                )}
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 truncate">{view.user?.name || 'Deleted user'}</p>
+                                  <p className="text-sm text-gray-600 truncate">{view.user?.headline || view.user?.company || 'RecruitSense member'}</p>
+                                  <p className="text-xs text-gray-400 mt-1">Viewed on {viewedDate(view.viewed_at || view.viewed_on)}</p>
+                                </div>
+
+                                {view.user?.id && (
+                                  <button
+                                    onClick={() => {
+                                      setAnalyticsModalOpen(false)
+                                      navigate(`/profile/${view.user.id}`)
+                                    }}
+                                    className="px-3 py-1.5 rounded-full border border-sky-600 text-sky-700 text-xs font-semibold hover:bg-sky-50"
+                                  >
+                                    View
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
+                      </section>
 
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 truncate">{view.user?.name || 'Deleted user'}</p>
-                          <p className="text-sm text-gray-600 truncate">{view.user?.headline || view.user?.company || 'RecruitSense member'}</p>
-                          <p className="text-xs text-gray-400 mt-1">Viewed on {viewedDate(view.viewed_at || view.viewed_on)}</p>
+                      <section>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-gray-900">Search appearances</h4>
+                          <span className="text-xs font-semibold text-gray-500">{searchAppearances.length} recent</span>
                         </div>
+                        {searchAppearances.length === 0 ? (
+                          <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center">
+                            <Search className="w-9 h-9 text-gray-300 mx-auto mb-2" />
+                            <p className="font-semibold text-gray-900">No search appearances yet</p>
+                            <p className="text-sm text-gray-500 mt-1">Appearances will show when your profile appears in people search.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {searchAppearances.map((appearance) => (
+                              <div key={appearance.id} className="flex items-center gap-3 border border-gray-100 rounded-lg p-4">
+                                {appearance.user?.profile_image_url ? (
+                                  <img
+                                    src={appearance.user.profile_image_url}
+                                    alt={appearance.user.name}
+                                    className="w-11 h-11 rounded-full object-cover object-top border border-gray-100"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold">
+                                    {personInitials(appearance.user?.name || 'RS')}
+                                  </div>
+                                )}
 
-                        {view.user?.id && (
-                          <button
-                            onClick={() => {
-                              setAnalyticsModalOpen(false)
-                              navigate(`/profile/${view.user.id}`)
-                            }}
-                            className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 text-sm font-semibold hover:bg-sky-50"
-                          >
-                            View profile
-                          </button>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 truncate">{appearance.user?.name || 'RecruitSense member'}</p>
+                                  <p className="text-sm text-gray-600 truncate">Searched "{appearance.query || 'people'}"</p>
+                                  <p className="text-xs text-gray-400 mt-1">Appeared on {viewedDate(appearance.appeared_at || appearance.appeared_on)}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                      </div>
-                    ))}
+                      </section>
+                    </div>
                   </div>
                 )}
               </div>

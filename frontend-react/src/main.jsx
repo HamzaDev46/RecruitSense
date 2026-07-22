@@ -4,6 +4,9 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
 
+const savedDarkMode = localStorage.getItem('recruitsense_dark_mode') === 'true'
+document.documentElement.classList.toggle('rs-dark', savedDarkMode)
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>

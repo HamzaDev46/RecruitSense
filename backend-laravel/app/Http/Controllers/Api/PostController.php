@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\PostComment;
 use App\Models\PostImpression;
 use App\Models\User;
+use App\Support\UserCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -208,14 +209,16 @@ class PostController extends Controller
     {
         $connectedIds = $this->acceptedConnectionUserIds($viewer->id);
 
-        return $query->where(function ($scope) use ($viewer, $connectedIds) {
-            $scope->where('visibility', 'public')
-                ->orWhere('user_id', $viewer->id)
-                ->orWhere(function ($connectionScope) use ($connectedIds) {
-                    $connectionScope->where('visibility', 'connections')
-                        ->whereIn('user_id', $connectedIds);
-                });
-        });
+        return $query
+            ->whereHas('user')
+            ->where(function ($scope) use ($viewer, $connectedIds) {
+                $scope->where('visibility', 'public')
+                    ->orWhere('user_id', $viewer->id)
+                    ->orWhere(function ($connectionScope) use ($connectedIds) {
+                        $connectionScope->where('visibility', 'connections')
+                            ->whereIn('user_id', $connectedIds);
+                    });
+            });
     }
 
     private function canViewPost(Post $post, User $viewer): bool
@@ -249,11 +252,15 @@ class PostController extends Controller
                 continue;
             }
 
-            PostImpression::firstOrCreate([
+            $impression = PostImpression::firstOrCreate([
                 'post_id' => $post->id,
                 'viewer_user_id' => $viewer->id,
                 'viewed_on' => now()->toDateString(),
             ]);
+
+            if ($impression->wasRecentlyCreated) {
+                UserCache::forgetProfile($post->user_id);
+            }
         }
     }
 
@@ -329,6 +336,10 @@ class PostController extends Controller
             return;
         }
 
+        if (\App\Models\User::with('jobSeeker')->find($userId)?->notificationEnabledFor($type) === false) {
+            return;
+        }
+
         AppNotification::create([
             'user_id' => $userId,
             'actor_id' => $actorId,
@@ -337,5 +348,6 @@ class PostController extends Controller
             'message' => $message,
             'data' => $data,
         ]);
+        UserCache::forgetUnreadNotifications($userId);
     }
 }

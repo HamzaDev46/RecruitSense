@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AppNotification;
 use App\Models\JobAlert;
 use App\Models\JobPosting;
+use App\Support\UserCache;
 use Illuminate\Support\Str;
 
 class JobAlertMatcher
@@ -48,6 +49,10 @@ class JobAlertMatcher
             ->where('is_active', true)
             ->chunkById(100, function ($alerts) use ($job, &$notificationsCreated) {
                 foreach ($alerts as $alert) {
+                    if ($alert->user?->notificationEnabledFor('job_alert_match') === false) {
+                        continue;
+                    }
+
                     $match = $this->match($alert, $job);
 
                     if ($match['score'] < $alert->min_match_score || $match['score'] === 0) {
@@ -77,6 +82,7 @@ class JobAlertMatcher
                             'link' => '/jobs/' . $job->id,
                         ],
                     ]);
+                    UserCache::forgetUnreadNotifications($alert->user_id);
 
                     $alert->forceFill(['last_notified_at' => now()])->save();
                     $notificationsCreated++;

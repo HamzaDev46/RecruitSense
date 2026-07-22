@@ -10,6 +10,7 @@ use App\Models\Resume;
 use App\Models\SkillGap;
 use App\Mail\ShortlistMail;
 use App\Services\FlaskAIService;
+use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -264,6 +265,10 @@ class ApplicationController extends Controller
             return;
         }
 
+        if (\App\Models\User::with('jobSeeker')->find($userId)?->notificationEnabledFor($type) === false) {
+            return;
+        }
+
         AppNotification::create([
             'user_id' => $userId,
             'actor_id' => $actorId,
@@ -272,5 +277,6 @@ class ApplicationController extends Controller
             'message' => $message,
             'data' => $data,
         ]);
+        UserCache::forgetUnreadNotifications($userId);
     }
 }
