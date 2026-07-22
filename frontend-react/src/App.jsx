@@ -9,6 +9,7 @@ const pageImports = {
   login: () => import('./pages/auth/LoginPage'),
   register: () => import('./pages/auth/RegisterPage'),
   dashboard: () => import('./pages/jobseeker/Dashboard'),
+  search: () => import('./pages/jobseeker/SearchPage'),
   feed: () => import('./pages/jobseeker/FeedPage'),
   jobs: () => import('./pages/jobseeker/BrowseJobs'),
   applications: () => import('./pages/jobseeker/MyApplications'),
@@ -28,6 +29,7 @@ const LandingPage = lazy(pageImports.landing)
 const LoginPage = lazy(pageImports.login)
 const RegisterPage = lazy(pageImports.register)
 const Dashboard = lazy(pageImports.dashboard)
+const SearchPage = lazy(pageImports.search)
 const FeedPage = lazy(pageImports.feed)
 const BrowseJobs = lazy(pageImports.jobs)
 const MyApplications = lazy(pageImports.applications)
@@ -137,6 +139,11 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute role="jobseeker">
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/search" element={
+              <ProtectedRoute role="jobseeker">
+                <SearchPage />
               </ProtectedRoute>
             } />
             <Route path="/feed" element={

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\JobAlertController;
 use App\Http\Controllers\Api\ResumeInsightController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\AccountSettingsController;
+use App\Http\Controllers\Api\GlobalSearchController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -34,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/dashboard/jobseeker', [JobSeekerDashboardController::class, 'summary']);
+    Route::get('/search/global', [GlobalSearchController::class, 'index']);
     Route::get('/settings', [AccountSettingsController::class, 'show']);
     Route::put('/settings/account', [AccountSettingsController::class, 'updateAccount']);
     Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);

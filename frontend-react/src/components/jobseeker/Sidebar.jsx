@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Bell, BellRing, Bookmark, Brain, LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, MessageCircle, Newspaper, Settings, Sparkles, User, Users } from 'lucide-react'
+import { Bell, BellRing, Bookmark, Brain, LayoutDashboard, Briefcase, FileText, ClipboardList, LogOut, MessageCircle, Newspaper, Search, Settings, Sparkles, User, Users } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
@@ -54,15 +54,23 @@ const Sidebar = () => {
   const [networkSummary, setNetworkSummary] = useState({ pending_invitations_count: 0 })
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
+  const [quickSearch, setQuickSearch] = useState('')
 
-  const navigateWithSpinner = (path) => {
+  const navigateWithSpinner = (path, target = path) => {
     if (location.pathname !== path) {
       window.dispatchEvent(new CustomEvent('recruitsense-route-loading', {
         detail: { path },
       }))
     }
 
-    navigate(path)
+    navigate(target)
+  }
+
+  const submitQuickSearch = (event) => {
+    event.preventDefault()
+    const term = quickSearch.trim()
+
+    navigateWithSpinner('/search', term ? `/search?q=${encodeURIComponent(term)}` : '/search')
   }
 
   useEffect(() => {
@@ -173,6 +181,18 @@ const Sidebar = () => {
           </div>
         </button>
       </div>
+
+      <form onSubmit={submitQuickSearch} className="px-4 py-3 border-b border-gray-100">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={quickSearch}
+            onChange={(event) => setQuickSearch(event.target.value)}
+            placeholder="Search..."
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+      </form>
 
       {/* Nav Items */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
