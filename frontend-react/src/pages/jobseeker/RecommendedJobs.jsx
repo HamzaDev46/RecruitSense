@@ -3,6 +3,8 @@ import { Bookmark, BookmarkCheck, Briefcase, CheckCircle2, Search, Sparkles, X, 
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
+import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
 
 const scoreColor = (score) => {
@@ -18,7 +20,11 @@ const RecommendedJobs = () => {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState(null)
-  const [applyingId, setApplyingId] = useState(null)
+  const [applyModal, setApplyModal] = useState({
+    open: false,
+    job: null,
+    loading: false,
+  })
 
   const loadRecommendations = async () => {
     setLoading(true)
@@ -91,30 +97,54 @@ const RecommendedJobs = () => {
     }
   }
 
-  const applyToJob = async (jobId) => {
-    setApplyingId(jobId)
+  const openApply = (job) => {
+    setApplyModal({
+      open: true,
+      job,
+      loading: false,
+    })
+  }
+
+  const closeApply = () => {
+    if (applyModal.loading) return
+
+    setApplyModal({
+      open: false,
+      job: null,
+      loading: false,
+    })
+  }
+
+  const submitApplication = async (payload) => {
+    if (!applyModal.job) return
+
+    setApplyModal((current) => ({ ...current, loading: true }))
     try {
-      await api.post(`/jobs/${jobId}/apply`)
-      updateRecommendation(jobId, { has_applied: true })
+      await api.post(`/jobs/${applyModal.job.id}/apply`, payload)
+      updateRecommendation(applyModal.job.id, { has_applied: true })
       toast.success('Application submitted! AI is analyzing your resume...')
+      setApplyModal({
+        open: false,
+        job: null,
+        loading: false,
+      })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to apply')
-    } finally {
-      setApplyingId(null)
+      setApplyModal((current) => ({ ...current, loading: false }))
     }
   }
 
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Recommended Jobs</h1>
             <p className="text-sm text-gray-500 mt-1">Jobs ranked by your profile and resume skills.</p>
           </div>
           <button
             onClick={loadRecommendations}
-            className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+            className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
           >
             Refresh
           </button>
@@ -169,13 +199,11 @@ const RecommendedJobs = () => {
           <div className="space-y-4">
             {filtered.map(({ job, match_score, matched_skills, missing_skills, is_saved, has_applied }) => (
               <div key={job.id} className="bg-white border border-gray-100 rounded-2xl p-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                    {job.company?.name?.charAt(0) || 'J'}
-                  </div>
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                  <CompanyLogo company={job.company} size="lg" />
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div>
                         <button onClick={() => navigate(`/jobs/${job.id}`)} className="text-left">
                           <h2 className="text-lg font-bold text-gray-900 hover:text-indigo-600">{job.title}</h2>
@@ -188,7 +216,7 @@ const RecommendedJobs = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -222,20 +250,20 @@ const RecommendedJobs = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-5">
                       <button
-                        onClick={() => applyToJob(job.id)}
-                        disabled={applyingId === job.id || has_applied}
-                        className="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
+                        onClick={() => openApply(job)}
+                        disabled={(applyModal.loading && applyModal.job?.id === job.id) || has_applied}
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
                       >
                         <Briefcase className="w-4 h-4" />
-                        {has_applied ? 'Applied' : applyingId === job.id ? 'Applying...' : 'Apply'}
+                        {has_applied ? 'Applied' : applyModal.loading && applyModal.job?.id === job.id ? 'Applying...' : 'Apply'}
                       </button>
 
                       <button
                         onClick={() => toggleSave(job.id, is_saved)}
                         disabled={savingId === job.id}
-                        className={`px-5 py-2.5 rounded-full border text-sm font-semibold flex items-center gap-2 ${
+                        className={`w-full sm:w-auto px-5 py-2.5 rounded-full border text-sm font-semibold flex items-center justify-center gap-2 ${
                           is_saved
                             ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600'
@@ -247,7 +275,7 @@ const RecommendedJobs = () => {
 
                       <button
                         onClick={() => navigate(`/jobs/${job.id}`)}
-                        className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
                       >
                         View details
                       </button>
@@ -259,6 +287,15 @@ const RecommendedJobs = () => {
           </div>
         )}
       </div>
+
+      <ApplyJobModal
+        key={applyModal.open ? `apply-${applyModal.job?.id}` : 'apply-closed'}
+        open={applyModal.open}
+        job={applyModal.job}
+        loading={applyModal.loading}
+        onClose={closeApply}
+        onSubmit={submitApplication}
+      />
     </DashboardLayout>
   )
 }

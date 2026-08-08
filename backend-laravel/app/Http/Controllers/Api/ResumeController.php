@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Resume;
+use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,7 @@ class ResumeController extends Controller
             'job_seeker_id' => $user->jobSeeker->id,
             'file_path' => $path,
         ]);
+        UserCache::forgetProfile($user->id);
 
         return response()->json([
             'message' => 'Resume uploaded successfully',
@@ -84,6 +86,7 @@ class ResumeController extends Controller
 
         Storage::disk('public')->delete($resume->file_path);
         $resume->delete();
+        UserCache::forgetProfile($user->id);
 
         return response()->json(['message' => 'Resume deleted successfully']);
     }

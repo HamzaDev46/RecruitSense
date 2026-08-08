@@ -15,7 +15,11 @@ class JobPostingController extends Controller
      */
     public function index()
     {
-        $jobs = JobPosting::with('company')->latest()->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->get();
+
         return response()->json($jobs);
     }
 
@@ -43,6 +47,7 @@ class JobPostingController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'required_skills' => 'required|string',
+            'status' => 'nullable|in:' . implode(',', JobPosting::STATUSES),
         ]);
 
         if ($validator->fails()) {
@@ -54,12 +59,15 @@ class JobPostingController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'required_skills' => $request->required_skills,
+            'status' => $request->status ?: JobPosting::STATUS_ACTIVE,
         ]);
-        $alertNotifications = app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'));
+        $alertNotifications = $job->status === JobPosting::STATUS_ACTIVE
+            ? app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'))
+            : 0;
 
         return response()->json([
             'message' => 'Job posted successfully',
-            'job' => $job,
+            'job' => $this->withApplicationCounts($job),
             'job_alert_notifications' => $alertNotifications,
         ], 201);
     }
@@ -80,17 +88,23 @@ class JobPostingController extends Controller
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'required_skills' => 'sometimes|string',
+            'status' => 'sometimes|in:' . implode(',', JobPosting::STATUSES),
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $job->update($request->only(['title', 'description', 'required_skills']));
+        $previousStatus = $job->status;
+        $job->update($request->only(['title', 'description', 'required_skills', 'status']));
+        $alertNotifications = $previousStatus !== JobPosting::STATUS_ACTIVE && $job->status === JobPosting::STATUS_ACTIVE
+            ? app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'))
+            : 0;
 
         return response()->json([
             'message' => 'Job updated successfully',
-            'job' => $job,
+            'job' => $this->withApplicationCounts($job),
+            'job_alert_notifications' => $alertNotifications,
         ]);
     }
 
@@ -122,8 +136,38 @@ class JobPostingController extends Controller
             return response()->json(['message' => 'Only companies can access this'], 403);
         }
 
-        $jobs = JobPosting::where('company_id', $user->company->id)->latest()->get();
+        $jobs = JobPosting::where('company_id', $user->company->id)
+            ->withCount([
+                'applications as applications_count' => fn ($query) => $query->where('status', '!=', 'withdrawn'),
+                'applications as pending_applications_count' => fn ($query) => $query->where('status', 'pending'),
+                'applications as screening_applications_count' => fn ($query) => $query->where('status', 'screening'),
+                'applications as shortlisted_applications_count' => fn ($query) => $query->where('status', 'shortlisted'),
+                'applications as interview_applications_count' => fn ($query) => $query->where('status', 'interview'),
+                'applications as offered_applications_count' => fn ($query) => $query->where('status', 'offered'),
+                'applications as hired_applications_count' => fn ($query) => $query->where('status', 'hired'),
+                'applications as rejected_applications_count' => fn ($query) => $query->where('status', 'rejected'),
+                'applications as withdrawn_applications_count' => fn ($query) => $query->where('status', 'withdrawn'),
+                'applications as scheduled_interviews_count' => fn ($query) => $query->whereNotNull('interview_scheduled_at'),
+            ])
+            ->latest()
+            ->get();
 
         return response()->json($jobs);
+    }
+
+    private function withApplicationCounts(JobPosting $job): JobPosting
+    {
+        return $job->loadCount([
+            'applications as applications_count' => fn ($query) => $query->where('status', '!=', 'withdrawn'),
+            'applications as pending_applications_count' => fn ($query) => $query->where('status', 'pending'),
+            'applications as screening_applications_count' => fn ($query) => $query->where('status', 'screening'),
+            'applications as shortlisted_applications_count' => fn ($query) => $query->where('status', 'shortlisted'),
+            'applications as interview_applications_count' => fn ($query) => $query->where('status', 'interview'),
+            'applications as offered_applications_count' => fn ($query) => $query->where('status', 'offered'),
+            'applications as hired_applications_count' => fn ($query) => $query->where('status', 'hired'),
+            'applications as rejected_applications_count' => fn ($query) => $query->where('status', 'rejected'),
+            'applications as withdrawn_applications_count' => fn ($query) => $query->where('status', 'withdrawn'),
+            'applications as scheduled_interviews_count' => fn ($query) => $query->whereNotNull('interview_scheduled_at'),
+        ]);
     }
 }

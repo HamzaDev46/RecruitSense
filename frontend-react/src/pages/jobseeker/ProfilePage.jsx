@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
+  ArrowLeft,
   BarChart3,
+  Ban,
   Briefcase,
   Building2,
   Camera,
   Check,
+  ClipboardList,
   Clock,
   Copy,
   Eye,
   ExternalLink,
+  Flag,
   GraduationCap,
   Globe2,
   Lock,
   Mail,
   MapPin,
+  Maximize2,
   MessageCircle,
   Pencil,
   Plus,
@@ -22,6 +27,7 @@ import {
   Search,
   Share2,
   Trash2,
+  Unlock,
   Upload,
   UserCheck,
   UserPlus,
@@ -29,8 +35,10 @@ import {
   X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import CompanyLayout from '../../components/company/CompanyLayout'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import PostCard from '../../components/posts/PostCard'
+import ReportContentModal from '../../components/ReportContentModal'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
@@ -58,6 +66,15 @@ const emptyExperience = {
   end_date: '',
   is_current: false,
   description: '',
+}
+
+const emptyProfileCompletion = {
+  completion: 0,
+  completed_tasks: 0,
+  total_tasks: 0,
+  tasks: [],
+  next_task: null,
+  missing_tasks: [],
 }
 
 const coverStyle = {
@@ -182,7 +199,9 @@ const normalizeProfilePayload = (data) => ({
     post_impressions_count: 0,
     applications_count: 0,
     search_appearances_count: 0,
+    connections_count: 0,
   },
+  profileCompletion: data.profile_completion || emptyProfileCompletion,
 })
 
 const ProfilePage = () => {
@@ -197,6 +216,13 @@ const ProfilePage = () => {
   const canEdit = isOwnerProfile && !previewMode
   const profileEndpoint = isOwnerProfile ? '/profile' : `/profiles/${userId}`
   const viewedUserId = userId || user?.id
+  const isCompanyViewer = user?.role === 'company' && !isOwnerProfile
+  const Layout = user?.role === 'company' ? CompanyLayout : DashboardLayout
+  const sourceApplicationId = searchParams.get('application')
+  const sourceJobId = searchParams.get('job')
+  const backToApplicantsPath = sourceJobId
+    ? `/company/jobs/${sourceJobId}/applicants${sourceApplicationId ? `?application=${sourceApplicationId}` : ''}`
+    : `/company/applicants${sourceApplicationId ? `?application=${sourceApplicationId}` : ''}`
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -210,8 +236,11 @@ const ProfilePage = () => {
     post_impressions_count: 0,
     applications_count: 0,
     search_appearances_count: 0,
+    connections_count: 0,
   })
+  const [profileCompletion, setProfileCompletion] = useState(emptyProfileCompletion)
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false)
+  const [imageViewer, setImageViewer] = useState(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [profileViewers, setProfileViewers] = useState([])
   const [searchAppearances, setSearchAppearances] = useState([])
@@ -226,6 +255,9 @@ const ProfilePage = () => {
   const [connection, setConnection] = useState(null)
   const [networkActionLoading, setNetworkActionLoading] = useState(false)
   const [messageActionLoading, setMessageActionLoading] = useState(false)
+  const [blockedByMe, setBlockedByMe] = useState(false)
+  const [blockActionLoading, setBlockActionLoading] = useState(false)
+  const [profileReportOpen, setProfileReportOpen] = useState(false)
 
   const initials = useMemo(() => {
     return (profile.name || user?.name || 'User')
@@ -240,6 +272,25 @@ const ProfilePage = () => {
     () => (profile.skills || '').split(',').map((skill) => skill.trim()).filter(Boolean),
     [profile.skills]
   )
+
+  const missingProfileTasks = useMemo(() => (
+    (profileCompletion.missing_tasks || [])
+      .map((task) => (typeof task === 'string'
+        ? {
+            id: task,
+            task,
+            description: 'Complete this step to improve your profile.',
+            action_path: task === 'Upload resume' ? '/resume' : '/profile?setup=profile',
+          }
+        : task))
+      .filter(Boolean)
+  ), [profileCompletion.missing_tasks])
+
+  const profileCompletionPercent = Number(profileCompletion.completion || 0)
+  const profileCompletionDone = Number(profileCompletion.completed_tasks || 0)
+  const profileCompletionTotal = Number(profileCompletion.total_tasks || 0)
+  const connectionsCount = Number(analytics.connections_count || 0)
+  const connectionsLabel = `${connectionsCount} ${connectionsCount === 1 ? 'connection' : 'connections'}`
 
   const profileUrl = viewedUserId ? `${window.location.origin}/profile/${viewedUserId}` : ''
   const visibilityDetails = {
@@ -302,6 +353,8 @@ const ProfilePage = () => {
       setProfileImages(normalized.images)
       setExperiences(normalized.experiences)
       setAnalytics(normalized.analytics)
+      setProfileCompletion(normalized.profileCompletion)
+      setBlockedByMe(Boolean(res.data.is_blocked_by_me))
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load profile')
     } finally {
@@ -322,6 +375,8 @@ const ProfilePage = () => {
         setProfileImages(normalized.images)
         setExperiences(normalized.experiences)
         setAnalytics(normalized.analytics)
+        setProfileCompletion(normalized.profileCompletion)
+        setBlockedByMe(Boolean(res.data.is_blocked_by_me))
       })
       .catch((err) => {
         if (active) toast.error(err.response?.data?.message || 'Failed to load profile')
@@ -357,13 +412,16 @@ const ProfilePage = () => {
   }, [viewedUserId])
 
   useEffect(() => {
-    if (canEdit || !userId) return
+    if (canEdit || !userId || isCompanyViewer) return
 
     let active = true
 
     api.get(`/network/status/${userId}`)
       .then((res) => {
-        if (active) setConnection(res.data.connection)
+        if (!active) return
+
+        setConnection(res.data.connection)
+        setBlockedByMe(Boolean(res.data.is_blocked_by_me))
       })
       .catch(() => {
         if (active) setConnection(null)
@@ -372,7 +430,7 @@ const ProfilePage = () => {
     return () => {
       active = false
     }
-  }, [canEdit, userId])
+  }, [canEdit, isCompanyViewer, userId])
 
   const openProfileModal = () => {
     if (!canEdit) return
@@ -382,6 +440,43 @@ const ProfilePage = () => {
     setPreviews({ profile: '', cover: '' })
     setProfileModalOpen(true)
   }
+
+  const openImageViewer = (type) => {
+    const url = type === 'cover' ? profileImages.cover : profileImages.profile
+
+    if (!url) {
+      if (canEdit) openProfileModal()
+      return
+    }
+
+    setImageViewer({
+      type,
+      url,
+      title: type === 'cover' ? 'Cover photo' : 'Profile photo',
+    })
+  }
+
+  const editPhotoFromViewer = () => {
+    setImageViewer(null)
+    openProfileModal()
+  }
+
+  useEffect(() => {
+    if (!imageViewer) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setImageViewer(null)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [imageViewer])
 
   const handleProfileChange = (event) => {
     setForm({ ...form, [event.target.name]: event.target.value })
@@ -468,6 +563,7 @@ const ProfilePage = () => {
       setProfileImages(normalized.images)
       setExperiences(normalized.experiences)
       setAnalytics(normalized.analytics)
+      setProfileCompletion(normalized.profileCompletion)
       updateUser?.(res.data.user)
       window.dispatchEvent(new CustomEvent('recruitsense-profile-updated'))
       setProfileModalOpen(false)
@@ -575,6 +671,15 @@ const ProfilePage = () => {
     setProfilePosts((current) => current.map((post) => post.id === nextPost.id ? nextPost : post))
   }
 
+  const addProfilePost = (nextPost) => {
+    if (!canEdit || nextPost.author?.id !== user?.id) return
+
+    setProfilePosts((current) => [
+      nextPost,
+      ...current.filter((post) => post.id !== nextPost.id),
+    ])
+  }
+
   const removeProfilePost = (postId) => {
     setProfilePosts((current) => current.filter((post) => post.id !== postId))
   }
@@ -651,8 +756,54 @@ const ProfilePage = () => {
     }
   }
 
+  const blockUser = async () => {
+    if (!userId) return
+
+    setBlockActionLoading(true)
+    try {
+      await api.post(`/blocks/${userId}`)
+      setBlockedByMe(true)
+      setConnection(null)
+      window.dispatchEvent(new CustomEvent('recruitsense-network-updated'))
+      toast.success('User blocked')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to block user')
+    } finally {
+      setBlockActionLoading(false)
+    }
+  }
+
+  const unblockUser = async () => {
+    if (!userId) return
+
+    setBlockActionLoading(true)
+    try {
+      await api.delete(`/blocks/${userId}`)
+      setBlockedByMe(false)
+      window.dispatchEvent(new CustomEvent('recruitsense-network-updated'))
+      toast.success('User unblocked')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to unblock user')
+    } finally {
+      setBlockActionLoading(false)
+    }
+  }
+
   const networkAction = () => {
     if (canEdit || isOwnerProfile) return null
+
+    if (blockedByMe) {
+      return (
+        <button
+          onClick={unblockUser}
+          disabled={blockActionLoading}
+          className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-60 flex items-center gap-2"
+        >
+          <Unlock className="w-4 h-4" />
+          {blockActionLoading ? 'Updating...' : 'Unblock'}
+        </button>
+      )
+    }
 
     if (!connection) {
       return (
@@ -723,20 +874,42 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <Layout>
         <div className="max-w-6xl mx-auto space-y-4">
           <div className="h-64 bg-white rounded-lg border border-gray-100 animate-pulse" />
           <div className="h-32 bg-white rounded-lg border border-gray-100 animate-pulse" />
         </div>
-      </DashboardLayout>
+      </Layout>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="max-w-6xl mx-auto grid grid-cols-12 gap-6">
+    <Layout>
+      <div className="max-w-5xl mx-auto space-y-4">
+        {isCompanyViewer && (
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">Recruiter profile view</p>
+                <p className="text-xs text-gray-500 mt-0.5">Review candidate details without jobseeker navigation or private owner analytics.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(backToApplicantsPath)}
+              className="h-10 px-4 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to applicants
+            </button>
+          </div>
+        )}
+
         {previewMode && (
-          <div className="col-span-12 bg-sky-50 border border-sky-100 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+          <div className="bg-sky-50 border border-sky-100 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-sky-900">Public preview mode</p>
               <p className="text-xs text-sky-700 mt-0.5">Editing and private analytics are hidden so you can review how others see this profile.</p>
@@ -751,169 +924,151 @@ const ProfilePage = () => {
           </div>
         )}
 
-        <aside className="col-span-4 space-y-4">
+        <section className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
             <div
-              className="h-24 bg-cover bg-center"
-              style={coverBackground(profileImages.cover, profile.cover_position)}
-            />
-            <div className="px-5 pb-5">
-              <button
-                type="button"
-                onClick={canEdit ? openProfileModal : undefined}
-                className={`-mt-10 mb-3 block relative z-10 ${canEdit ? '' : 'cursor-default'}`}
-              >
-                {profileImages.profile ? (
-                  <img src={profileImages.profile} alt={profile.name} className="w-24 h-24 rounded-full object-cover object-top border-4 border-white shadow-sm" />
-                ) : (
-                  <span className="w-24 h-24 rounded-full bg-sky-600 text-white border-4 border-white shadow-sm flex items-center justify-center text-2xl font-bold">
-                    {initials}
-                  </span>
-                )}
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900 leading-tight">{profile.name}</h1>
-              <p className="text-sm text-gray-700 mt-1 line-clamp-2">{profile.headline || 'Add your headline'}</p>
-              <p className="text-sm text-gray-500 mt-2">{profile.location || 'Add location'}</p>
-              <div className={`inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full border text-xs font-semibold ${visibility.className}`}>
-                {visibility.icon}
-                {visibility.label}
-              </div>
-              <div className="flex items-center gap-3 mt-4 text-sm font-semibold text-gray-800">
-                <Building2 className="w-5 h-5 text-gray-400" />
-                {profile.company || 'Add company'}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-900">Profile viewers</span>
-              <span className="text-sky-600 font-bold">{analytics.views_count}</span>
-            </div>
-            {canEdit ? (
-              <button onClick={openAnalyticsModal} className="font-semibold text-gray-800 hover:text-sky-700 transition-colors">
-                View all analytics
-              </button>
-            ) : (
-              <p className="text-sm text-gray-500">Analytics are private to the profile owner.</p>
-            )}
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-gray-900">Share profile</h3>
-                <p className="text-xs text-gray-500 mt-1">{visibility.description}</p>
-              </div>
-              <Share2 className="w-5 h-5 text-gray-400" />
-            </div>
-
-            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-xs text-gray-500 truncate">
-              {profileUrl || 'Profile link unavailable'}
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={copyProfileLink}
-                className="px-3 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center justify-center gap-1.5"
-              >
-                <Copy className="w-4 h-4" />
-                Copy
-              </button>
-              <button
-                type="button"
-                onClick={() => profileUrl && window.open(profileUrl, '_blank', 'noopener,noreferrer')}
-                className="px-3 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Open
-              </button>
-            </div>
-
-            {isOwnerProfile && !previewMode && (
-              <button
-                type="button"
-                onClick={() => navigate('/settings')}
-                className="mt-3 text-xs font-semibold text-sky-700 hover:text-sky-800"
-              >
-                Manage visibility
-              </button>
-            )}
-          </div>
-        </aside>
-
-        <section className="col-span-8 space-y-4">
-          <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
-            <div
-              className="h-48 bg-cover bg-center relative"
+              role={profileImages.cover || canEdit ? 'button' : undefined}
+              tabIndex={profileImages.cover || canEdit ? 0 : -1}
+              onClick={() => openImageViewer('cover')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  openImageViewer('cover')
+                }
+              }}
+              className={`h-48 bg-cover bg-center relative outline-none ${
+                profileImages.cover ? 'cursor-zoom-in' : canEdit ? 'cursor-pointer' : ''
+              }`}
               style={coverBackground(profileImages.cover, profile.cover_position)}
             >
+              {profileImages.cover && (
+                <div className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/90 text-gray-700 shadow-sm flex items-center justify-center">
+                  <Maximize2 className="w-5 h-5" />
+                </div>
+              )}
               {canEdit && (
                 <button
-                  onClick={openProfileModal}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openProfileModal()
+                  }}
                   className="absolute right-4 top-4 w-10 h-10 rounded-full bg-white/90 text-gray-700 hover:bg-white shadow-sm flex items-center justify-center transition-all"
-                  title="Edit profile"
+                  title="Change cover photo"
                 >
-                  <Pencil className="w-5 h-5" />
+                  <Camera className="w-5 h-5" />
                 </button>
               )}
             </div>
 
             <div className="px-6 pb-6">
-              <div className="flex items-end justify-between -mt-16">
-                <button
-                  type="button"
-                  onClick={canEdit ? openProfileModal : undefined}
-                  className={`relative z-10 ${canEdit ? '' : 'cursor-default'}`}
-                >
-                  {profileImages.profile ? (
-                    <img src={profileImages.profile} alt={profile.name} className="w-32 h-32 rounded-full object-cover object-top border-4 border-white shadow-sm" />
-                  ) : (
-                    <span className="w-32 h-32 rounded-full bg-sky-600 text-white border-4 border-white shadow-sm flex items-center justify-center text-4xl font-bold">
-                      {initials}
-                    </span>
-                  )}
-                </button>
-
-                <div className="mb-3 flex flex-wrap justify-end gap-2">
-                  {isOwnerProfile && !previewMode && (
-                    <button
-                      type="button"
-                      onClick={openPublicPreview}
-                      className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Preview
-                    </button>
-                  )}
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-16 gap-4">
+                <div className="relative z-10 w-fit">
                   <button
                     type="button"
-                    onClick={copyProfileLink}
-                    className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                    onClick={() => openImageViewer('profile')}
+                    disabled={!profileImages.profile && !canEdit}
+                    className={`${profileImages.profile ? 'cursor-zoom-in' : canEdit ? 'cursor-pointer' : 'cursor-default'} block rounded-full focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:pointer-events-none`}
+                    aria-label={profileImages.profile ? 'View profile photo' : 'Change profile photo'}
                   >
-                    <Share2 className="w-4 h-4" />
-                    Share profile
+                    {profileImages.profile ? (
+                      <img src={profileImages.profile} alt={profile.name} className="w-32 h-32 rounded-full object-cover object-top border-4 border-white shadow-sm" />
+                    ) : (
+                      <span className="w-32 h-32 rounded-full bg-sky-600 text-white border-4 border-white shadow-sm flex items-center justify-center text-4xl font-bold">
+                        {initials}
+                      </span>
+                    )}
                   </button>
                   {canEdit && (
                     <button
                       type="button"
                       onClick={openProfileModal}
-                      className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                      className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-white text-gray-700 border border-gray-200 shadow-sm flex items-center justify-center hover:bg-gray-50"
+                      title="Change profile photo"
                     >
-                      <Pencil className="w-4 h-4" />
-                      Edit profile
+                      <Camera className="w-5 h-5" />
                     </button>
+                  )}
+                </div>
+
+                <div className="mb-0 sm:mb-3 flex flex-wrap justify-start sm:justify-end gap-2">
+                  {isCompanyViewer ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => navigate(backToApplicantsPath)}
+                        className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Applicants
+                      </button>
+                      <button
+                        type="button"
+                        onClick={copyProfileLink}
+                        className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copy link
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {isOwnerProfile && !previewMode && (
+                        <button
+                          type="button"
+                          onClick={openPublicPreview}
+                          className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Preview
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={copyProfileLink}
+                        className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Share profile
+                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={openProfileModal}
+                          className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 font-semibold text-sm hover:bg-sky-50 transition-all flex items-center gap-2"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit profile
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 flex items-start justify-between gap-6">
+              <div className="mt-4 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900">{profile.name}</h2>
-                  <div className={`inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full border text-xs font-semibold ${visibility.className}`}>
-                    {visibility.icon}
-                    {visibility.label}
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{profile.name}</h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${visibility.className}`}>
+                      {visibility.icon}
+                      {visibility.label}
+                    </div>
+                    {isOwnerProfile && !previewMode && !isCompanyViewer ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/network')}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100 text-xs font-semibold hover:bg-sky-100 transition-colors"
+                      >
+                        <Users className="w-4 h-4" />
+                        {connectionsLabel}
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100 text-xs font-semibold">
+                        <Users className="w-4 h-4" />
+                        {connectionsLabel}
+                      </span>
+                    )}
                   </div>
                   <p className="text-gray-800 mt-1">{profile.headline || 'Add your professional headline'}</p>
                   <p className="text-sm text-gray-500 mt-2 flex items-center gap-1.5">
@@ -921,20 +1076,60 @@ const ProfilePage = () => {
                     {profile.location || 'Add location'}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {canEdit ? (
-                      <button className="px-4 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 transition-all">
+                    {isCompanyViewer ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(backToApplicantsPath)}
+                          className="w-full sm:w-auto px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                          Review application
+                        </button>
+                        <button
+                          type="button"
+                          onClick={copyProfileLink}
+                          className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 bg-white text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy profile
+                        </button>
+                      </>
+                    ) : canEdit ? (
+                      <button className="w-full sm:w-auto px-4 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 transition-all">
                         Open to
                       </button>
                     ) : networkAction()}
+                    {!isOwnerProfile && !blockedByMe && !isCompanyViewer && (
+                      <button
+                        type="button"
+                        onClick={() => setProfileReportOpen(true)}
+                        className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-600 bg-white text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-2"
+                      >
+                        <Flag className="w-4 h-4" />
+                        Report
+                      </button>
+                    )}
+                    {!isOwnerProfile && !blockedByMe && !isCompanyViewer && (
+                      <button
+                        type="button"
+                        onClick={blockUser}
+                        disabled={blockActionLoading}
+                        className="w-full sm:w-auto px-4 py-2 rounded-full border border-red-200 text-red-600 bg-red-50 text-sm font-semibold hover:bg-red-100 disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        <Ban className="w-4 h-4" />
+                        {blockActionLoading ? 'Blocking...' : 'Block'}
+                      </button>
+                    )}
                     {canEdit && (
-                      <button onClick={() => openExperienceModal()} className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 text-sm font-semibold hover:bg-sky-50 transition-all">
+                      <button onClick={() => openExperienceModal()} className="w-full sm:w-auto px-4 py-2 rounded-full border border-sky-600 text-sky-700 text-sm font-semibold hover:bg-sky-50 transition-all">
                         Add experience
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div className="w-56 space-y-3 text-sm">
+                <div className="w-full md:w-56 space-y-3 text-sm">
                   <div className="flex items-center gap-2 font-semibold text-gray-800">
                     <Building2 className="w-5 h-5 text-gray-400" />
                     {profile.company || 'Add company'}
@@ -952,10 +1147,212 @@ const ProfilePage = () => {
             </div>
           </div>
 
+          {isCompanyViewer ? (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900">Candidate snapshot</h3>
+                    <p className="text-xs text-gray-500 mt-1">Public profile details for recruiter review.</p>
+                  </div>
+                  <UserCheck className="w-5 h-5 text-indigo-500" />
+                </div>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Experience</span>
+                    <span className="font-semibold text-gray-900">{experiences.length} entries</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Skills</span>
+                    <span className="font-semibold text-gray-900">{skills.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Visibility</span>
+                    <span className="font-semibold text-gray-900">{visibility.label}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900">Skills overview</h3>
+                    <p className="text-xs text-gray-500 mt-1">Use the applicants page for AI score, resume match, and skill gap decisions.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(backToApplicantsPath)}
+                    className="h-9 px-3 rounded-full border border-indigo-200 text-indigo-700 bg-indigo-50 text-sm font-semibold hover:bg-indigo-100 flex items-center justify-center gap-2"
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    Applicant review
+                  </button>
+                </div>
+
+                {skills.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {skills.slice(0, 14).map((skill) => (
+                      <span key={skill} className="px-3 py-1.5 rounded-full bg-sky-50 border border-sky-100 text-sky-700 text-xs font-semibold">
+                        {skill}
+                      </span>
+                    ))}
+                    {skills.length > 14 && (
+                      <span className="px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100 text-gray-500 text-xs font-semibold">
+                        +{skills.length - 14} more
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+                    This candidate has not added skills yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-900">Profile viewers</span>
+                  <span className="text-sky-600 font-bold">{analytics.views_count}</span>
+                </div>
+                {canEdit ? (
+                  <button onClick={openAnalyticsModal} className="font-semibold text-gray-800 hover:text-sky-700 transition-colors">
+                    View all analytics
+                  </button>
+                ) : (
+                  <p className="text-sm text-gray-500">Analytics are private to the profile owner.</p>
+                )}
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900">Share profile</h3>
+                    <p className="text-xs text-gray-500 mt-1">{visibility.description}</p>
+                  </div>
+                  <Share2 className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-xs text-gray-500 truncate">
+                  {profileUrl || 'Profile link unavailable'}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={copyProfileLink}
+                    className="px-3 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center justify-center gap-1.5"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => profileUrl && window.open(profileUrl, '_blank', 'noopener,noreferrer')}
+                    className="px-3 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-1.5"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open
+                  </button>
+                </div>
+
+                {isOwnerProfile && !previewMode && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/settings')}
+                    className="mt-3 text-xs font-semibold text-sky-700 hover:text-sky-800"
+                  >
+                    Manage visibility
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {canEdit && (
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: `conic-gradient(#0284c7 ${profileCompletionPercent * 3.6}deg, #e5e7eb 0deg)`,
+                      }}
+                    />
+                    <div className="relative w-16 h-16 rounded-full bg-white flex items-center justify-center">
+                      <span className="text-xl font-bold text-gray-900">{profileCompletionPercent}%</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-gray-900">Profile completion</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {profileCompletionDone} of {profileCompletionTotal || 0} profile steps complete.
+                    </p>
+                    <div className="mt-3 h-2.5 w-full max-w-sm rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 transition-all"
+                        style={{ width: `${profileCompletionPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {missingProfileTasks.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(missingProfileTasks[0].action_path || '/profile?setup=profile')}
+                    className="w-full lg:w-auto px-4 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {missingProfileTasks[0].task}
+                  </button>
+                ) : (
+                  <div className="w-full lg:w-auto px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-sm font-semibold flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Complete
+                  </div>
+                )}
+              </div>
+
+              {missingProfileTasks.length > 0 ? (
+                <div className="mt-5 grid md:grid-cols-2 gap-3">
+                  {missingProfileTasks.slice(0, 4).map((task) => (
+                    <button
+                      key={task.id || task.task}
+                      type="button"
+                      onClick={() => navigate(task.action_path || '/profile?setup=profile')}
+                      className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-left hover:border-sky-200 hover:bg-sky-50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 w-7 h-7 rounded-full bg-white border border-gray-200 text-sky-700 flex items-center justify-center flex-shrink-0">
+                          <Clock className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{task.task}</p>
+                          <p className="text-xs text-gray-500 mt-1">{task.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Your profile has the key information recruiters need.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {canEdit && (
             <div className="bg-white border border-gray-200 rounded-lg p-5">
               <h3 className="font-bold text-gray-900">Analytics</h3>
-              <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="grid sm:grid-cols-3 gap-4 mt-4">
                 {[
                   { icon: <Eye className="w-5 h-5" />, title: `${analytics.views_count} profile views`, desc: 'Discover who viewed your profile.' },
                   { icon: <BarChart3 className="w-5 h-5" />, title: `${analytics.post_impressions_count || 0} post impressions`, desc: 'See how many people viewed your posts.' },
@@ -983,44 +1380,6 @@ const ProfilePage = () => {
               )}
             </div>
             <p className="text-sm text-gray-700 leading-relaxed">{profile.about || 'Add a short professional summary.'}</p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="bg-white border border-gray-200 rounded-lg p-5 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-gray-900">Posts</h3>
-                <p className="text-sm text-gray-500 mt-1">{profilePosts.length} posts shared</p>
-              </div>
-              {canEdit && (
-                <button
-                  onClick={() => navigate('/feed')}
-                  className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 text-sm font-semibold hover:bg-sky-50"
-                >
-                  Share a post
-                </button>
-              )}
-            </div>
-
-            {profilePostsLoading ? (
-              <div className="h-44 bg-white border border-gray-100 rounded-lg animate-pulse" />
-            ) : profilePosts.length === 0 ? (
-              <div className="bg-white border border-dashed border-gray-200 rounded-lg p-8 text-center">
-                <BarChart3 className="w-9 h-9 text-gray-300 mx-auto mb-2" />
-                <p className="font-semibold text-gray-900">No posts yet</p>
-                <p className="text-sm text-gray-500 mt-1">{canEdit ? 'Share updates from the feed page.' : 'This member has not shared any posts yet.'}</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {profilePosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onPostUpdated={updateProfilePost}
-                    onPostDeleted={removeProfilePost}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -1095,6 +1454,45 @@ const ProfilePage = () => {
                 ))
               )}
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-gray-900">Posts</h3>
+                <p className="text-sm text-gray-500 mt-1">{profilePosts.length} posts shared</p>
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => navigate('/feed')}
+                  className="px-4 py-2 rounded-full border border-sky-600 text-sky-700 text-sm font-semibold hover:bg-sky-50"
+                >
+                  Share a post
+                </button>
+              )}
+            </div>
+
+            {profilePostsLoading ? (
+              <div className="h-44 bg-white border border-gray-100 rounded-lg animate-pulse" />
+            ) : profilePosts.length === 0 ? (
+              <div className="bg-white border border-dashed border-gray-200 rounded-lg p-8 text-center">
+                <BarChart3 className="w-9 h-9 text-gray-300 mx-auto mb-2" />
+                <p className="font-semibold text-gray-900">No posts yet</p>
+                <p className="text-sm text-gray-500 mt-1">{canEdit ? 'Share updates from the feed page.' : 'This member has not shared any posts yet.'}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {profilePosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onPostUpdated={updateProfilePost}
+                    onPostDeleted={removeProfilePost}
+                    onPostCreated={addProfilePost}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -1232,6 +1630,56 @@ const ProfilePage = () => {
           </div>
         )}
 
+        {imageViewer && (
+          <div
+            className="fixed inset-0 z-[70] bg-gray-950/95 text-white"
+            onClick={() => setImageViewer(null)}
+          >
+            <div className="absolute inset-x-0 top-0 z-10 px-4 py-4 sm:px-6 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-white/60">{profile.name}</p>
+                <h3 className="text-lg font-bold">{imageViewer.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setImageViewer(null)
+                }}
+                className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                aria-label="Close image viewer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="h-full w-full flex items-center justify-center px-4 py-20 sm:px-8">
+              <img
+                src={imageViewer.url}
+                alt={`${profile.name} ${imageViewer.title}`}
+                onClick={(event) => event.stopPropagation()}
+                className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
+              />
+            </div>
+
+            {canEdit && (
+              <div className="absolute inset-x-0 bottom-0 px-4 py-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    editPhotoFromViewer()
+                  }}
+                  className="h-11 px-5 rounded-full bg-white text-gray-900 text-sm font-semibold shadow-lg hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Change photo
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {canEdit && profileModalOpen && (
           <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center px-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1286,7 +1734,7 @@ const ProfilePage = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
                   {[
                     { name: 'name', label: 'Full name' },
                     { name: 'email', label: 'Email address' },
@@ -1335,7 +1783,7 @@ const ProfilePage = () => {
 
         {canEdit && experienceModalOpen && (
           <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center px-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900">{editingExperienceId ? 'Edit experience' : 'Add experience'}</h3>
                 <button onClick={() => setExperienceModalOpen(false)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
@@ -1343,7 +1791,7 @@ const ProfilePage = () => {
                 </button>
               </div>
 
-              <div className="p-6 grid grid-cols-2 gap-4">
+              <div className="p-6 grid sm:grid-cols-2 gap-4">
                 {[
                   { name: 'title', label: 'Title' },
                   { name: 'company', label: 'Company' },
@@ -1365,7 +1813,7 @@ const ProfilePage = () => {
                   </label>
                 ))}
 
-                <label className="col-span-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="sm:col-span-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <input
                     type="checkbox"
                     checked={experienceForm.is_current}
@@ -1375,7 +1823,7 @@ const ProfilePage = () => {
                   I currently work here
                 </label>
 
-                <label className="block col-span-2">
+                <label className="block sm:col-span-2">
                   <span className="text-sm font-semibold text-gray-700">Description</span>
                   <textarea
                     name="description"
@@ -1399,8 +1847,16 @@ const ProfilePage = () => {
             </div>
           </div>
         )}
+
+        <ReportContentModal
+          open={profileReportOpen}
+          type="profile"
+          reportableId={viewedUserId}
+          title="Report profile"
+          onClose={() => setProfileReportOpen(false)}
+        />
       </div>
-    </DashboardLayout>
+    </Layout>
   )
 }
 

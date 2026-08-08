@@ -2,13 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bookmark, Briefcase, Clock, MapPin, Search, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
+import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
+
+const isActiveJob = (job) => (job?.status || 'active') === 'active'
 
 const SavedJobs = () => {
   const [savedJobs, setSavedJobs] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [applyingId, setApplyingId] = useState(null)
+  const [applyModal, setApplyModal] = useState({
+    open: false,
+    job: null,
+    loading: false,
+  })
 
   const loadSavedJobs = async () => {
     setLoading(true)
@@ -62,15 +70,39 @@ const SavedJobs = () => {
     }
   }
 
-  const handleApply = async (jobId) => {
-    setApplyingId(jobId)
+  const openApply = (job) => {
+    setApplyModal({
+      open: true,
+      job,
+      loading: false,
+    })
+  }
+
+  const closeApply = () => {
+    if (applyModal.loading) return
+
+    setApplyModal({
+      open: false,
+      job: null,
+      loading: false,
+    })
+  }
+
+  const submitApplication = async (payload) => {
+    if (!applyModal.job) return
+
+    setApplyModal((current) => ({ ...current, loading: true }))
     try {
-      await api.post(`/jobs/${jobId}/apply`)
+      await api.post(`/jobs/${applyModal.job.id}/apply`, payload)
       toast.success('Application submitted! AI is analyzing your resume...')
+      setApplyModal({
+        open: false,
+        job: null,
+        loading: false,
+      })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to apply')
-    } finally {
-      setApplyingId(null)
+      setApplyModal((current) => ({ ...current, loading: false }))
     }
   }
 
@@ -119,54 +151,76 @@ const SavedJobs = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map(({ id, job, saved_at }) => (
-              <div key={id} className="bg-white border border-gray-100 rounded-2xl p-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                    {job?.company?.name?.charAt(0) || 'J'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-bold text-gray-900">{job?.title}</h2>
-                    <p className="text-sm text-gray-600 mt-0.5">{job?.company?.name}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" /> Pakistan
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" /> Saved {saved_at ? new Date(saved_at).toLocaleDateString() : 'recently'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {job?.required_skills?.split(',').slice(0, 5).map((skill, index) => (
-                        <span key={index} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">
-                          {skill.trim()}
+            {filtered.map(({ id, job, saved_at }) => {
+              const active = isActiveJob(job)
+
+              return (
+                <div key={id} className="bg-white border border-gray-100 rounded-2xl p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <CompanyLogo company={job?.company} size="lg" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900">{job?.title}</h2>
+                        {!active && (
+                          <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100 text-xs font-semibold capitalize">
+                            {job?.status || 'closed'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-0.5">{job?.company?.name}</p>
+                      <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" /> Pakistan
                         </span>
-                      ))}
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" /> Saved {saved_at ? new Date(saved_at).toLocaleDateString() : 'recently'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {job?.required_skills?.split(',').slice(0, 5).map((skill, index) => (
+                          <span key={index} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">
+                            {skill.trim()}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleUnsave(job.id)}
-                      className="w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center"
-                      title="Remove saved job"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleApply(job.id)}
-                      disabled={applyingId === job.id}
-                      className="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
-                    >
-                      <Briefcase className="w-4 h-4" />
-                      {applyingId === job.id ? 'Applying...' : 'Apply'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleUnsave(job.id)}
+                        className="w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center"
+                        title="Remove saved job"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => openApply(job)}
+                        disabled={!active || (applyModal.loading && applyModal.job?.id === job.id)}
+                        className={`px-5 py-2.5 rounded-full text-sm font-semibold disabled:opacity-60 flex items-center gap-2 ${
+                          active
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <Briefcase className="w-4 h-4" />
+                        {!active ? 'Closed' : applyModal.loading && applyModal.job?.id === job.id ? 'Applying...' : 'Apply'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
+
+      <ApplyJobModal
+        key={applyModal.open ? `apply-${applyModal.job?.id}` : 'apply-closed'}
+        open={applyModal.open}
+        job={applyModal.job}
+        loading={applyModal.loading}
+        onClose={closeApply}
+        onSubmit={submitApplication}
+      />
     </DashboardLayout>
   )
 }

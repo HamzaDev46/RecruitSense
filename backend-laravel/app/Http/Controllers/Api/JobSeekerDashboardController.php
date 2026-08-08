@@ -11,6 +11,8 @@ use App\Models\PostImpression;
 use App\Models\ProfileView;
 use App\Models\SavedJob;
 use App\Models\SearchAppearance;
+use App\Models\UserBlock;
+use App\Support\ProfileCompletion;
 use Illuminate\Http\Request;
 
 class JobSeekerDashboardController extends Controller
@@ -30,6 +32,7 @@ class JobSeekerDashboardController extends Controller
             ->pluck('total', 'status');
 
         $recentJobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
             ->latest()
             ->limit(5)
             ->get();
@@ -46,17 +49,22 @@ class JobSeekerDashboardController extends Controller
 
         return response()->json([
             'stats' => [
-                'totalJobs' => JobPosting::count(),
+                'totalJobs' => JobPosting::where('status', JobPosting::STATUS_ACTIVE)->count(),
                 'myApplications' => Application::where('job_seeker_id', $jobSeeker->id)->count(),
                 'savedJobs' => SavedJob::where('job_seeker_id', $jobSeeker->id)->count(),
                 'shortlisted' => (int) ($statusCounts['shortlisted'] ?? 0),
+                'inProgress' => (int) (($statusCounts['screening'] ?? 0) + ($statusCounts['shortlisted'] ?? 0) + ($statusCounts['interview'] ?? 0) + ($statusCounts['offered'] ?? 0) + ($statusCounts['hired'] ?? 0)),
                 'pending' => (int) ($statusCounts['pending'] ?? 0),
                 'rejected' => (int) ($statusCounts['rejected'] ?? 0),
-                'profileViews' => ProfileView::where('profile_user_id', $user->id)->count(),
+                'profileViews' => ProfileView::where('profile_user_id', $user->id)
+                    ->whereHas('viewerUser')
+                    ->count(),
                 'postImpressions' => PostImpression::whereHas('post', function ($query) use ($user) {
                     $query->where('user_id', $user->id);
                 })->count(),
-                'searchAppearances' => SearchAppearance::where('profile_user_id', $user->id)->count(),
+                'searchAppearances' => SearchAppearance::where('profile_user_id', $user->id)
+                    ->whereHas('searcherUser')
+                    ->count(),
                 'connections' => $this->connectionsCount($user->id),
                 'pendingInvitations' => Connection::where('receiver_id', $user->id)
                     ->where('status', 'pending')
@@ -66,7 +74,7 @@ class JobSeekerDashboardController extends Controller
                     ->count(),
                 'averageScore' => $averageScore ? round($averageScore) : 0,
             ],
-            'profile_strength' => $this->profileStrength($jobSeeker),
+            'profile_strength' => ProfileCompletion::forJobSeeker($jobSeeker),
             'recent_jobs' => $recentJobs,
             'recent_applications' => $recentApplications,
         ]);
@@ -74,110 +82,25 @@ class JobSeekerDashboardController extends Controller
 
     private function connectionsCount(int $userId): int
     {
+        $blockedIds = UserBlock::blockedUserIdsFor($userId);
+
         return Connection::where('status', 'accepted')
             ->where(function ($query) use ($userId) {
                 $query->where('requester_id', $userId)
                     ->orWhere('receiver_id', $userId);
             })
+            ->when($blockedIds, function ($query) use ($userId, $blockedIds) {
+                $query->where(function ($scope) use ($userId, $blockedIds) {
+                    $scope->where(function ($inner) use ($userId, $blockedIds) {
+                        $inner->where('requester_id', $userId)
+                            ->whereNotIn('receiver_id', $blockedIds);
+                    })->orWhere(function ($inner) use ($userId, $blockedIds) {
+                        $inner->where('receiver_id', $userId)
+                            ->whereNotIn('requester_id', $blockedIds);
+                    });
+                });
+            })
             ->count();
     }
 
-    private function profileStrength($jobSeeker): array
-    {
-        $checks = [
-            [
-                'id' => 'headline',
-                'complete' => (bool) $jobSeeker->headline,
-                'task' => 'Add headline',
-                'description' => 'Tell companies what role you are targeting.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'location',
-                'complete' => (bool) $jobSeeker->location,
-                'task' => 'Add location',
-                'description' => 'Help recruiters understand where you are based.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'phone',
-                'complete' => (bool) $jobSeeker->phone,
-                'task' => 'Add phone number',
-                'description' => 'Keep contact information ready for companies.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'company',
-                'complete' => (bool) $jobSeeker->company,
-                'task' => 'Add company',
-                'description' => 'Show your current workplace or professional status.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'education',
-                'complete' => (bool) $jobSeeker->education,
-                'task' => 'Add education',
-                'description' => 'Add your degree, institute, or relevant education.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'about',
-                'complete' => (bool) $jobSeeker->about,
-                'task' => 'Add about section',
-                'description' => 'Write a short summary recruiters can scan quickly.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'skills',
-                'complete' => (bool) $jobSeeker->skills,
-                'task' => 'Add skills',
-                'description' => 'Skills improve recommendations and match scores.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'profile_image',
-                'complete' => (bool) $jobSeeker->profile_image,
-                'task' => 'Upload profile photo',
-                'description' => 'Make your profile recognizable across the network.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'cover_image',
-                'complete' => (bool) $jobSeeker->cover_image,
-                'task' => 'Upload cover photo',
-                'description' => 'Give your profile a professional first impression.',
-                'action_path' => '/profile?setup=profile',
-            ],
-            [
-                'id' => 'experience',
-                'complete' => $jobSeeker->experiences->isNotEmpty(),
-                'task' => 'Add experience',
-                'description' => 'Add work, internship, freelance, or project experience.',
-                'action_path' => '/profile?setup=experience',
-            ],
-            [
-                'id' => 'resume',
-                'complete' => (bool) $jobSeeker->resume,
-                'task' => 'Upload resume',
-                'description' => 'Resume powers AI job matching and application scoring.',
-                'action_path' => '/resume',
-            ],
-        ];
-
-        $completed = collect($checks)->where('complete', true)->count();
-        $tasks = collect($checks)->values();
-        $missingTasks = $tasks->where('complete', false)->values();
-
-        return [
-            'completion' => (int) round(($completed / count($checks)) * 100),
-            'completed_tasks' => $completed,
-            'total_tasks' => count($checks),
-            'tasks' => $tasks->all(),
-            'next_task' => $missingTasks->first(),
-            'missing_tasks' => $missingTasks
-                ->pluck('task')
-                ->values()
-                ->all(),
-        ];
-    }
 }

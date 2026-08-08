@@ -63,6 +63,16 @@ class User extends Authenticatable
         return $this->hasMany(PostComment::class);
     }
 
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocker_id');
+    }
+
+    public function blockedByUsers(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocked_id');
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(AppNotification::class);
@@ -100,7 +110,7 @@ class User extends Authenticatable
             $type === 'message_received' => (bool) $this->jobSeeker->notify_messages,
             in_array($type, ['connection_request', 'connection_accepted'], true) => (bool) $this->jobSeeker->notify_connections,
             $type === 'job_alert_match' => (bool) $this->jobSeeker->notify_job_alerts,
-            in_array($type, ['post_like', 'post_comment'], true) => (bool) $this->jobSeeker->notify_post_activity,
+            in_array($type, ['post_like', 'post_comment', 'post_repost'], true) => (bool) $this->jobSeeker->notify_post_activity,
             $type === 'profile_view' => (bool) $this->jobSeeker->show_profile_view_notifications,
             default => true,
         };

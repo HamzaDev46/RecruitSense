@@ -25,7 +25,11 @@ class ResumeInsightController extends Controller
             ->latest()
             ->limit(20)
             ->get();
-        $jobs = JobPosting::with('company')->latest()->limit(50)->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->limit(50)
+            ->get();
 
         $candidateSkills = $this->candidateSkills($jobSeeker);
         $targetSkills = $this->targetSkills($applications, $jobs);

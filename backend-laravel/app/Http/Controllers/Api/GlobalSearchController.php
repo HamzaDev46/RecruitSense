@@ -9,6 +9,7 @@ use App\Models\JobPosting;
 use App\Models\Post;
 use App\Models\SearchAppearance;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -40,10 +41,11 @@ class GlobalSearchController extends Controller
 
         $likeTerm = '%' . $term . '%';
         $connectedIds = $this->acceptedConnectionUserIds($user->id);
+        $blockedIds = UserBlock::blockedUserIdsFor($user->id);
 
         $jobs = $this->searchJobs($request, $likeTerm);
-        $people = $this->searchPeople($request, $likeTerm, $connectedIds);
-        $posts = $this->searchPosts($request, $likeTerm, $connectedIds);
+        $people = $this->searchPeople($request, $likeTerm, $connectedIds, $blockedIds);
+        $posts = $this->searchPosts($request, $likeTerm, $connectedIds, $blockedIds);
 
         $this->recordSearchAppearances($people, $request, $term);
 
@@ -63,6 +65,7 @@ class GlobalSearchController extends Controller
     private function searchJobs(Request $request, string $likeTerm): Collection
     {
         return JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
             ->where(function ($query) use ($likeTerm) {
                 $query->where('title', 'like', $likeTerm)
                     ->orWhere('description', 'like', $likeTerm)
@@ -77,13 +80,14 @@ class GlobalSearchController extends Controller
             ->get();
     }
 
-    private function searchPeople(Request $request, string $likeTerm, array $connectedIds): Collection
+    private function searchPeople(Request $request, string $likeTerm, array $connectedIds, array $blockedIds): Collection
     {
         $user = $request->user();
 
         return User::with('jobSeeker')
             ->where('id', '!=', $user->id)
             ->where('role', 'jobseeker')
+            ->when($blockedIds, fn ($query) => $query->whereNotIn('id', $blockedIds))
             ->whereHas('jobSeeker', function ($profileQuery) use ($connectedIds) {
                 $profileQuery->where('profile_visibility', 'public')
                     ->orWhere(function ($networkQuery) use ($connectedIds) {
@@ -105,13 +109,21 @@ class GlobalSearchController extends Controller
             ->get();
     }
 
-    private function searchPosts(Request $request, string $likeTerm, array $connectedIds): Collection
+    private function searchPosts(Request $request, string $likeTerm, array $connectedIds, array $blockedIds): Collection
     {
         $user = $request->user();
 
         return Post::with(['user.jobSeeker', 'media'])
             ->withCount(['likes', 'comments', 'impressions'])
             ->whereHas('user')
+            ->when($blockedIds, fn ($query) => $query->whereNotIn('user_id', $blockedIds))
+            ->where(function ($scope) use ($blockedIds) {
+                $scope->whereNull('repost_of_id')
+                    ->orWhereHas('originalPost', function ($originalQuery) use ($blockedIds) {
+                        $originalQuery->whereHas('user')
+                            ->when($blockedIds, fn ($query) => $query->whereNotIn('user_id', $blockedIds));
+                    });
+            })
             ->where(function ($scope) use ($user, $connectedIds) {
                 $scope->where('visibility', 'public')
                     ->orWhere('user_id', $user->id)
@@ -147,6 +159,7 @@ class GlobalSearchController extends Controller
             'title' => $job->title,
             'description' => Str::limit((string) $job->description, 220),
             'required_skills' => $job->required_skills,
+            'status' => $job->status,
             'created_at' => $job->created_at?->toISOString(),
             'is_saved' => $saved,
             'has_applied' => $applied,
@@ -203,6 +216,7 @@ class GlobalSearchController extends Controller
             ->map(fn ($connection) => $connection->requester_id === $userId
                 ? $connection->receiver_id
                 : $connection->requester_id)
+            ->reject(fn ($connectedId) => in_array($connectedId, UserBlock::blockedUserIdsFor($userId), true))
             ->values()
             ->all();
     }

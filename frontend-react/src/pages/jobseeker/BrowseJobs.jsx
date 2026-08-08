@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { Search, Briefcase, MapPin, Clock, ChevronRight, Bookmark, BookmarkCheck, X } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
+import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -12,7 +14,11 @@ const BrowseJobs = () => {
   const [selectedId, setSelectedId] = useState(jobId ? Number(jobId) : null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [applying, setApplying] = useState(false)
+  const [applyModal, setApplyModal] = useState({
+    open: false,
+    job: null,
+    loading: false,
+  })
   const [savingId, setSavingId] = useState(null)
   const [savedJobIds, setSavedJobIds] = useState([])
 
@@ -48,15 +54,39 @@ const BrowseJobs = () => {
 
   const selected = filtered.find(job => job.id === selectedId) || filtered[0] || null
 
-  const handleApply = async (jobId) => {
-    setApplying(true)
+  const openApply = (job) => {
+    setApplyModal({
+      open: true,
+      job,
+      loading: false,
+    })
+  }
+
+  const closeApply = () => {
+    if (applyModal.loading) return
+
+    setApplyModal({
+      open: false,
+      job: null,
+      loading: false,
+    })
+  }
+
+  const submitApplication = async (payload) => {
+    if (!applyModal.job) return
+
+    setApplyModal((current) => ({ ...current, loading: true }))
     try {
-      await api.post(`/jobs/${jobId}/apply`)
+      await api.post(`/jobs/${applyModal.job.id}/apply`, payload)
       toast.success('Application submitted! AI is analyzing your resume...')
+      setApplyModal({
+        open: false,
+        job: null,
+        loading: false,
+      })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to apply')
-    } finally {
-      setApplying(false)
+      setApplyModal((current) => ({ ...current, loading: false }))
     }
   }
 
@@ -109,10 +139,10 @@ const BrowseJobs = () => {
         </div>
 
         {/* LinkedIn Style - List + Detail Panel */}
-        <div className="grid grid-cols-5 gap-6 h-[calc(100vh-280px)]">
+        <div className="grid lg:grid-cols-5 gap-4 lg:gap-6 lg:h-[calc(100vh-280px)]">
 
           {/* Left - Job List */}
-          <div className="col-span-2 bg-white rounded-2xl border border-gray-100 overflow-y-auto">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-y-auto max-h-[42vh] lg:max-h-none">
             {loading ? (
               <div className="p-4 space-y-3">
                 {[1,2,3,4].map(i => (
@@ -133,9 +163,7 @@ const BrowseJobs = () => {
                     className={`p-4 cursor-pointer transition-all hover:bg-gray-50 ${selected?.id === job.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''}`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                        {job.company?.name?.charAt(0) || 'J'}
-                      </div>
+                      <CompanyLogo company={job.company} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold text-sm truncate ${selected?.id === job.id ? 'text-indigo-600' : 'text-gray-900'}`}>
                           {job.title}
@@ -160,7 +188,7 @@ const BrowseJobs = () => {
           </div>
 
           {/* Right - Job Detail Panel */}
-          <div className="col-span-3 bg-white rounded-2xl border border-gray-100 overflow-y-auto">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 overflow-y-auto">
             {!selected ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <Briefcase className="w-16 h-16 mb-4 opacity-20" />
@@ -172,17 +200,15 @@ const BrowseJobs = () => {
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2 }}
-                className="p-6"
+                className="p-4 sm:p-6"
               >
                 {/* Job Header */}
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
-                    {selected.company?.name?.charAt(0) || 'J'}
-                  </div>
+                <div className="flex items-start gap-3 sm:gap-4 mb-6">
+                  <CompanyLogo company={selected.company} size="xl" className="w-14 h-14 sm:w-16 sm:h-16" />
                   <div className="flex-1">
                     <h2 className="text-xl font-bold text-gray-900">{selected.title}</h2>
                     <p className="text-gray-600 font-medium mt-0.5">{selected.company?.name}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" /> Pakistan
                       </span>
@@ -194,20 +220,20 @@ const BrowseJobs = () => {
                 </div>
 
                 {/* Apply Button */}
-                <div className="flex gap-3 mb-6">
+                <div className="flex flex-col sm:flex-row gap-3 mb-6">
                   <button
-                    onClick={() => handleApply(selected.id)}
-                    disabled={applying}
+                    onClick={() => openApply(selected)}
+                    disabled={applyModal.loading}
                     className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {applying ? (
+                    {applyModal.loading && applyModal.job?.id === selected.id ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : 'Apply Now'}
                   </button>
                   <button
                     onClick={() => toggleSave(selected.id)}
                     disabled={savingId === selected.id}
-                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 ${
+                    className={`w-full sm:w-auto px-6 py-3 rounded-xl border-2 font-semibold transition-all flex items-center justify-center gap-2 ${
                       savedJobIds.includes(selected.id)
                         ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                         : 'border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600'
@@ -259,6 +285,15 @@ const BrowseJobs = () => {
           </div>
         </div>
       </div>
+
+      <ApplyJobModal
+        key={applyModal.open ? `apply-${applyModal.job?.id}` : 'apply-closed'}
+        open={applyModal.open}
+        job={applyModal.job}
+        loading={applyModal.loading}
+        onClose={closeApply}
+        onSubmit={submitApplication}
+      />
     </DashboardLayout>
   )
 }

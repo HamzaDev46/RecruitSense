@@ -19,11 +19,14 @@ class RecommendedJobController extends Controller
         }
 
         $jobSeeker = $user->jobSeeker;
-        $jobs = JobPosting::with('company')->latest()->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->get();
         $candidateSkills = $this->detectCandidateSkills($jobSeeker, $this->skillCatalog($jobs));
         $savedJobIds = SavedJob::where('job_seeker_id', $jobSeeker->id)->pluck('job_id')->all();
         $appliedJobIds = Application::where('job_seeker_id', $jobSeeker->id)
-            ->whereIn('status', ['pending', 'shortlisted', 'rejected'])
+            ->whereIn('status', Application::ACTIVE_STATUSES)
             ->pluck('job_id')
             ->all();
 

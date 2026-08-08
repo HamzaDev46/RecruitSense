@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -23,6 +23,12 @@ const pageImports = {
   recommendedJobs: () => import('./pages/jobseeker/RecommendedJobs'),
   jobAlerts: () => import('./pages/jobseeker/JobAlerts'),
   settings: () => import('./pages/jobseeker/SettingsPage'),
+  companyDashboard: () => import('./pages/company/CompanyDashboard'),
+  companyJobs: () => import('./pages/company/CompanyJobs'),
+  companyApplicants: () => import('./pages/company/CompanyApplicants'),
+  companyInterviews: () => import('./pages/company/CompanyInterviews'),
+  companyQuiz: () => import('./pages/company/CompanyQuiz'),
+  companySettings: () => import('./pages/company/CompanySettings'),
 }
 
 const LandingPage = lazy(pageImports.landing)
@@ -43,10 +49,46 @@ const SavedJobs = lazy(pageImports.savedJobs)
 const RecommendedJobs = lazy(pageImports.recommendedJobs)
 const JobAlerts = lazy(pageImports.jobAlerts)
 const SettingsPage = lazy(pageImports.settings)
+const CompanyDashboard = lazy(pageImports.companyDashboard)
+const CompanyJobs = lazy(pageImports.companyJobs)
+const CompanyApplicants = lazy(pageImports.companyApplicants)
+const CompanyInterviews = lazy(pageImports.companyInterviews)
+const CompanyQuiz = lazy(pageImports.companyQuiz)
+const CompanySettings = lazy(pageImports.companySettings)
+
+const jobseekerPreloadKeys = [
+  'dashboard',
+  'search',
+  'feed',
+  'jobs',
+  'applications',
+  'resume',
+  'resumeCoach',
+  'profile',
+  'network',
+  'notifications',
+  'messages',
+  'savedJobs',
+  'recommendedJobs',
+  'jobAlerts',
+  'settings',
+]
+
+const companyPreloadKeys = ['companyDashboard', 'companyJobs', 'companyApplicants', 'companyInterviews', 'notifications', 'messages', 'companyQuiz', 'companySettings']
 
 const preloadAppPages = () => {
-  Object.values(pageImports).forEach((loadPage) => {
-    loadPage().catch(() => {})
+  const role = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}')?.role || ''
+    } catch {
+      return ''
+    }
+  })()
+
+  const preloadKeys = role === 'company' ? companyPreloadKeys : jobseekerPreloadKeys
+
+  preloadKeys.forEach((key) => {
+    pageImports[key]?.().catch(() => {})
   })
 }
 
@@ -102,7 +144,7 @@ const RouteClickSpinner = () => {
   if (!loadingRoute) return null
 
   return (
-    <div className="fixed inset-y-0 left-0 right-0 md:left-64 z-30 bg-[#f3f2ef]/80 pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 top-16 md:top-0 md:left-64 z-30 bg-[#f3f2ef]/80 pointer-events-none">
       <div className="pt-8 flex justify-center">
         <div
           className="h-9 w-9 rounded-full border-[3px] border-gray-300 border-t-gray-700 animate-spin"
@@ -177,12 +219,12 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={
-              <ProtectedRoute role="jobseeker">
+              <ProtectedRoute>
                 <NotificationsPage />
               </ProtectedRoute>
             } />
             <Route path="/messages" element={
-              <ProtectedRoute role="jobseeker">
+              <ProtectedRoute>
                 <MessagesPage />
               </ProtectedRoute>
             } />
@@ -219,6 +261,46 @@ function App() {
             <Route path="/profile/:userId" element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/company" element={
+              <ProtectedRoute role="company">
+                <Navigate to="/company/dashboard" replace />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/dashboard" element={
+              <ProtectedRoute role="company">
+                <CompanyDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/jobs" element={
+              <ProtectedRoute role="company">
+                <CompanyJobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/applicants" element={
+              <ProtectedRoute role="company">
+                <CompanyApplicants />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/interviews" element={
+              <ProtectedRoute role="company">
+                <CompanyInterviews />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/quiz" element={
+              <ProtectedRoute role="company">
+                <CompanyQuiz />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/settings" element={
+              <ProtectedRoute role="company">
+                <CompanySettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/jobs/:jobId/applicants" element={
+              <ProtectedRoute role="company">
+                <CompanyApplicants />
               </ProtectedRoute>
             } />
           </Routes>

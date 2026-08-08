@@ -3,9 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\Connection;
 use App\Models\Conversation;
+use App\Models\ContentReport;
 use App\Models\Post;
+use App\Models\PostComment;
+use App\Models\PostImpression;
+use App\Models\PostLike;
+use App\Models\ProfileView;
+use App\Models\SearchAppearance;
+use App\Models\User;
+use App\Models\UserBlock;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -112,8 +121,33 @@ class AccountSettingsController extends Controller
             ->unique()
             ->values()
             ->all();
+        $blockedRelationUserIds = UserBlock::blockedUserIdsFor($user->id);
 
         $posts = Post::with('media')->where('user_id', $user->id)->get();
+        $affectedProfileUserIds = ProfileView::where('viewer_user_id', $user->id)
+            ->pluck('profile_user_id')
+            ->merge(SearchAppearance::where('searcher_user_id', $user->id)->pluck('profile_user_id'))
+            ->filter(fn ($userId) => (int) $userId !== (int) $user->id)
+            ->unique()
+            ->values()
+            ->all();
+        $affectedPostOwnerIds = Post::query()
+            ->where(function ($query) use ($user) {
+                $query->whereHas('likes', fn ($likeQuery) => $likeQuery->where('user_id', $user->id))
+                    ->orWhereHas('comments', fn ($commentQuery) => $commentQuery->where('user_id', $user->id))
+                    ->orWhereHas('impressions', fn ($impressionQuery) => $impressionQuery->where('viewer_user_id', $user->id));
+            })
+            ->pluck('user_id')
+            ->filter(fn ($userId) => (int) $userId !== (int) $user->id)
+            ->unique()
+            ->values()
+            ->all();
+        $affectedNotificationUserIds = AppNotification::where('actor_id', $user->id)
+            ->pluck('user_id')
+            ->filter(fn ($userId) => (int) $userId !== (int) $user->id)
+            ->unique()
+            ->values()
+            ->all();
 
         foreach ($posts as $post) {
             foreach ($post->media as $media) {
@@ -122,6 +156,33 @@ class AccountSettingsController extends Controller
         }
 
         $user->tokens()->delete();
+        ProfileView::query()
+            ->where(function ($query) use ($user) {
+                $query->where('profile_user_id', $user->id)
+                    ->orWhere('viewer_user_id', $user->id);
+            })
+            ->delete();
+        SearchAppearance::query()
+            ->where(function ($query) use ($user) {
+                $query->where('profile_user_id', $user->id)
+                    ->orWhere('searcher_user_id', $user->id);
+            })
+            ->delete();
+        PostImpression::where('viewer_user_id', $user->id)->delete();
+        PostLike::where('user_id', $user->id)->delete();
+        PostComment::where('user_id', $user->id)->delete();
+        AppNotification::query()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhere('actor_id', $user->id);
+            })
+            ->delete();
+        ContentReport::query()
+            ->where(function ($query) use ($user) {
+                $query->where('reporter_id', $user->id)
+                    ->orWhere('reported_user_id', $user->id);
+            })
+            ->delete();
         Connection::query()
             ->where(function ($query) use ($user) {
                 $query->where('requester_id', $user->id)
@@ -135,7 +196,13 @@ class AccountSettingsController extends Controller
             })
             ->delete();
         Post::whereIn('id', $posts->pluck('id'))->delete();
-        UserCache::forgetNetworkForUsers($connectedUserIds);
+        UserCache::forgetNetworkForUsers(array_unique(array_merge($connectedUserIds, $blockedRelationUserIds)));
+        foreach (array_unique(array_merge($affectedProfileUserIds, $affectedPostOwnerIds)) as $affectedUserId) {
+            UserCache::forgetProfile((int) $affectedUserId);
+        }
+        foreach ($affectedNotificationUserIds as $affectedUserId) {
+            UserCache::forgetUnreadNotifications((int) $affectedUserId);
+        }
         foreach ($conversationUserIds as $conversationUserId) {
             UserCache::forgetUnreadMessages((int) $conversationUserId);
         }
@@ -179,9 +246,83 @@ class AccountSettingsController extends Controller
         ]);
     }
 
+    public function blockedUsers(Request $request)
+    {
+        return response()->json($this->blockedUsersPayload($request));
+    }
+
+    public function blockUser(Request $request, User $user)
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->id === $user->id) {
+            return response()->json(['message' => 'You cannot block yourself'], 422);
+        }
+
+        if ($user->role !== 'jobseeker') {
+            return response()->json(['message' => 'Only job seeker profiles can be blocked right now'], 422);
+        }
+
+        UserBlock::firstOrCreate([
+            'blocker_id' => $currentUser->id,
+            'blocked_id' => $user->id,
+        ]);
+
+        Connection::query()
+            ->where(function ($query) use ($currentUser, $user) {
+                $query->where(function ($inner) use ($currentUser, $user) {
+                    $inner->where('requester_id', $currentUser->id)
+                        ->where('receiver_id', $user->id);
+                })->orWhere(function ($inner) use ($currentUser, $user) {
+                    $inner->where('requester_id', $user->id)
+                        ->where('receiver_id', $currentUser->id);
+                });
+            })
+            ->delete();
+
+        Conversation::query()
+            ->where(function ($query) use ($currentUser, $user) {
+                $query->where(function ($inner) use ($currentUser, $user) {
+                    $inner->where('user_one_id', min($currentUser->id, $user->id))
+                        ->where('user_two_id', max($currentUser->id, $user->id));
+                });
+            })
+            ->delete();
+
+        UserCache::forgetNetworkForUsers([$currentUser->id, $user->id]);
+        UserCache::forgetProfile($currentUser->id);
+        UserCache::forgetProfile($user->id);
+        UserCache::forgetUnreadMessages($currentUser->id);
+        UserCache::forgetUnreadMessages($user->id);
+
+        return response()->json([
+            'message' => 'User blocked',
+            ...$this->blockedUsersPayload($request),
+        ]);
+    }
+
+    public function unblockUser(Request $request, User $user)
+    {
+        $currentUser = $request->user();
+
+        UserBlock::where('blocker_id', $currentUser->id)
+            ->where('blocked_id', $user->id)
+            ->delete();
+
+        UserCache::forgetNetworkForUsers([$currentUser->id, $user->id]);
+        UserCache::forgetProfile($currentUser->id);
+        UserCache::forgetProfile($user->id);
+
+        return response()->json([
+            'message' => 'User unblocked',
+            ...$this->blockedUsersPayload($request),
+        ]);
+    }
+
     private function settingsPayload(Request $request): array
     {
         $user = $request->user()->fresh()->load('jobSeeker');
+        $blocked = $this->blockedUsersPayload($request);
 
         return [
             'user' => [
@@ -201,6 +342,39 @@ class AccountSettingsController extends Controller
                 'notify_job_alerts' => (bool) ($user->jobSeeker?->notify_job_alerts ?? true),
                 'notify_post_activity' => (bool) ($user->jobSeeker?->notify_post_activity ?? true),
             ],
+            'blocked_users_count' => $blocked['blocked_users_count'],
+            'blocked_users' => $blocked['blocked_users'],
+        ];
+    }
+
+    private function blockedUsersPayload(Request $request): array
+    {
+        $storageUrl = $request->getSchemeAndHttpHost() . '/storage/';
+        $blockedUsers = UserBlock::with('blocked.jobSeeker')
+            ->where('blocker_id', $request->user()->id)
+            ->latest()
+            ->get()
+            ->filter(fn ($block) => $block->blocked)
+            ->map(function ($block) use ($storageUrl) {
+                $blocked = $block->blocked;
+                $profile = $blocked->jobSeeker;
+
+                return [
+                    'id' => $blocked->id,
+                    'name' => $blocked->name,
+                    'email' => $blocked->email,
+                    'headline' => $profile?->headline,
+                    'company' => $profile?->company,
+                    'location' => $profile?->location,
+                    'profile_image_url' => $profile?->profile_image ? $storageUrl . $profile->profile_image : null,
+                    'blocked_at' => $block->created_at?->toISOString(),
+                ];
+            })
+            ->values();
+
+        return [
+            'blocked_users_count' => $blockedUsers->count(),
+            'blocked_users' => $blockedUsers->all(),
         ];
     }
 }

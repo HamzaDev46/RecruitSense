@@ -54,6 +54,7 @@ class UserCache
     {
         foreach (array_filter(array_unique($userIds)) as $userId) {
             self::forgetNetworkSummary((int) $userId);
+            self::forgetProfile((int) $userId);
         }
     }
 

@@ -11,6 +11,8 @@ use App\Models\PostImpression;
 use App\Models\ProfileView;
 use App\Models\SearchAppearance;
 use App\Models\User;
+use App\Models\UserBlock;
+use App\Support\ProfileCompletion;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +24,7 @@ class ProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load('jobSeeker.experiences');
+        $user = $request->user()->load('jobSeeker.experiences', 'jobSeeker.resume');
 
         if ($user->role !== 'jobseeker') {
             return response()->json(['message' => 'Only job seekers can access this profile'], 403);
@@ -31,7 +33,7 @@ class ProfileController extends Controller
         return response()->json(Cache::remember(
             UserCache::profile($user->id),
             UserCache::PROFILE_TTL,
-            fn () => $this->profilePayload($user->fresh()->load('jobSeeker.experiences'), $request)
+            fn () => $this->profilePayload($user->fresh()->load('jobSeeker.experiences', 'jobSeeker.resume'), $request)
         ));
     }
 
@@ -41,13 +43,17 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Profile not found'], 404);
         }
 
+        if (UserBlock::isBlockedBy($user->id, $request->user()->id)) {
+            return response()->json(['message' => 'Profile not found'], 404);
+        }
+
         if (!$this->canViewProfile($request, $user)) {
             return response()->json(['message' => 'This profile is private'], 403);
         }
 
         $this->recordProfileView($request, $user);
 
-        $user->load('jobSeeker.experiences');
+        $user->load('jobSeeker.experiences', 'jobSeeker.resume');
 
         return response()->json($this->profilePayload($user, $request));
     }
@@ -111,7 +117,7 @@ class ProfileController extends Controller
         UserCache::forgetProfile($user->id);
         UserCache::forgetNetworkSummary($user->id);
 
-        return response()->json($this->profilePayload($user->fresh()->load('jobSeeker.experiences'), $request));
+        return response()->json($this->profilePayload($user->fresh()->load('jobSeeker.experiences', 'jobSeeker.resume'), $request));
     }
 
     public function viewers(Request $request)
@@ -122,8 +128,13 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Only job seekers can access profile analytics'], 403);
         }
 
+        ProfileView::where('profile_user_id', $user->id)
+            ->whereNull('viewer_user_id')
+            ->delete();
+
         $views = ProfileView::with('viewerUser.jobSeeker')
             ->where('profile_user_id', $user->id)
+            ->whereHas('viewerUser')
             ->latest()
             ->limit(50)
             ->get()
@@ -131,15 +142,20 @@ class ProfileController extends Controller
 
         $searchAppearances = SearchAppearance::with('searcherUser.jobSeeker')
             ->where('profile_user_id', $user->id)
+            ->whereHas('searcherUser')
             ->latest()
             ->limit(30)
             ->get()
             ->map(fn ($appearance) => $this->searchAppearancePayload($appearance, $request));
 
         return response()->json([
-            'total' => ProfileView::where('profile_user_id', $user->id)->count(),
+            'total' => ProfileView::where('profile_user_id', $user->id)
+                ->whereHas('viewerUser')
+                ->count(),
             'viewers' => $views,
-            'search_appearances_total' => SearchAppearance::where('profile_user_id', $user->id)->count(),
+            'search_appearances_total' => SearchAppearance::where('profile_user_id', $user->id)
+                ->whereHas('searcherUser')
+                ->count(),
             'search_appearances' => $searchAppearances,
         ]);
     }
@@ -225,6 +241,10 @@ class ProfileController extends Controller
             return;
         }
 
+        if (UserBlock::existsBetween($viewer->id, $profileUser->id)) {
+            return;
+        }
+
         $profileUser->loadMissing('jobSeeker');
 
         $profileView = ProfileView::firstOrCreate([
@@ -259,6 +279,10 @@ class ProfileController extends Controller
             return true;
         }
 
+        if ($viewer && UserBlock::isBlockedBy($profileUser->id, $viewer->id)) {
+            return false;
+        }
+
         $profileUser->loadMissing('jobSeeker');
         $visibility = $profileUser->jobSeeker?->profile_visibility ?: 'public';
 
@@ -286,12 +310,37 @@ class ProfileController extends Controller
     private function profilePayload($user, Request $request): array
     {
         $jobSeeker = $user->jobSeeker;
+        $isOwner = $request->user()?->id === $user->id;
         $storageUrl = $request->getSchemeAndHttpHost() . '/storage/';
-        $viewsCount = ProfileView::where('profile_user_id', $user->id)->count();
+        $viewsCount = ProfileView::where('profile_user_id', $user->id)
+            ->whereHas('viewerUser')
+            ->count();
         $postImpressionsCount = PostImpression::whereHas('post', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })->count();
-        $searchAppearancesCount = SearchAppearance::where('profile_user_id', $user->id)->count();
+        $searchAppearancesCount = SearchAppearance::where('profile_user_id', $user->id)
+            ->whereHas('searcherUser')
+            ->count();
+        $blockedIds = UserBlock::blockedUserIdsFor($user->id);
+        $connectionsCount = Connection::where('status', 'accepted')
+            ->whereHas('requester')
+            ->whereHas('receiver')
+            ->where(function ($query) use ($user) {
+                $query->where('requester_id', $user->id)
+                    ->orWhere('receiver_id', $user->id);
+            })
+            ->when($blockedIds, function ($query) use ($user, $blockedIds) {
+                $query->where(function ($scope) use ($user, $blockedIds) {
+                    $scope->where(function ($inner) use ($user, $blockedIds) {
+                        $inner->where('requester_id', $user->id)
+                            ->whereNotIn('receiver_id', $blockedIds);
+                    })->orWhere(function ($inner) use ($user, $blockedIds) {
+                        $inner->where('receiver_id', $user->id)
+                            ->whereNotIn('requester_id', $blockedIds);
+                    });
+                });
+            })
+            ->count();
         $applicationsCount = $jobSeeker
             ? Application::where('job_seeker_id', $jobSeeker->id)->count()
             : 0;
@@ -338,8 +387,16 @@ class ProfileController extends Controller
                 'post_impressions_count' => $postImpressionsCount,
                 'applications_count' => $applicationsCount,
                 'search_appearances_count' => $searchAppearancesCount,
+                'connections_count' => $connectionsCount,
             ],
-            'is_owner' => $request->user()?->id === $user->id,
+            'profile_completion' => $isOwner ? ProfileCompletion::forJobSeeker($jobSeeker) : null,
+            'is_owner' => $isOwner,
+            'is_blocked_by_me' => $request->user()
+                ? UserBlock::isBlockedBy($request->user()->id, $user->id)
+                : false,
+            'has_blocked_me' => $request->user()
+                ? UserBlock::isBlockedBy($user->id, $request->user()->id)
+                : false,
         ];
     }
 

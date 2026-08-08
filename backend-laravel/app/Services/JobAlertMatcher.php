@@ -43,6 +43,11 @@ class JobAlertMatcher
     public function notifyMatchingAlerts(JobPosting $job): int
     {
         $job->loadMissing('company.user');
+
+        if ($job->status !== JobPosting::STATUS_ACTIVE) {
+            return 0;
+        }
+
         $notificationsCreated = 0;
 
         JobAlert::with('user.jobSeeker.resume')

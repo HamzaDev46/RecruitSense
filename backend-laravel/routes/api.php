@@ -19,6 +19,9 @@ use App\Http\Controllers\Api\ResumeInsightController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\AccountSettingsController;
 use App\Http\Controllers\Api\GlobalSearchController;
+use App\Http\Controllers\Api\ContentReportController;
+use App\Http\Controllers\Api\CompanyDashboardController;
+use App\Http\Controllers\Api\CompanyProfileController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,12 +38,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/dashboard/jobseeker', [JobSeekerDashboardController::class, 'summary']);
+    Route::get('/dashboard/company', [CompanyDashboardController::class, 'summary']);
+    Route::get('/company/profile', [CompanyProfileController::class, 'show']);
+    Route::post('/company/profile', [CompanyProfileController::class, 'update']);
     Route::get('/search/global', [GlobalSearchController::class, 'index']);
+    Route::post('/reports', [ContentReportController::class, 'store']);
     Route::get('/settings', [AccountSettingsController::class, 'show']);
     Route::put('/settings/account', [AccountSettingsController::class, 'updateAccount']);
     Route::put('/settings/password', [AccountSettingsController::class, 'updatePassword']);
     Route::put('/settings/preferences', [AccountSettingsController::class, 'updatePreferences']);
     Route::delete('/settings/account', [AccountSettingsController::class, 'destroyAccount']);
+    Route::get('/blocks', [AccountSettingsController::class, 'blockedUsers']);
+    Route::post('/blocks/{user}', [AccountSettingsController::class, 'blockUser']);
+    Route::delete('/blocks/{user}', [AccountSettingsController::class, 'unblockUser']);
 
     // Job seeker profile routes
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -97,11 +107,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Social feed routes
     Route::get('/posts/feed', [PostController::class, 'feed']);
+    Route::get('/posts/{post}', [PostController::class, 'show']);
     Route::post('/posts', [PostController::class, 'store']);
+    Route::put('/posts/{post}', [PostController::class, 'update']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+    Route::post('/posts/{post}/repost', [PostController::class, 'repost']);
+    Route::delete('/posts/{post}/repost', [PostController::class, 'unrepost']);
     Route::post('/posts/{post}/like', [PostController::class, 'like']);
     Route::delete('/posts/{post}/like', [PostController::class, 'unlike']);
     Route::post('/posts/{post}/comments', [PostController::class, 'comment']);
+    Route::put('/post-comments/{comment}', [PostController::class, 'updateComment']);
     Route::delete('/post-comments/{comment}', [PostController::class, 'deleteComment']);
 
     // Company job routes
@@ -113,8 +128,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Application routes
     Route::post('/jobs/{jobId}/apply', [ApplicationController::class, 'apply']);
     Route::get('/my-applications', [ApplicationController::class, 'myApplications']);
+    Route::get('/company/applicants', [ApplicationController::class, 'companyApplicants']);
     Route::get('/jobs/{jobId}/applicants', [ApplicationController::class, 'jobApplicants']);
+    Route::get('/applications/{application}/resume', [ApplicationController::class, 'resume']);
     Route::post('/applications/{application}/withdraw', [ApplicationController::class, 'withdraw']);
+    Route::post('/applications/{application}/interview', [ApplicationController::class, 'scheduleInterview']);
+    Route::put('/applications/{application}/status', [ApplicationController::class, 'updateStatus']);
+    Route::put('/applications/{application}/review', [ApplicationController::class, 'saveCompanyReview']);
+    Route::put('/applications/{application}/interview-feedback', [ApplicationController::class, 'saveInterviewFeedback']);
     Route::post('/applications/{applicationId}/shortlist', [ApplicationController::class, 'shortlist']);
     Route::post('/applications/{applicationId}/reject', [ApplicationController::class, 'reject']);
 
@@ -126,6 +147,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Quiz routes — Company manages questions
     Route::post('/quiz-questions', [QuizController::class, 'store']);
+    Route::post('/quiz-questions/generate', [QuizController::class, 'generate']);
     Route::get('/my-quiz-questions', [QuizController::class, 'myQuestions']);
     Route::put('/quiz-questions/{id}', [QuizController::class, 'update']);
     Route::delete('/quiz-questions/{id}', [QuizController::class, 'destroy']);

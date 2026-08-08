@@ -23,7 +23,11 @@ class JobAlertController extends Controller
             return response()->json(['message' => 'Only job seekers can manage job alerts'], 403);
         }
 
-        $jobs = JobPosting::with('company')->latest()->limit(100)->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->limit(100)
+            ->get();
         $alerts = JobAlert::where('user_id', $user->id)->latest()->get();
 
         return response()->json([
@@ -63,7 +67,11 @@ class JobAlertController extends Controller
             'is_active' => $data['is_active'] ?? true,
         ]);
 
-        $jobs = JobPosting::with('company')->latest()->limit(100)->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->limit(100)
+            ->get();
 
         return response()->json([
             'message' => 'Job alert created successfully',
@@ -102,7 +110,11 @@ class JobAlertController extends Controller
 
         $jobAlert->update($data);
 
-        $jobs = JobPosting::with('company')->latest()->limit(100)->get();
+        $jobs = JobPosting::with('company')
+            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->latest()
+            ->limit(100)
+            ->get();
 
         return response()->json([
             'message' => 'Job alert updated successfully',

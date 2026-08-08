@@ -41,4 +41,30 @@ class FlaskAIService
             return ['error' => 'Could not connect to AI service'];
         }
     }
+
+    /**
+     * Generate quiz questions through the Flask AI service.
+     */
+    public function generateQuiz(string $category, int $count = 5, ?string $jobTitle = null, ?string $requiredSkills = null): array
+    {
+        try {
+            $response = Http::timeout(45)->post($this->baseUrl . '/generate-quiz', [
+                'category' => $category,
+                'count' => $count,
+                'job_title' => $jobTitle,
+                'required_skills' => $requiredSkills,
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::error('Flask quiz generation error: ' . $response->body());
+            return ['error' => 'AI quiz generation failed'];
+
+        } catch (\Exception $e) {
+            Log::error('Flask quiz generation connection error: ' . $e->getMessage());
+            return ['error' => 'Could not connect to AI service'];
+        }
+    }
 }

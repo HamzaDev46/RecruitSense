@@ -13,6 +13,7 @@ class Post extends Model
 
     protected $fillable = [
         'user_id',
+        'repost_of_id',
         'body',
         'visibility',
     ];
@@ -25,6 +26,16 @@ class Post extends Model
     public function media(): HasMany
     {
         return $this->hasMany(PostMedia::class);
+    }
+
+    public function originalPost(): BelongsTo
+    {
+        return $this->belongsTo(Post::class, 'repost_of_id');
+    }
+
+    public function reposts(): HasMany
+    {
+        return $this->hasMany(Post::class, 'repost_of_id');
     }
 
     public function likes(): HasMany

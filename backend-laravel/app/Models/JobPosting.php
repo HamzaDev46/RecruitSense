@@ -11,7 +11,16 @@ class JobPosting extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['company_id', 'title', 'description', 'required_skills'];
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_CLOSED = 'closed';
+    public const STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_ACTIVE,
+        self::STATUS_CLOSED,
+    ];
+
+    protected $fillable = ['company_id', 'title', 'description', 'required_skills', 'status'];
 
     public function company(): BelongsTo
     {

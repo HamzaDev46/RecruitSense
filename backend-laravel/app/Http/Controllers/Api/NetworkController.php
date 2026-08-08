@@ -7,6 +7,7 @@ use App\Models\AppNotification;
 use App\Models\Connection;
 use App\Models\SearchAppearance;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -26,6 +27,7 @@ class NetworkController extends Controller
             UserCache::NETWORK_SUMMARY_TTL,
             function () use ($userId) {
                 $connectedIds = $this->activeNetworkUserIds($userId);
+                $blockedIds = UserBlock::blockedUserIdsFor($userId);
 
                 $connectionsCount = Connection::where('status', 'accepted')
                     ->whereHas('requester')
@@ -34,16 +36,29 @@ class NetworkController extends Controller
                         $query->where('requester_id', $userId)
                             ->orWhere('receiver_id', $userId);
                     })
+                    ->when($blockedIds, function ($query) use ($userId, $blockedIds) {
+                        $query->where(function ($scope) use ($userId, $blockedIds) {
+                            $scope->where(function ($inner) use ($userId, $blockedIds) {
+                                $inner->where('requester_id', $userId)
+                                    ->whereNotIn('receiver_id', $blockedIds);
+                            })->orWhere(function ($inner) use ($userId, $blockedIds) {
+                                $inner->where('receiver_id', $userId)
+                                    ->whereNotIn('requester_id', $blockedIds);
+                            });
+                        });
+                    })
                     ->count();
 
                 $pendingInvitationsCount = Connection::where('receiver_id', $userId)
                     ->whereHas('requester')
                     ->where('status', 'pending')
+                    ->when($blockedIds, fn ($query) => $query->whereNotIn('requester_id', $blockedIds))
                     ->count();
 
                 $suggestionsCount = User::where('id', '!=', $userId)
                     ->where('role', 'jobseeker')
                     ->whereNotIn('id', $connectedIds)
+                    ->when($blockedIds, fn ($query) => $query->whereNotIn('id', $blockedIds))
                     ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
                     ->count();
 
@@ -60,11 +75,13 @@ class NetworkController extends Controller
     {
         $user = $request->user();
         $connectedIds = $this->activeNetworkUserIds($user->id);
+        $blockedIds = UserBlock::blockedUserIdsFor($user->id);
 
         $users = User::with('jobSeeker')
             ->where('id', '!=', $user->id)
             ->where('role', 'jobseeker')
             ->whereNotIn('id', $connectedIds)
+            ->when($blockedIds, fn ($query) => $query->whereNotIn('id', $blockedIds))
             ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
             ->latest()
             ->limit(20)
@@ -87,12 +104,14 @@ class NetworkController extends Controller
         }
 
         $connectedIds = $this->activeNetworkUserIds($user->id);
+        $blockedIds = UserBlock::blockedUserIdsFor($user->id);
         $likeTerm = '%' . $term . '%';
 
         $users = User::with('jobSeeker')
             ->where('id', '!=', $user->id)
             ->where('role', 'jobseeker')
             ->whereNotIn('id', $connectedIds)
+            ->when($blockedIds, fn ($query) => $query->whereNotIn('id', $blockedIds))
             ->whereHas('jobSeeker', fn ($query) => $query->where('profile_visibility', 'public'))
             ->where(function ($query) use ($likeTerm) {
                 $query->where('name', 'like', $likeTerm)
@@ -114,10 +133,13 @@ class NetworkController extends Controller
 
     public function invitations(Request $request)
     {
+        $blockedIds = UserBlock::blockedUserIdsFor($request->user()->id);
+
         $connections = Connection::with('requester.jobSeeker')
             ->whereHas('requester')
             ->where('receiver_id', $request->user()->id)
             ->where('status', 'pending')
+            ->when($blockedIds, fn ($query) => $query->whereNotIn('requester_id', $blockedIds))
             ->latest()
             ->get()
             ->filter(fn ($connection) => $connection->requester)
@@ -134,6 +156,7 @@ class NetworkController extends Controller
     public function connections(Request $request)
     {
         $userId = $request->user()->id;
+        $blockedIds = UserBlock::blockedUserIdsFor($userId);
 
         $connections = Connection::with(['requester.jobSeeker', 'receiver.jobSeeker'])
             ->where('status', 'accepted')
@@ -157,6 +180,7 @@ class NetworkController extends Controller
                     'user' => $this->userCard($otherUser, $request),
                 ];
             })
+            ->filter(fn ($connection) => !in_array($connection['user']['id'], $blockedIds, true))
             ->values();
 
         return response()->json($connections);
@@ -172,6 +196,10 @@ class NetworkController extends Controller
 
         if ($user->role !== 'jobseeker') {
             return response()->json(['message' => 'Only job seeker profiles can be connected right now'], 422);
+        }
+
+        if (UserBlock::existsBetween($currentUser->id, $user->id)) {
+            return response()->json(['message' => 'You cannot connect with this user'], 403);
         }
 
         $existing = $this->findConnection($currentUser->id, $user->id);
@@ -228,6 +256,12 @@ class NetworkController extends Controller
             return response()->json(['message' => 'Invitation not found'], 404);
         }
 
+        if (UserBlock::existsBetween($connection->requester_id, $connection->receiver_id)) {
+            $connection->delete();
+            UserCache::forgetNetworkForUsers([$connection->requester_id, $connection->receiver_id]);
+            return response()->json(['message' => 'Invitation not found'], 404);
+        }
+
         $connection->update(['status' => 'accepted']);
         UserCache::forgetNetworkForUsers([$connection->requester_id, $connection->receiver_id]);
 
@@ -274,6 +308,14 @@ class NetworkController extends Controller
 
     public function status(Request $request, User $user)
     {
+        if (UserBlock::existsBetween($request->user()->id, $user->id)) {
+            return response()->json([
+                'connection' => null,
+                'is_blocked' => true,
+                'is_blocked_by_me' => UserBlock::isBlockedBy($request->user()->id, $user->id),
+            ]);
+        }
+
         $connection = $this->findConnection($request->user()->id, $user->id);
 
         return response()->json([
@@ -297,6 +339,7 @@ class NetworkController extends Controller
             ->map(fn ($connection) => $connection->requester_id === $userId
                 ? $connection->receiver_id
                 : $connection->requester_id)
+            ->reject(fn ($connectedId) => in_array($connectedId, UserBlock::blockedUserIdsFor($userId), true))
             ->values()
             ->all();
     }
@@ -411,6 +454,10 @@ class NetworkController extends Controller
     private function createNotification(int $userId, ?int $actorId, string $type, string $title, string $message, array $data = []): void
     {
         if ($actorId && $userId === $actorId) {
+            return;
+        }
+
+        if ($actorId && UserBlock::existsBetween($userId, $actorId)) {
             return;
         }
 

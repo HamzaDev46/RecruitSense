@@ -114,8 +114,8 @@ const ResumeUpload = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 space-y-5">
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-5">
             <div
               onDragOver={(e) => {
                 e.preventDefault()
@@ -123,7 +123,7 @@ const ResumeUpload = () => {
               }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
-              className={`bg-white border-2 border-dashed rounded-2xl p-8 transition-all ${
+              className={`bg-white border-2 border-dashed rounded-2xl p-5 sm:p-8 transition-all ${
                 dragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
               }`}
             >
@@ -147,11 +147,11 @@ const ResumeUpload = () => {
                   when calculating job match scores.
                 </p>
 
-                <div className="mt-6 flex items-center gap-3">
+                <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
-                    className="px-5 py-3 rounded-xl border border-indigo-200 text-indigo-600 font-semibold text-sm hover:bg-indigo-50 transition-all flex items-center gap-2"
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-indigo-200 text-indigo-600 font-semibold text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
                   >
                     <FileText className="w-4 h-4" />
                     Choose PDF
@@ -161,7 +161,7 @@ const ResumeUpload = () => {
                     type="button"
                     onClick={handleUpload}
                     disabled={!selectedFile || uploading}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {uploading ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -175,7 +175,7 @@ const ResumeUpload = () => {
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center">
                   <FileText className="w-6 h-6" />
                 </div>

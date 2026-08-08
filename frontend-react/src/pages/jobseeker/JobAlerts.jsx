@@ -184,7 +184,7 @@ const JobAlerts = () => {
           </div>
           <button
             onClick={loadAlerts}
-            className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+            className="w-full lg:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
           >
             Refresh
           </button>
@@ -359,11 +359,11 @@ const JobAlerts = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => toggleAlert(alert)}
                           disabled={busyId === alert.id}
-                          className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                          className={`flex-1 sm:flex-none px-4 py-2 rounded-full text-sm font-semibold border ${
                             alert.is_active
                               ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
                               : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'

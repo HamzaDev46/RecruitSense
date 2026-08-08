@@ -4,8 +4,11 @@ backend-laravel/.env
 backend-laravel/storage/*.key
 
 # Flask
+ai-service-flask/.env
 ai-service-flask/venv/
 ai-service-flask/__pycache__/
+ai-service-flask/**/__pycache__/
+*.pyc
 
 # General
 .DS_Store

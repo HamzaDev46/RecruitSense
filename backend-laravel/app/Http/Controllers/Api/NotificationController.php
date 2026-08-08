@@ -13,7 +13,7 @@ class NotificationController extends Controller
 {
     public function index(Request $request)
     {
-        $notifications = AppNotification::with('actor.jobSeeker')
+        $notifications = AppNotification::with('actor.jobSeeker', 'actor.company')
             ->where('user_id', $request->user()->id)
             ->latest()
             ->limit(60)
@@ -49,7 +49,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'message' => 'Notification marked as read',
-            'notification' => $this->notificationPayload($notification->fresh('actor.jobSeeker'), $request),
+            'notification' => $this->notificationPayload($notification->fresh(['actor.jobSeeker', 'actor.company']), $request),
         ]);
     }
 
@@ -104,16 +104,19 @@ class NotificationController extends Controller
         }
 
         $jobSeeker = $user->jobSeeker;
+        $company = $user->company;
         $storageUrl = $request->getSchemeAndHttpHost() . '/storage/';
 
         return [
             'id' => $user->id,
-            'name' => $user->name,
+            'name' => $company?->name ?: $user->name,
             'email' => $user->email,
             'role' => $user->role,
-            'headline' => $jobSeeker?->headline,
-            'company' => $jobSeeker?->company,
-            'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            'headline' => $jobSeeker?->headline ?: ($company?->industry ? $company->industry . ' company' : null),
+            'company' => $jobSeeker?->company ?: $company?->name,
+            'profile_image_url' => $jobSeeker?->profile_image
+                ? $storageUrl . $jobSeeker->profile_image
+                : $company?->logo_url,
         ];
     }
 }

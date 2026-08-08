@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Bell,
+  Ban,
   Briefcase,
   Check,
   Eye,
@@ -14,6 +15,7 @@ import {
   Search,
   Shield,
   Trash2,
+  Unlock,
   User,
   UserPlus,
   X,
@@ -42,6 +44,13 @@ const firstError = (err, fallback) => {
 
   return err.response?.data?.message || fallback
 }
+
+const initials = (name = 'User') => name
+  .split(' ')
+  .map((part) => part[0])
+  .join('')
+  .slice(0, 2)
+  .toUpperCase()
 
 const SectionCard = ({ icon, title, description, children }) => (
   <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -120,6 +129,9 @@ const SettingsPage = () => {
   })
   const [preferences, setPreferences] = useState(defaultPreferences)
   const [deletePassword, setDeletePassword] = useState('')
+  const [blockedUsers, setBlockedUsers] = useState([])
+  const [blockedUsersCount, setBlockedUsersCount] = useState(0)
+  const [unblockingUserId, setUnblockingUserId] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -136,6 +148,8 @@ const SettingsPage = () => {
           ...defaultPreferences,
           ...(res.data.preferences || {}),
         })
+        setBlockedUsers(res.data.blocked_users || [])
+        setBlockedUsersCount(res.data.blocked_users_count || 0)
         applyDarkMode(Boolean(res.data.preferences?.dark_mode))
       })
       .catch((err) => {
@@ -224,6 +238,22 @@ const SettingsPage = () => {
       toast.error(firstError(err, 'Failed to delete account'))
     } finally {
       setDeletingAccount(false)
+    }
+  }
+
+  const unblockUser = async (userId) => {
+    setUnblockingUserId(userId)
+
+    try {
+      const res = await api.delete(`/blocks/${userId}`)
+      setBlockedUsers(res.data.blocked_users || [])
+      setBlockedUsersCount(res.data.blocked_users_count || 0)
+      window.dispatchEvent(new CustomEvent('recruitsense-network-updated'))
+      toast.success('User unblocked')
+    } catch (err) {
+      toast.error(firstError(err, 'Failed to unblock user'))
+    } finally {
+      setUnblockingUserId(null)
     }
   }
 
@@ -412,6 +442,69 @@ const SettingsPage = () => {
                   </button>
                 </div>
               </div>
+            </SectionCard>
+
+            <SectionCard
+              icon={<Ban className="w-5 h-5" />}
+              title="Blocked users"
+              description="Blocked people cannot view your profile, message you, or appear in your network results."
+            >
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Blocked users</p>
+                  <p className="text-sm text-gray-500">Manage people you have blocked.</p>
+                </div>
+                <span className="min-w-10 rounded-full bg-white border border-gray-200 px-3 py-1 text-center text-sm font-bold text-gray-900">
+                  {blockedUsersCount}
+                </span>
+              </div>
+
+              {blockedUsers.length === 0 ? (
+                <div className="mt-4 rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center">
+                  <Ban className="w-8 h-8 text-gray-300 mx-auto" />
+                  <p className="mt-3 text-sm font-bold text-gray-900">No blocked users</p>
+                  <p className="text-sm text-gray-500 mt-1">People you block from a profile will appear here.</p>
+                </div>
+              ) : (
+                <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden">
+                  {blockedUsers.map((blockedUser) => (
+                    <div key={blockedUser.id} className="flex items-center justify-between gap-4 p-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {blockedUser.profile_image_url ? (
+                          <img
+                            src={blockedUser.profile_image_url}
+                            alt={blockedUser.name}
+                            className="w-11 h-11 rounded-full object-cover object-top border border-gray-100"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">
+                            {initials(blockedUser.name)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{blockedUser.name}</p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {blockedUser.headline || blockedUser.company || blockedUser.email || 'RecruitSense member'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => unblockUser(blockedUser.id)}
+                        disabled={unblockingUserId === blockedUser.id}
+                        className="shrink-0 px-3 py-2 rounded-full border border-sky-200 text-sky-700 bg-sky-50 text-sm font-semibold hover:bg-sky-100 disabled:opacity-60 flex items-center gap-2"
+                      >
+                        {unblockingUserId === blockedUser.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Unlock className="w-4 h-4" />
+                        )}
+                        {unblockingUserId === blockedUser.id ? 'Unblocking...' : 'Unblock'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
 
             <SectionCard

@@ -34,6 +34,10 @@ class SavedJobController extends Controller
             return response()->json(['message' => 'Only job seekers can save jobs'], 403);
         }
 
+        if ($job->status !== JobPosting::STATUS_ACTIVE) {
+            return response()->json(['message' => 'This job is not accepting saves right now'], 422);
+        }
+
         $savedJob = SavedJob::firstOrCreate([
             'job_seeker_id' => $user->jobSeeker->id,
             'job_id' => $job->id,

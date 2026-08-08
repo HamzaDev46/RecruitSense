@@ -1,10 +1,26 @@
+import { useState } from 'react'
 import Sidebar from './Sidebar'
+import AppTopBar from '../AppTopBar'
 
 const DashboardLayout = ({ children }) => {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <main className="ml-64 flex-1 p-8">
+    <div className="min-h-screen bg-gray-50">
+      <AppTopBar role="jobseeker" onOpenSidebar={() => setMobileSidebarOpen(true)} />
+
+      <Sidebar mobileOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-gray-900/45 md:hidden"
+        />
+      )}
+
+      <main className="min-w-0 md:ml-64 flex-1 px-4 pb-6 pt-20 sm:px-6 md:px-8 md:pb-8 md:pt-24">
         {children}
       </main>
     </div>

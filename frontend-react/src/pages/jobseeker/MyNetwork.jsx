@@ -232,7 +232,7 @@ const MyNetwork = () => {
           <p className="text-gray-500 text-sm mt-1">Manage connections, invitations, and people you may know.</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           {[
             { label: 'Connections', value: connections.length, icon: <Users className="w-5 h-5" />, color: 'text-sky-600', bg: 'bg-sky-50' },
             { label: 'Invitations', value: invitations.length, icon: <Clock className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
@@ -248,8 +248,8 @@ const MyNetwork = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
-          <section className="col-span-2 space-y-5">
+        <div className="grid lg:grid-cols-3 gap-5 lg:gap-6">
+          <section className="lg:col-span-2 space-y-5">
             <div className="bg-white border border-gray-100 rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -268,7 +268,7 @@ const MyNetwork = () => {
               ) : (
                 <div className="space-y-3">
                   {invitations.map((invitation) => (
-                    <div key={invitation.connection_id} className="flex items-center gap-4 border border-gray-100 rounded-lg p-4">
+                    <div key={invitation.connection_id} className="flex flex-col sm:flex-row sm:items-center gap-4 border border-gray-100 rounded-lg p-4">
                       <button onClick={() => navigate(`/profile/${invitation.user.id}`)}>
                         <PersonAvatar user={invitation.user} />
                       </button>
@@ -277,14 +277,14 @@ const MyNetwork = () => {
                       </button>
                       <button
                         onClick={() => handleReject(invitation)}
-                        className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 flex items-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-1.5"
                       >
                         <X className="w-4 h-4" />
                         Ignore
                       </button>
                       <button
                         onClick={() => handleAccept(invitation)}
-                        className="px-4 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 flex items-center justify-center gap-1.5"
                       >
                         <Check className="w-4 h-4" />
                         Accept
@@ -296,12 +296,12 @@ const MyNetwork = () => {
             </div>
 
             <div className="bg-white border border-gray-100 rounded-lg p-5">
-              <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
                   <h2 className="font-bold text-gray-900">Connections</h2>
                   <p className="text-sm text-gray-500">{connections.length} people in your network</p>
                 </div>
-                <div className="relative w-72">
+                <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     value={search}
@@ -324,7 +324,7 @@ const MyNetwork = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredConnections.map((connection) => (
-                    <div key={connection.connection_id} className="flex items-center gap-4 border border-gray-100 rounded-lg p-4">
+                    <div key={connection.connection_id} className="flex flex-col sm:flex-row sm:items-center gap-4 border border-gray-100 rounded-lg p-4">
                       <button onClick={() => navigate(`/profile/${connection.user.id}`)}>
                         <PersonAvatar user={connection.user} />
                       </button>
@@ -334,14 +334,14 @@ const MyNetwork = () => {
                       <button
                         onClick={() => handleMessage(connection.user.id)}
                         disabled={messageLoadingId === connection.user.id}
-                        className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
                       >
                         <MessageCircle className="w-4 h-4" />
                         {messageLoadingId === connection.user.id ? 'Opening...' : 'Message'}
                       </button>
                       <button
                         onClick={() => handleRemove(connection.connection_id)}
-                        className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50"
+                        className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50"
                       >
                         Remove
                       </button>

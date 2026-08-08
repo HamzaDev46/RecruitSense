@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
+use App\Models\Application;
 use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -19,15 +21,17 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'jobseeker') {
-            return response()->json(['message' => 'Only job seekers can use messaging'], 403);
+        if (!$this->canUseMessaging($user)) {
+            return response()->json(['message' => 'Messaging is not available for this account'], 403);
         }
 
         $this->removeOrphanedConversationsFor($user->id);
 
         $conversations = Conversation::with([
             'userOne.jobSeeker',
+            'userOne.company',
             'userTwo.jobSeeker',
+            'userTwo.company',
             'latestMessage.sender',
         ])
             ->whereHas('userOne')
@@ -38,7 +42,10 @@ class MessageController extends Controller
             })
             ->orderByRaw('COALESCE(last_message_at, updated_at) DESC')
             ->get()
-            ->filter(fn ($conversation) => $this->otherParticipant($conversation, $user->id))
+            ->filter(function ($conversation) use ($user) {
+                $otherUser = $this->otherParticipant($conversation, $user->id);
+                return $otherUser && !UserBlock::existsBetween($user->id, $otherUser->id);
+            })
             ->map(fn ($conversation) => $this->conversationPayload($conversation, $user->id))
             ->values();
 
@@ -49,8 +56,8 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'jobseeker') {
-            return response()->json(['message' => 'Only job seekers can use messaging'], 403);
+        if (!$this->canUseMessaging($user)) {
+            return response()->json(['message' => 'Messaging is not available for this account'], 403);
         }
 
         return response()->json(Cache::remember(
@@ -79,20 +86,20 @@ class MessageController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($currentUser->role !== 'jobseeker') {
-            return response()->json(['message' => 'Only job seekers can use messaging'], 403);
+        if (!$this->canUseMessaging($currentUser)) {
+            return response()->json(['message' => 'Messaging is not available for this account'], 403);
         }
 
         if ($currentUser->id === $user->id) {
             return response()->json(['message' => 'You cannot message yourself'], 422);
         }
 
-        if ($user->role !== 'jobseeker') {
-            return response()->json(['message' => 'Only job seeker profiles can be messaged right now'], 422);
+        if (UserBlock::existsBetween($currentUser->id, $user->id)) {
+            return response()->json(['message' => 'You cannot message this user'], 403);
         }
 
-        if (!$this->areConnected($currentUser->id, $user->id)) {
-            return response()->json(['message' => 'You can only message accepted connections'], 403);
+        if (!$this->canMessageBetween($currentUser, $user)) {
+            return response()->json(['message' => $this->messagePermissionText($currentUser)], 403);
         }
 
         [$userOneId, $userTwoId] = $this->orderedPair($currentUser->id, $user->id);
@@ -102,7 +109,7 @@ class MessageController extends Controller
             'user_two_id' => $userTwoId,
         ]);
 
-        $conversation->load(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']);
+        $conversation->load(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']);
 
         return response()->json([
             'message' => 'Conversation ready',
@@ -127,22 +134,28 @@ class MessageController extends Controller
             UserCache::forgetUnreadMessages($user->id);
         }
 
-        $conversation->load(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']);
+        $conversation->load(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']);
 
-        if (!$this->otherParticipant($conversation, $user->id)) {
+        $otherUser = $this->otherParticipant($conversation, $user->id);
+
+        if (!$otherUser) {
             $conversation->delete();
             UserCache::forgetUnreadMessages($user->id);
             return response()->json(['message' => 'Conversation not found'], 404);
         }
 
-        $messages = Message::with('sender.jobSeeker')
+        if (UserBlock::existsBetween($user->id, $otherUser->id)) {
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
+        $messages = Message::with('sender.jobSeeker', 'sender.company')
             ->where('conversation_id', $conversation->id)
             ->oldest()
             ->get()
             ->map(fn ($message) => $this->messagePayload($message, $user->id));
 
         return response()->json([
-            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']), $user->id),
+            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']), $user->id),
             'messages' => $messages,
         ]);
     }
@@ -163,8 +176,12 @@ class MessageController extends Controller
             return response()->json(['message' => 'Conversation not found'], 404);
         }
 
-        if (!$this->areConnected($user->id, $otherUser->id)) {
-            return response()->json(['message' => 'You can only message accepted connections'], 403);
+        if (UserBlock::existsBetween($user->id, $otherUser->id)) {
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
+        if (!$this->canMessageBetween($user, $otherUser)) {
+            return response()->json(['message' => $this->messagePermissionText($user)], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -208,15 +225,15 @@ class MessageController extends Controller
 
         return response()->json([
             'message' => 'Message sent',
-            'chat_message' => $this->messagePayload($message->fresh('sender.jobSeeker'), $user->id),
-            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']), $user->id),
+            'chat_message' => $this->messagePayload($message->fresh('sender.jobSeeker', 'sender.company'), $user->id),
+            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']), $user->id),
         ], 201);
     }
 
     public function update(Request $request, Message $message)
     {
         $user = $request->user();
-        $message->load(['conversation.userOne.jobSeeker', 'conversation.userTwo.jobSeeker', 'sender.jobSeeker']);
+        $message->load(['conversation.userOne.jobSeeker', 'conversation.userOne.company', 'conversation.userTwo.jobSeeker', 'conversation.userTwo.company', 'sender.jobSeeker', 'sender.company']);
 
         if ($message->sender_id !== $user->id || !$this->isParticipant($message->conversation, $user->id)) {
             return response()->json(['message' => 'Message not found'], 404);
@@ -227,6 +244,10 @@ class MessageController extends Controller
         if (!$otherUser) {
             $message->conversation->delete();
             UserCache::forgetUnreadMessages($user->id);
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
+        if (UserBlock::existsBetween($user->id, $otherUser->id)) {
             return response()->json(['message' => 'Conversation not found'], 404);
         }
 
@@ -251,15 +272,15 @@ class MessageController extends Controller
 
         return response()->json([
             'message' => 'Message updated',
-            'chat_message' => $this->messagePayload($message->fresh('sender.jobSeeker'), $user->id),
-            'conversation' => $this->conversationPayload($message->conversation->fresh(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']), $user->id),
+            'chat_message' => $this->messagePayload($message->fresh('sender.jobSeeker', 'sender.company'), $user->id),
+            'conversation' => $this->conversationPayload($message->conversation->fresh(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']), $user->id),
         ]);
     }
 
     public function destroy(Request $request, Message $message)
     {
         $user = $request->user();
-        $message->load('conversation.userOne.jobSeeker', 'conversation.userTwo.jobSeeker');
+        $message->load('conversation.userOne.jobSeeker', 'conversation.userOne.company', 'conversation.userTwo.jobSeeker', 'conversation.userTwo.company');
 
         if ($message->sender_id !== $user->id || !$this->isParticipant($message->conversation, $user->id)) {
             return response()->json(['message' => 'Message not found'], 404);
@@ -274,6 +295,10 @@ class MessageController extends Controller
             return response()->json(['message' => 'Conversation not found'], 404);
         }
 
+        if (UserBlock::existsBetween($user->id, $otherUser->id)) {
+            return response()->json(['message' => 'Conversation not found'], 404);
+        }
+
         $message->delete();
         $this->syncLastMessageAt($conversation);
         UserCache::forgetUnreadMessages($otherUser->id);
@@ -281,7 +306,7 @@ class MessageController extends Controller
         return response()->json([
             'message' => 'Message deleted',
             'deleted_message_id' => $message->id,
-            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userTwo.jobSeeker', 'latestMessage.sender']), $user->id),
+            'conversation' => $this->conversationPayload($conversation->fresh(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']), $user->id),
         ]);
     }
 
@@ -325,17 +350,20 @@ class MessageController extends Controller
         }
 
         $jobSeeker = $user->jobSeeker;
+        $company = $user->company;
         $storageUrl = request()->getSchemeAndHttpHost() . '/storage/';
 
         return [
             'id' => $user->id,
-            'name' => $user->name,
+            'name' => $company?->name ?: $user->name,
             'email' => $user->email,
             'role' => $user->role,
-            'headline' => $jobSeeker?->headline,
+            'headline' => $jobSeeker?->headline ?: ($company?->industry ? $company->industry . ' company' : null),
             'location' => $jobSeeker?->location,
-            'company' => $jobSeeker?->company,
-            'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            'company' => $jobSeeker?->company ?: $company?->name,
+            'profile_image_url' => $jobSeeker?->profile_image
+                ? $storageUrl . $jobSeeker->profile_image
+                : $company?->logo_url,
         ];
     }
 
@@ -388,6 +416,10 @@ class MessageController extends Controller
 
     private function areConnected(int $firstUserId, int $secondUserId): bool
     {
+        if (UserBlock::existsBetween($firstUserId, $secondUserId)) {
+            return false;
+        }
+
         return Connection::where('status', 'accepted')
             ->where(function ($query) use ($firstUserId, $secondUserId) {
                 $query->where(function ($inner) use ($firstUserId, $secondUserId) {
@@ -399,6 +431,55 @@ class MessageController extends Controller
                 });
             })
             ->exists();
+    }
+
+    private function canUseMessaging(User $user): bool
+    {
+        return in_array($user->role, ['jobseeker', 'company'], true);
+    }
+
+    private function canMessageBetween(User $sender, User $receiver): bool
+    {
+        if (UserBlock::existsBetween($sender->id, $receiver->id)) {
+            return false;
+        }
+
+        if ($sender->role === 'jobseeker' && $receiver->role === 'jobseeker') {
+            return $this->areConnected($sender->id, $receiver->id);
+        }
+
+        if ($sender->role === 'company' && $receiver->role === 'jobseeker') {
+            return $this->companyHasApplicant($sender, $receiver);
+        }
+
+        if ($sender->role === 'jobseeker' && $receiver->role === 'company') {
+            return $this->companyHasApplicant($receiver, $sender);
+        }
+
+        return false;
+    }
+
+    private function companyHasApplicant(User $companyUser, User $candidateUser): bool
+    {
+        $companyId = $companyUser->company?->id;
+        $jobSeekerId = $candidateUser->jobSeeker?->id;
+
+        if (!$companyId || !$jobSeekerId) {
+            return false;
+        }
+
+        return Application::query()
+            ->where('job_seeker_id', $jobSeekerId)
+            ->whereHas('jobPosting', fn ($query) => $query->where('company_id', $companyId))
+            ->where('status', '!=', 'withdrawn')
+            ->exists();
+    }
+
+    private function messagePermissionText(User $sender): string
+    {
+        return $sender->role === 'company'
+            ? 'You can only message candidates who applied to your jobs'
+            : 'You can only message accepted connections or companies you applied to';
     }
 
     private function syncLastMessageAt(Conversation $conversation): void

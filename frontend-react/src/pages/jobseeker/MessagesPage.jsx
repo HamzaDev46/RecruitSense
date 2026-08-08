@@ -1,8 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, MessageCircle, Pencil, RefreshCw, Search, Send, Trash2, User, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Briefcase,
+  Check,
+  ExternalLink,
+  Inbox,
+  MessageCircle,
+  Pencil,
+  RefreshCw,
+  Search,
+  Send,
+  Trash2,
+  User,
+  Users,
+  X,
+} from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import CompanyLayout from '../../components/company/CompanyLayout'
+import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
 const initials = (name = 'User') => name
@@ -43,6 +60,7 @@ const Avatar = ({ user, size = 'w-11 h-11' }) => {
 
 const MessagesPage = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const messagesEndRef = useRef(null)
   const longPressTimerRef = useRef(null)
@@ -50,6 +68,7 @@ const MessagesPage = () => {
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
   const [search, setSearch] = useState('')
+  const [conversationFilter, setConversationFilter] = useState('all')
   const [body, setBody] = useState('')
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -59,17 +78,46 @@ const MessagesPage = () => {
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const isCompany = user?.role === 'company'
+  const Layout = isCompany ? CompanyLayout : DashboardLayout
+
+  const messageStats = useMemo(() => {
+    const unreadMessages = conversations.reduce((total, conversation) => total + Number(conversation.unread_count || 0), 0)
+    const unreadThreads = conversations.filter((conversation) => Number(conversation.unread_count || 0) > 0).length
+    const candidateThreads = conversations.filter((conversation) => conversation.other_user?.role === 'jobseeker').length
+
+    return {
+      total: conversations.length,
+      unreadMessages,
+      unreadThreads,
+      candidateThreads,
+    }
+  }, [conversations])
 
   const filteredConversations = useMemo(() => {
+    const scopedConversations = conversationFilter === 'unread'
+      ? conversations.filter((conversation) => Number(conversation.unread_count || 0) > 0)
+      : conversations
     const query = search.trim().toLowerCase()
-    if (!query) return conversations
+    if (!query) return scopedConversations
 
-    return conversations.filter((conversation) =>
+    return scopedConversations.filter((conversation) =>
       conversation.other_user?.name?.toLowerCase().includes(query) ||
       conversation.other_user?.headline?.toLowerCase().includes(query) ||
+      conversation.other_user?.company?.toLowerCase().includes(query) ||
       conversation.latest_message?.body?.toLowerCase().includes(query)
     )
-  }, [conversations, search])
+  }, [conversationFilter, conversations, search])
+
+  const clearSelectedConversation = () => {
+    setSelectedConversation(null)
+    setMessages([])
+    setSelectedMessage(null)
+    setDeleteTarget(null)
+    setEditingMessageId(null)
+    setEditingBody('')
+    setSearchParams({})
+  }
 
   const loadConversations = async () => {
     setLoading(true)
@@ -294,24 +342,62 @@ const MessagesPage = () => {
   }
 
   return (
-    <DashboardLayout>
-      <div className="max-w-6xl mx-auto h-[calc(100vh-64px)] flex flex-col">
+    <Layout>
+      <div className="max-w-6xl mx-auto min-h-[calc(100vh-7rem)] lg:h-[calc(100vh-64px)] flex flex-col">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-            <p className="text-sm text-gray-500 mt-1">Chat with people from your accepted network.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {isCompany
+                ? 'Chat with candidates who applied to your jobs.'
+                : 'Chat with people from your accepted network.'}
+            </p>
           </div>
           <button
             onClick={loadConversations}
-            className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-2"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
         </div>
 
-        <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
-          <aside className="col-span-4 bg-white border border-gray-100 rounded-xl overflow-hidden flex flex-col min-h-0">
+        {isCompany && (
+          <div className="grid sm:grid-cols-3 gap-3 mb-4">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-400">Candidate chats</p>
+                <p className="text-2xl font-bold text-gray-900">{messageStats.candidateThreads}</p>
+              </div>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Inbox className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-gray-400">Unread messages</p>
+                <p className="text-2xl font-bold text-gray-900">{messageStats.unreadMessages}</p>
+              </div>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase text-gray-400">Active chat</p>
+                <p className="text-lg font-bold text-gray-900 truncate">
+                  {selectedConversation?.other_user?.name || 'None selected'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0">
+          <aside className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} lg:col-span-4 bg-white border border-gray-100 rounded-xl overflow-hidden flex-col min-h-[60vh] lg:min-h-0`}>
             <div className="p-4 border-b border-gray-100">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -327,6 +413,24 @@ const MessagesPage = () => {
                   </button>
                 )}
               </div>
+              <div className="flex gap-2 mt-3">
+                {[
+                  { key: 'all', label: `All ${messageStats.total}` },
+                  { key: 'unread', label: `Unread ${messageStats.unreadThreads}` },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setConversationFilter(item.key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                      conversationFilter === item.key
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="overflow-y-auto flex-1">
@@ -339,8 +443,33 @@ const MessagesPage = () => {
               ) : filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">
                   <MessageCircle className="w-11 h-11 text-gray-300 mx-auto mb-3" />
-                  <h2 className="font-bold text-gray-900">No conversations</h2>
-                  <p className="text-sm text-gray-500 mt-1">Start a chat from My Network or a connected profile.</p>
+                  <h2 className="font-bold text-gray-900">
+                    {search || conversationFilter !== 'all' ? 'No matching conversations' : 'No conversations'}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isCompany
+                      ? 'Open an applicant profile and start a candidate chat.'
+                      : 'Start a chat from My Network or a connected profile.'}
+                  </p>
+                  {isCompany && !search && conversationFilter === 'all' && (
+                    <button
+                      onClick={() => navigate('/company/applicants')}
+                      className="mt-4 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+                    >
+                      Open applicants
+                    </button>
+                  )}
+                  {(search || conversationFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setSearch('')
+                        setConversationFilter('all')
+                      }}
+                      className="mt-4 px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Reset filters
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
@@ -368,9 +497,16 @@ const MessagesPage = () => {
                           <p className="text-sm text-gray-500 truncate">
                             {conversation.latest_message?.body || conversation.other_user?.headline || 'Conversation ready'}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {formatTime(conversation.latest_message?.created_at || conversation.created_at)}
-                          </p>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <p className="text-xs text-gray-400">
+                              {formatTime(conversation.latest_message?.created_at || conversation.created_at)}
+                            </p>
+                            {isCompany && (
+                              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                Candidate
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     )
@@ -380,7 +516,7 @@ const MessagesPage = () => {
             </div>
           </aside>
 
-          <section className="col-span-8 bg-white border border-gray-100 rounded-xl overflow-hidden flex flex-col min-h-0">
+          <section className={`${selectedConversation ? 'flex' : 'hidden lg:flex'} lg:col-span-8 bg-white border border-gray-100 rounded-xl overflow-hidden flex-col min-h-[64vh] lg:min-h-0`}>
             {!selectedConversation ? (
               <div className="flex-1 flex items-center justify-center text-center p-10">
                 <div>
@@ -388,24 +524,64 @@ const MessagesPage = () => {
                     <MessageCircle className="w-8 h-8" />
                   </div>
                   <h2 className="font-bold text-gray-900">Select a conversation</h2>
-                  <p className="text-sm text-gray-500 mt-1">Messages from your network will appear here.</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isCompany
+                      ? 'Candidate messages will appear here.'
+                      : 'Messages from your network will appear here.'}
+                  </p>
                 </div>
               </div>
             ) : (
               <>
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                  <button
-                    onClick={() => navigate(`/profile/${selectedConversation.other_user?.id}`)}
-                    className="flex items-center gap-3 text-left min-w-0"
-                  >
-                    <Avatar user={selectedConversation.other_user} />
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-900 truncate">{selectedConversation.other_user?.name}</p>
-                      <p className="text-sm text-gray-500 truncate">{selectedConversation.other_user?.headline || 'RecruitSense member'}</p>
-                    </div>
-                  </button>
-                  {selectedMessage?.is_mine && (
-                    <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={clearSelectedConversation}
+                      className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 flex items-center justify-center lg:hidden"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/profile/${selectedConversation.other_user?.id}`)}
+                      className="flex items-center gap-3 text-left min-w-0"
+                    >
+                      <Avatar user={selectedConversation.other_user} />
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate">{selectedConversation.other_user?.name}</p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {selectedConversation.other_user?.headline || (isCompany ? 'Candidate' : 'RecruitSense member')}
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {isCompany && selectedConversation.other_user?.id && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/profile/${selectedConversation.other_user.id}`)}
+                          title="View candidate profile"
+                          aria-label="View candidate profile"
+                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/company/applicants')}
+                          title="Open applicants"
+                          aria-label="Open applicants"
+                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center"
+                        >
+                          <Briefcase className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    {selectedMessage?.is_mine && (
+                      <>
                       <button
                         onClick={() => startEdit(selectedMessage)}
                         title="Edit message"
@@ -430,8 +606,9 @@ const MessagesPage = () => {
                       >
                         <X className="w-4 h-4" />
                       </button>
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-gray-50/60">
@@ -446,7 +623,11 @@ const MessagesPage = () => {
                       <div>
                         <User className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                         <p className="font-bold text-gray-800">No messages yet</p>
-                        <p className="text-sm text-gray-500 mt-1">Send the first message to start the conversation.</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {isCompany
+                            ? 'Send a clear update to begin the candidate conversation.'
+                            : 'Send the first message to start the conversation.'}
+                        </p>
                       </div>
                     </div>
                   ) : (
@@ -456,14 +637,14 @@ const MessagesPage = () => {
 
                       return (
                         <div key={message.id} className={`flex ${message.is_mine ? 'justify-end' : 'justify-start'}`}>
-                          <div className="max-w-[72%]">
+                          <div className="max-w-[86%] sm:max-w-[72%]">
                             {isEditing ? (
                               <div className="bg-white border border-indigo-100 rounded-2xl p-3 shadow-sm">
                                 <textarea
                                   value={editingBody}
                                   onChange={(event) => setEditingBody(event.target.value)}
                                   rows="3"
-                                  className="w-full min-w-[18rem] resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  className="w-full min-w-0 sm:min-w-[18rem] resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                                 <div className="flex justify-end gap-2 mt-2">
                                   <button
@@ -507,7 +688,7 @@ const MessagesPage = () => {
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
                                 <p className={`text-[11px] mt-1 ${message.is_mine ? 'text-indigo-100' : 'text-gray-400'}`}>
                                   {formatTime(message.created_at)}
-                                  {message.edited_at && <span> · edited</span>}
+                                  {message.edited_at && <span> - edited</span>}
                                 </p>
                               </div>
                             )}
@@ -520,23 +701,23 @@ const MessagesPage = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className="p-4 border-t border-gray-100">
-                  <div className="flex items-end gap-3">
+                <div className="p-3 sm:p-4 border-t border-gray-100">
+                  <div className="flex items-end gap-2 sm:gap-3">
                     <textarea
                       value={body}
                       onChange={(event) => setBody(event.target.value)}
                       onKeyDown={handleKeyDown}
                       rows="2"
-                      placeholder="Write a message..."
-                      className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder={isCompany ? 'Write to this candidate...' : 'Write a message...'}
+                      className="min-w-0 flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <button
                       onClick={sendMessage}
                       disabled={sending || !body.trim()}
-                      className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
+                      className="px-4 sm:px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
                     >
                       <Send className="w-4 h-4" />
-                      {sending ? 'Sending...' : 'Send'}
+                      <span className="hidden sm:inline">{sending ? 'Sending...' : 'Send'}</span>
                     </button>
                   </div>
                 </div>
@@ -577,7 +758,7 @@ const MessagesPage = () => {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </Layout>
   )
 }
 

@@ -20,17 +20,29 @@ import {
   X,
   XCircle,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
 
 const filters = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
+  { key: 'screening', label: 'Screening' },
   { key: 'shortlisted', label: 'Shortlisted' },
+  { key: 'interview', label: 'Interview' },
+  { key: 'offered', label: 'Offered' },
+  { key: 'hired', label: 'Hired' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'withdrawn', label: 'Withdrawn' },
+]
+
+const withdrawReasons = [
+  'Applied by mistake',
+  'Accepted another opportunity',
+  'Role is not the right fit',
+  'Location or timing does not work',
 ]
 
 const numberValue = (value) => Number(value || 0)
@@ -45,13 +57,67 @@ const formatDate = (date) => {
   })
 }
 
+const formatDateTime = (date) => {
+  if (!date) return 'Not scheduled'
+
+  return new Date(date).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+const interviewModeLabel = (mode) => ({
+  online: 'Online interview',
+  phone: 'Phone interview',
+  onsite: 'On-site interview',
+}[mode] || 'Interview')
+
 const statusConfig = (status) => {
+  if (status === 'screening') {
+    return {
+      icon: ClipboardList,
+      label: 'Screening',
+      className: 'bg-sky-50 text-sky-700 border-sky-200',
+      nextStep: 'The company is screening your profile, resume, and quiz details.',
+    }
+  }
+
   if (status === 'shortlisted') {
     return {
       icon: CheckCircle,
       label: 'Shortlisted',
       className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       nextStep: 'Recruiter selected your application. Check notifications or email for the next step.',
+    }
+  }
+
+  if (status === 'interview') {
+    return {
+      icon: CalendarDays,
+      label: 'Interview',
+      className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      nextStep: 'Your application is in the interview stage. Check interview details and messages.',
+    }
+  }
+
+  if (status === 'offered') {
+    return {
+      icon: Award,
+      label: 'Offered',
+      className: 'bg-violet-50 text-violet-700 border-violet-200',
+      nextStep: 'The company has moved you to the offer stage. Watch for follow-up details.',
+    }
+  }
+
+  if (status === 'hired') {
+    return {
+      icon: Award,
+      label: 'Hired',
+      className: 'bg-teal-50 text-teal-700 border-teal-200',
+      nextStep: 'Congratulations. The company has marked this application as hired.',
     }
   }
 
@@ -136,9 +202,12 @@ const TimelineStep = ({ active, done, label, detail, icon: Icon }) => (
 
 const MyApplications = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const targetApplicationId = searchParams.get('application')
+  const highlightedApplicationId = Number(targetApplicationId || 0)
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState(null)
+  const [expanded, setExpanded] = useState(highlightedApplicationId || null)
   const [activeFilter, setActiveFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [quizModal, setQuizModal] = useState({
@@ -152,6 +221,7 @@ const MyApplications = () => {
   const [withdrawModal, setWithdrawModal] = useState({
     open: false,
     application: null,
+    reason: '',
     loading: false,
   })
 
@@ -176,6 +246,26 @@ const MyApplications = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (loading || !highlightedApplicationId) return undefined
+
+    const targetExists = applications.some((app) => app.id === highlightedApplicationId)
+
+    if (!targetExists) {
+      toast.error('The application is no longer available')
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      document.getElementById(`application-${highlightedApplicationId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 140)
+
+    return () => window.clearTimeout(timer)
+  }, [applications, highlightedApplicationId, loading])
+
   const stats = useMemo(() => {
     const scored = applications.filter((app) => numberValue(app.final_score) > 0)
     const average = scored.length
@@ -185,7 +275,7 @@ const MyApplications = () => {
     return {
       total: applications.length,
       pending: applications.filter((app) => app.status === 'pending').length,
-      shortlisted: applications.filter((app) => app.status === 'shortlisted').length,
+      inProgress: applications.filter((app) => ['screening', 'shortlisted', 'interview', 'offered', 'hired'].includes(app.status)).length,
       withdrawn: applications.filter((app) => app.status === 'withdrawn').length,
       average,
     }
@@ -309,6 +399,7 @@ const MyApplications = () => {
     setWithdrawModal({
       open: true,
       application,
+      reason: '',
       loading: false,
     })
   }
@@ -319,17 +410,26 @@ const MyApplications = () => {
     setWithdrawModal({
       open: false,
       application: null,
+      reason: '',
       loading: false,
     })
   }
 
   const confirmWithdraw = async () => {
     if (!withdrawModal.application) return
+    const reason = withdrawModal.reason.trim()
+
+    if (reason.length < 5) {
+      toast.error('Please add a short withdrawal reason')
+      return
+    }
 
     setWithdrawModal((current) => ({ ...current, loading: true }))
 
     try {
-      const res = await api.post(`/applications/${withdrawModal.application.id}/withdraw`)
+      const res = await api.post(`/applications/${withdrawModal.application.id}/withdraw`, {
+        withdraw_reason: reason,
+      })
       updateApplication(withdrawModal.application.id, res.data.application)
       toast.success('Application withdrawn')
       closeWithdraw()
@@ -343,8 +443,9 @@ const MyApplications = () => {
     const finalScore = numberValue(app.final_score)
     const quizSubmitted = numberValue(app.quiz_responses_count) > 0 ||
       (app.soft_skill_score !== null && app.soft_skill_score !== undefined)
-    const reviewed = app.status === 'shortlisted' || app.status === 'rejected'
+    const reviewed = !['pending', 'withdrawn'].includes(app.status)
     const withdrawn = app.status === 'withdrawn'
+    const finalStage = ['offered', 'hired', 'rejected'].includes(app.status)
 
     return (
       <div className="space-y-4">
@@ -376,8 +477,17 @@ const MyApplications = () => {
           detail={withdrawn ? 'Application was withdrawn before company review' : reviewed ? 'Recruiter has reviewed this application' : 'Waiting for recruiter decision'}
         />
         <TimelineStep
-          done={app.status === 'shortlisted'}
-          active={app.status === 'rejected' || withdrawn}
+          done={Boolean(app.interview_scheduled_at)}
+          active={['shortlisted', 'interview'].includes(app.status) && !app.interview_scheduled_at}
+          icon={CalendarDays}
+          label="Interview"
+          detail={app.interview_scheduled_at
+            ? `${interviewModeLabel(app.interview_mode)} on ${formatDateTime(app.interview_scheduled_at)}`
+            : 'Interview details will appear here after recruiter schedules it'}
+        />
+        <TimelineStep
+          done={finalStage}
+          active={app.status === 'offered' || app.status === 'rejected' || withdrawn}
           icon={Award}
           label="Final update"
           detail={statusConfig(app.status).nextStep}
@@ -398,7 +508,7 @@ const MyApplications = () => {
           </div>
           <button
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+            className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
           >
             <Briefcase className="w-4 h-4" />
             Browse jobs
@@ -415,8 +525,8 @@ const MyApplications = () => {
             <p className="text-2xl font-bold text-amber-600 mt-1">{stats.pending}</p>
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-500">Shortlisted</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.shortlisted}</p>
+            <p className="text-xs font-semibold text-gray-500">In progress</p>
+            <p className="text-2xl font-bold text-sky-600 mt-1">{stats.inProgress}</p>
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-4">
             <p className="text-xs font-semibold text-gray-500">Withdrawn</p>
@@ -490,16 +600,19 @@ const MyApplications = () => {
 
               return (
                 <motion.div
+                  id={`application-${app.id}`}
                   key={app.id}
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className="bg-white rounded-xl border border-gray-100 hover:border-indigo-100 hover:shadow-sm transition-all overflow-hidden"
+                  className={`bg-white rounded-xl border hover:border-indigo-100 hover:shadow-sm transition-all overflow-hidden ${
+                    highlightedApplicationId === app.id
+                      ? 'border-indigo-300 ring-2 ring-indigo-500 ring-offset-4 ring-offset-[#f3f2ef]'
+                      : 'border-gray-100'
+                  }`}
                 >
-                  <div className="flex items-center gap-4 p-5">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {company?.name?.charAt(0) || job?.title?.charAt(0) || 'J'}
-                    </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 sm:p-5">
+                    <CompanyLogo company={company} size="md" />
 
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-900 truncate">{job?.title || 'Job Position'}</p>
@@ -515,14 +628,14 @@ const MyApplications = () => {
                       {status.label}
                     </div>
 
-                    <div className={`text-center flex-shrink-0 w-24 border rounded-xl px-3 py-2 ${scoreBoxClass(finalScore)}`}>
+                    <div className={`text-center flex-shrink-0 w-full sm:w-24 border rounded-xl px-3 py-2 ${scoreBoxClass(finalScore)}`}>
                       <p className="text-2xl font-bold">{finalScore ? `${finalScore}%` : '--'}</p>
                       <p className="text-xs font-semibold">Match</p>
                     </div>
 
                     <button
                       onClick={() => setExpanded(isExpanded ? null : app.id)}
-                      className="text-gray-400 hover:text-indigo-500 transition-colors"
+                      className="self-end sm:self-auto text-gray-400 hover:text-indigo-500 transition-colors"
                       aria-label={isExpanded ? 'Collapse application' : 'Expand application'}
                     >
                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -558,6 +671,83 @@ const MyApplications = () => {
                           {renderTimeline(app)}
                         </div>
                       </div>
+
+                      <div className="mt-5 pt-5 border-t border-gray-100 grid lg:grid-cols-[1.1fr_0.9fr] gap-4">
+                        <div className="rounded-xl border border-gray-100 p-4">
+                          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-500" />
+                            Cover letter
+                          </h4>
+                          {app.cover_letter ? (
+                            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{app.cover_letter}</p>
+                          ) : (
+                            <p className="text-sm text-gray-400">No cover letter was added with this application.</p>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-gray-100 p-4">
+                          <h4 className="text-sm font-bold text-gray-900 mb-3">Application details</h4>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500">Company</span>
+                              <span className="font-semibold text-gray-900 text-right">{company?.name || 'Company'}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500">Status</span>
+                              <span className="font-semibold text-gray-900 text-right">{status.label}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500">Applied</span>
+                              <span className="font-semibold text-gray-900 text-right">{formatDate(app.created_at)}</span>
+                            </div>
+                            {app.status === 'withdrawn' && (
+                              <div className="flex items-start justify-between gap-4">
+                                <span className="text-gray-500">Withdrawn</span>
+                                <span className="font-semibold text-gray-900 text-right">{formatDate(app.withdrawn_at || app.updated_at)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {app.interview_scheduled_at && (
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+                                <p className="text-sm font-bold text-indigo-950 flex items-center gap-2">
+                                  <CalendarDays className="w-4 h-4 text-indigo-600" />
+                                  Interview scheduled
+                                </p>
+                                <p className="text-sm font-semibold text-indigo-900 mt-2">
+                                  {formatDateTime(app.interview_scheduled_at)}
+                                </p>
+                                <p className="text-xs text-indigo-700 mt-1">{interviewModeLabel(app.interview_mode)}</p>
+                                {app.interview_location && (
+                                  <p className="text-sm text-indigo-800 mt-3 break-words">{app.interview_location}</p>
+                                )}
+                                {app.interview_notes && (
+                                  <p className="text-sm text-indigo-800/80 mt-3 leading-relaxed whitespace-pre-line">{app.interview_notes}</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {job?.required_skills && (
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <p className="text-xs font-bold uppercase text-gray-400 mb-2">Job skills</p>
+                              <div className="flex flex-wrap gap-2">
+                                {job.required_skills.split(',').map((skill) => skill.trim()).filter(Boolean).slice(0, 8).map((skill) => (
+                                  <span key={skill} className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-semibold">
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {app.status === 'withdrawn' && app.withdraw_reason && (
+                        <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-4">
+                          <h4 className="text-sm font-bold text-red-700 mb-1">Withdrawal reason</h4>
+                          <p className="text-sm text-red-700 leading-relaxed whitespace-pre-line">{app.withdraw_reason}</p>
+                        </div>
+                      )}
 
                       <div className="mt-5 pt-5 border-t border-gray-100 grid lg:grid-cols-[1fr_auto] gap-4 lg:items-end">
                         <div>
@@ -599,7 +789,7 @@ const MyApplications = () => {
                               <CheckCircle className="w-4 h-4" />
                               Quiz {numberValue(app.soft_skill_score)}%
                             </div>
-                          ) : app.status === 'pending' ? (
+                          ) : !['rejected', 'withdrawn', 'hired'].includes(app.status) ? (
                             <button
                               onClick={() => openQuiz(app)}
                               className="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 flex items-center justify-center gap-2"
@@ -777,6 +967,39 @@ const MyApplications = () => {
               <p className="text-sm text-gray-600 leading-relaxed">
                 This will remove your application from the company review queue. You can apply again later from the job details page.
               </p>
+
+              <div className="mt-4">
+                <p className="text-sm font-bold text-gray-900 mb-2">Reason for withdrawing</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {withdrawReasons.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setWithdrawModal((current) => ({ ...current, reason }))}
+                      disabled={withdrawModal.loading}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                        withdrawModal.reason === reason
+                          ? 'bg-red-50 border-red-200 text-red-600'
+                          : 'border-gray-200 text-gray-600 hover:border-red-200 hover:text-red-600'
+                      } disabled:opacity-60`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={withdrawModal.reason}
+                  onChange={(event) => setWithdrawModal((current) => ({
+                    ...current,
+                    reason: event.target.value.slice(0, 1000),
+                  }))}
+                  rows={4}
+                  placeholder="Add a short reason..."
+                  disabled={withdrawModal.loading}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none disabled:opacity-60"
+                />
+                <p className="text-xs text-gray-400 text-right mt-1">{withdrawModal.reason.length}/1000</p>
+              </div>
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-2">
@@ -788,7 +1011,7 @@ const MyApplications = () => {
               </button>
               <button
                 onClick={confirmWithdraw}
-                disabled={withdrawModal.loading}
+                disabled={withdrawModal.loading || withdrawModal.reason.trim().length < 5}
                 className="px-5 py-2 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 flex items-center gap-2"
               >
                 {withdrawModal.loading ? (
