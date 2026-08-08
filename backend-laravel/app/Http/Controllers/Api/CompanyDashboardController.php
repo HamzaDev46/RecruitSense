@@ -77,14 +77,27 @@ class CompanyDashboardController extends Controller
             ->whereNotNull('final_score')
             ->where('final_score', '>', 0)
             ->avg('final_score');
+        $companyJobsQuery = JobPosting::where('company_id', $company->id);
 
         return response()->json([
             'company' => $company,
             'stats' => [
-                'total_jobs' => JobPosting::where('company_id', $company->id)->count(),
-                'active_jobs' => JobPosting::where('company_id', $company->id)->where('status', JobPosting::STATUS_ACTIVE)->count(),
-                'draft_jobs' => JobPosting::where('company_id', $company->id)->where('status', JobPosting::STATUS_DRAFT)->count(),
-                'closed_jobs' => JobPosting::where('company_id', $company->id)->where('status', JobPosting::STATUS_CLOSED)->count(),
+                'total_jobs' => (clone $companyJobsQuery)->count(),
+                'active_jobs' => (clone $companyJobsQuery)->where('status', JobPosting::STATUS_ACTIVE)->count(),
+                'accepting_jobs' => (clone $companyJobsQuery)->acceptingApplications()->count(),
+                'draft_jobs' => (clone $companyJobsQuery)->where('status', JobPosting::STATUS_DRAFT)->count(),
+                'closed_jobs' => (clone $companyJobsQuery)->where('status', JobPosting::STATUS_CLOSED)->count(),
+                'expired_jobs' => (clone $companyJobsQuery)
+                    ->where('status', JobPosting::STATUS_ACTIVE)
+                    ->whereNotNull('application_deadline')
+                    ->whereDate('application_deadline', '<', today())
+                    ->count(),
+                'closing_soon_jobs' => (clone $companyJobsQuery)
+                    ->where('status', JobPosting::STATUS_ACTIVE)
+                    ->whereNotNull('application_deadline')
+                    ->whereDate('application_deadline', '>=', today())
+                    ->whereDate('application_deadline', '<=', today()->addDays(7))
+                    ->count(),
                 'total_applicants' => $totalApplicants,
                 'pending' => (int) ($statusCounts['pending'] ?? 0),
                 'screening' => (int) ($statusCounts['screening'] ?? 0),

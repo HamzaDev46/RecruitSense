@@ -23,6 +23,7 @@ import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import CompanyLogo from '../../components/CompanyLogo'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
+import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
 const initialStats = {
   totalJobs: 0,
@@ -261,7 +262,7 @@ const Dashboard = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Job</span>
-                          <span className="text-xs text-gray-400">{job.job_type || job.type || 'Open role'}</span>
+                          <span className="text-xs text-gray-400">{formatJobType(job.job_type)}</span>
                         </div>
                         <h3 className="mt-2 font-bold text-gray-900 leading-tight">{job.title}</h3>
                         <p className="text-sm text-gray-500 mt-0.5 truncate">{job.company?.name || 'Company'}</p>
@@ -279,7 +280,7 @@ const Dashboard = () => {
                     )}
 
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className="text-xs text-gray-500 truncate">{job.location || 'Location not specified'}</p>
+                      <p className="text-xs text-gray-500 truncate">{job.location || 'Location not set'} - {formatSalary(job)}</p>
                       <button
                         type="button"
                         onClick={() => navigate(`/jobs/${job.id}`)}
@@ -536,6 +537,10 @@ const Dashboard = () => {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{job.title}</p>
                         <p className="text-sm text-gray-500 truncate">{job.company?.name}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {job.location || 'Location not set'} - {formatJobType(job.job_type)} - {formatWorkMode(job.work_mode)}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">{formatSalary(job)} - {formatDeadline(job)}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {job.required_skills?.split(',').slice(0, 3).map((skill, index) => (
                             <span key={index} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium border border-indigo-100">

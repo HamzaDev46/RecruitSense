@@ -25,6 +25,19 @@ class Company extends Model
         'contact_email',
         'company_size',
         'founded_year',
+        'dark_mode',
+        'notify_messages',
+        'notify_candidate_activity',
+        'notify_quiz_results',
+        'notify_post_activity',
+    ];
+
+    protected $casts = [
+        'dark_mode' => 'boolean',
+        'notify_messages' => 'boolean',
+        'notify_candidate_activity' => 'boolean',
+        'notify_quiz_results' => 'boolean',
+        'notify_post_activity' => 'boolean',
     ];
 
     protected $appends = ['logo_url', 'cover_image_url'];

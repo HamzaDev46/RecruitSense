@@ -214,7 +214,30 @@ class AccountSettingsController extends Controller
 
     public function updatePreferences(Request $request)
     {
-        $user = $request->user()->load('jobSeeker');
+        $user = $request->user()->load('company', 'jobSeeker');
+
+        if ($user->role === 'company' && $user->company) {
+            $validator = Validator::make($request->all(), [
+                'dark_mode' => ['required', 'boolean'],
+                'notify_messages' => ['required', 'boolean'],
+                'notify_candidate_activity' => ['required', 'boolean'],
+                'notify_quiz_results' => ['required', 'boolean'],
+                'notify_post_activity' => ['required', 'boolean'],
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $user->company->update($validator->validated());
+            UserCache::forgetProfile($user->id);
+            UserCache::forgetUnreadNotifications($user->id);
+
+            return response()->json([
+                'message' => 'Preferences updated successfully',
+                ...$this->settingsPayload($request),
+            ]);
+        }
 
         if ($user->role !== 'jobseeker' || !$user->jobSeeker) {
             return response()->json(['message' => 'Only job seekers can update these settings'], 403);
@@ -321,7 +344,7 @@ class AccountSettingsController extends Controller
 
     private function settingsPayload(Request $request): array
     {
-        $user = $request->user()->fresh()->load('jobSeeker');
+        $user = $request->user()->fresh()->load('company', 'jobSeeker');
         $blocked = $this->blockedUsersPayload($request);
 
         return [
@@ -331,19 +354,34 @@ class AccountSettingsController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
             ],
-            'preferences' => [
-                'profile_visibility' => $user->jobSeeker?->profile_visibility ?: 'public',
-                'show_profile_view_notifications' => (bool) ($user->jobSeeker?->show_profile_view_notifications ?? true),
-                'allow_search_appearance_tracking' => (bool) ($user->jobSeeker?->allow_search_appearance_tracking ?? true),
-                'dark_mode' => (bool) ($user->jobSeeker?->dark_mode ?? false),
-                'notify_connections' => (bool) ($user->jobSeeker?->notify_connections ?? true),
-                'notify_messages' => (bool) ($user->jobSeeker?->notify_messages ?? true),
-                'notify_application_updates' => (bool) ($user->jobSeeker?->notify_application_updates ?? true),
-                'notify_job_alerts' => (bool) ($user->jobSeeker?->notify_job_alerts ?? true),
-                'notify_post_activity' => (bool) ($user->jobSeeker?->notify_post_activity ?? true),
-            ],
+            'preferences' => $this->preferencesPayload($user),
             'blocked_users_count' => $blocked['blocked_users_count'],
             'blocked_users' => $blocked['blocked_users'],
+        ];
+    }
+
+    private function preferencesPayload(User $user): array
+    {
+        if ($user->role === 'company') {
+            return [
+                'dark_mode' => (bool) ($user->company?->dark_mode ?? false),
+                'notify_messages' => (bool) ($user->company?->notify_messages ?? true),
+                'notify_candidate_activity' => (bool) ($user->company?->notify_candidate_activity ?? true),
+                'notify_quiz_results' => (bool) ($user->company?->notify_quiz_results ?? true),
+                'notify_post_activity' => (bool) ($user->company?->notify_post_activity ?? true),
+            ];
+        }
+
+        return [
+            'profile_visibility' => $user->jobSeeker?->profile_visibility ?: 'public',
+            'show_profile_view_notifications' => (bool) ($user->jobSeeker?->show_profile_view_notifications ?? true),
+            'allow_search_appearance_tracking' => (bool) ($user->jobSeeker?->allow_search_appearance_tracking ?? true),
+            'dark_mode' => (bool) ($user->jobSeeker?->dark_mode ?? false),
+            'notify_connections' => (bool) ($user->jobSeeker?->notify_connections ?? true),
+            'notify_messages' => (bool) ($user->jobSeeker?->notify_messages ?? true),
+            'notify_application_updates' => (bool) ($user->jobSeeker?->notify_application_updates ?? true),
+            'notify_job_alerts' => (bool) ($user->jobSeeker?->notify_job_alerts ?? true),
+            'notify_post_activity' => (bool) ($user->jobSeeker?->notify_post_activity ?? true),
         ];
     }
 

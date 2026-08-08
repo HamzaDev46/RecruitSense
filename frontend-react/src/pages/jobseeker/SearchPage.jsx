@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Briefcase, Eye, FileText, MessageCircle, Search, Users } from 'lucide-react'
+import { Banknote, Briefcase, Eye, FileText, MapPin, MessageCircle, Search, Timer, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import api from '../../services/api'
+import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
 const tabs = [
   { id: 'all', label: 'All' },
@@ -158,6 +159,23 @@ const SearchPageContent = ({ initialQuery }) => {
                       <div className="min-w-0">
                         <h3 className="font-bold text-gray-900">{job.title}</h3>
                         <p className="text-sm text-gray-500 mt-1">{job.company?.name || 'Company'} {job.company?.industry ? `- ${job.company.industry}` : ''}</p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                          <span className="rounded-full bg-gray-50 text-gray-600 border border-gray-100 px-2.5 py-1 inline-flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            {job.location || 'Location not set'}
+                          </span>
+                          <span className="rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1">
+                            {formatJobType(job.job_type)} - {formatWorkMode(job.work_mode)}
+                          </span>
+                          <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 inline-flex items-center gap-1">
+                            <Banknote className="w-3.5 h-3.5" />
+                            {formatSalary(job)}
+                          </span>
+                          <span className="rounded-full bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-1 inline-flex items-center gap-1">
+                            <Timer className="w-3.5 h-3.5" />
+                            {formatDeadline(job)}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-600 mt-3 line-clamp-2">{job.description}</p>
                         <div className="flex flex-wrap gap-2 mt-3">
                           {skillList(job.required_skills).map((skill) => (

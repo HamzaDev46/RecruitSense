@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Brain, Mail, Lock, User, Eye, EyeOff, ArrowRight, Briefcase, UserCheck } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -18,6 +19,17 @@ const RegisterPage = () => {
     role: 'jobseeker'
   })
 
+  const finishRegistration = useCallback((user, token, message = `Welcome to RecruitSense, ${user.name}!`) => {
+    login(user, token)
+    toast.success(message)
+    if (user.role === 'company') navigate('/company/dashboard')
+    else navigate('/dashboard')
+  }, [login, navigate])
+
+  const handleGoogleSuccess = useCallback((user, token) => {
+    finishRegistration(user, token, `Welcome to RecruitSense, ${user.name}!`)
+  }, [finishRegistration])
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -28,10 +40,7 @@ const RegisterPage = () => {
     try {
       const res = await axios.post('http://127.0.0.1:8000/api/register', form)
       const { token, user } = res.data
-      login(user, token)
-      toast.success(`Welcome to RecruitSense, ${user.name}!`)
-      if (user.role === 'company') navigate('/company/dashboard')
-      else navigate('/dashboard')
+      finishRegistration(user, token)
     } catch (err) {
       const errors = err.response?.data?.errors
       if (errors) {
@@ -164,6 +173,18 @@ const RegisterPage = () => {
             )}
           </button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-semibold text-gray-400">OR</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <GoogleAuthButton
+          mode="signup"
+          role={form.role}
+          onSuccess={handleGoogleSuccess}
+        />
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{' '}

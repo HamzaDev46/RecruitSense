@@ -2,15 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
+  Banknote,
   Briefcase,
   Calendar,
   CheckCircle2,
   Edit3,
   EyeOff,
+  Laptop,
+  Layers,
+  MapPin,
   PlusCircle,
   Save,
   Search,
   Send,
+  Timer,
   Trash2,
   Users,
   X,
@@ -18,13 +23,54 @@ import {
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
 import api from '../../services/api'
+import {
+  formatDeadline,
+  formatExperienceLevel,
+  formatJobType,
+  formatSalary,
+  formatWorkMode,
+  isJobAcceptingApplications,
+  isJobExpired,
+} from '../../utils/jobDetails'
 
 const emptyForm = {
   title: '',
   description: '',
   required_skills: '',
+  job_type: 'full_time',
+  work_mode: 'onsite',
+  experience_level: 'entry',
+  location: '',
+  salary_min: '',
+  salary_max: '',
+  salary_currency: 'PKR',
+  application_deadline: '',
   status: 'active',
 }
+
+const jobTypeOptions = [
+  { key: 'full_time', label: 'Full time' },
+  { key: 'part_time', label: 'Part time' },
+  { key: 'contract', label: 'Contract' },
+  { key: 'internship', label: 'Internship' },
+  { key: 'temporary', label: 'Temporary' },
+]
+
+const workModeOptions = [
+  { key: 'onsite', label: 'On-site' },
+  { key: 'remote', label: 'Remote' },
+  { key: 'hybrid', label: 'Hybrid' },
+]
+
+const experienceOptions = [
+  { key: 'entry', label: 'Entry level' },
+  { key: 'junior', label: 'Junior' },
+  { key: 'mid', label: 'Mid level' },
+  { key: 'senior', label: 'Senior' },
+  { key: 'lead', label: 'Lead' },
+]
+
+const currencyOptions = ['PKR', 'USD', 'EUR', 'GBP']
 
 const statusOptions = [
   { key: 'all', label: 'All' },
@@ -67,6 +113,18 @@ const splitSkills = (skills) => String(skills || '')
   .map((skill) => skill.trim())
   .filter(Boolean)
 
+const dateInputValue = (value) => {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+const todayInputValue = () => {
+  const today = new Date()
+  const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+
+  return localDate.toISOString().slice(0, 10)
+}
+
 const CompanyJobs = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -102,11 +160,18 @@ const CompanyJobs = () => {
 
     return jobs.filter((job) => {
       const matchesStatus = statusFilter === 'all' || (job.status || 'active') === statusFilter
-      const matchesSearch = !query || (
-        job.title?.toLowerCase().includes(query) ||
-        job.description?.toLowerCase().includes(query) ||
-        job.required_skills?.toLowerCase().includes(query)
-      )
+      const searchText = [
+        job.title,
+        job.description,
+        job.required_skills,
+        job.location,
+        formatJobType(job.job_type),
+        formatWorkMode(job.work_mode),
+        formatExperienceLevel(job.experience_level),
+        formatSalary(job),
+        formatDeadline(job),
+      ].filter(Boolean).join(' ').toLowerCase()
+      const matchesSearch = !query || searchText.includes(query)
 
       return matchesStatus && matchesSearch
     })
@@ -124,12 +189,14 @@ const CompanyJobs = () => {
     const pendingApplicants = jobs.reduce((sum, job) => sum + Number(job.pending_applications_count || 0), 0)
     const screeningApplicants = jobs.reduce((sum, job) => sum + Number(job.screening_applications_count || 0), 0)
     const scheduledInterviews = jobs.reduce((sum, job) => sum + Number(job.scheduled_interviews_count || 0), 0)
+    const acceptingJobs = jobs.filter((job) => isJobAcceptingApplications(job)).length
+    const expiredJobs = jobs.filter((job) => isJobExpired(job)).length
 
     return [
       {
         label: 'Total jobs',
         value: jobs.length,
-        helper: `${statusCounts.active} active now`,
+        helper: `${acceptingJobs} accepting applications`,
         icon: <Briefcase className="w-5 h-5" />,
         tone: 'bg-indigo-50 text-indigo-600',
       },
@@ -150,12 +217,12 @@ const CompanyJobs = () => {
       {
         label: 'Drafts',
         value: statusCounts.draft,
-        helper: 'Not visible yet',
+        helper: expiredJobs ? `${expiredJobs} deadline passed` : 'Not visible yet',
         icon: <Edit3 className="w-5 h-5" />,
         tone: 'bg-amber-50 text-amber-600',
       },
     ]
-  }, [jobs, statusCounts.active, statusCounts.draft])
+  }, [jobs, statusCounts.draft])
 
   const formSkills = useMemo(() => splitSkills(form.required_skills), [form.required_skills])
   const formStatusMeta = getStatusMeta(form.status)
@@ -173,6 +240,14 @@ const CompanyJobs = () => {
       title: job.title || '',
       description: job.description || '',
       required_skills: job.required_skills || '',
+      job_type: job.job_type || 'full_time',
+      work_mode: job.work_mode || 'onsite',
+      experience_level: job.experience_level || 'entry',
+      location: job.location || '',
+      salary_min: job.salary_min || '',
+      salary_max: job.salary_max || '',
+      salary_currency: job.salary_currency || 'PKR',
+      application_deadline: dateInputValue(job.application_deadline),
       status: job.status || 'active',
     })
     setShowForm(true)
@@ -199,11 +274,24 @@ const CompanyJobs = () => {
       title: form.title.trim(),
       description: form.description.trim(),
       required_skills: form.required_skills.trim(),
+      job_type: form.job_type || null,
+      work_mode: form.work_mode || null,
+      experience_level: form.experience_level || null,
+      location: form.location.trim(),
+      salary_min: form.salary_min,
+      salary_max: form.salary_max,
+      salary_currency: form.salary_currency || 'PKR',
+      application_deadline: form.application_deadline || null,
       status: form.status || 'active',
     }
 
     if (!payload.title || !payload.description || !payload.required_skills) {
       toast.error('Please fill title, description, and required skills')
+      return
+    }
+
+    if (Number(payload.salary_min || 0) > 0 && Number(payload.salary_max || 0) > 0 && Number(payload.salary_max) < Number(payload.salary_min)) {
+      toast.error('Maximum salary should be greater than minimum salary')
       return
     }
 
@@ -308,7 +396,7 @@ const CompanyJobs = () => {
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h2 className="font-bold text-gray-900">{editingJob ? 'Edit job' : 'Post a new job'}</h2>
-                <p className="text-sm text-gray-500 mt-1">Add a clear role description and comma-separated skills.</p>
+                <p className="text-sm text-gray-500 mt-1">Add role details, skills, deadline, and visibility.</p>
               </div>
               <button
                 type="button"
@@ -333,6 +421,86 @@ const CompanyJobs = () => {
                   />
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Location</label>
+                  <input
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    placeholder="Lahore, Pakistan"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Status</label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+                  >
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">{formStatusMeta.helper}</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Job type</label>
+                  <select
+                    name="job_type"
+                    value={form.job_type}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+                  >
+                    {jobTypeOptions.map((option) => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Work mode</label>
+                  <select
+                    name="work_mode"
+                    value={form.work_mode}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+                  >
+                    {workModeOptions.map((option) => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Experience</label>
+                  <select
+                    name="experience_level"
+                    value={form.experience_level}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+                  >
+                    {experienceOptions.map((option) => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Apply deadline</label>
+                  <input
+                    type="date"
+                    name="application_deadline"
+                    value={form.application_deadline}
+                    min={todayInputValue()}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="md:col-span-2">
                   <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Required skills</label>
                   <input
                     name="required_skills"
@@ -357,18 +525,41 @@ const CompanyJobs = () => {
                   )}
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Status</label>
-                  <select
-                    name="status"
-                    value={form.status}
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Min salary</label>
+                  <input
+                    type="number"
+                    min="0"
+                    name="salary_min"
+                    value={form.salary_min}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
-                  >
-                    <option value="active">Active</option>
-                    <option value="draft">Draft</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">{formStatusMeta.helper}</p>
+                    placeholder="60000"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Max salary</label>
+                  <div className="grid grid-cols-[minmax(0,1fr)_86px] gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      name="salary_max"
+                      value={form.salary_max}
+                      onChange={handleChange}
+                      placeholder="120000"
+                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <select
+                      name="salary_currency"
+                      value={form.salary_currency}
+                      onChange={handleChange}
+                      aria-label="Salary currency"
+                      className="w-full rounded-xl border border-gray-200 px-2 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+                    >
+                      {currencyOptions.map((currency) => (
+                        <option key={currency} value={currency}>{currency}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               <div>
@@ -382,7 +573,7 @@ const CompanyJobs = () => {
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-y"
                 />
               </div>
-              <div className="grid md:grid-cols-3 gap-3">
+              <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-3">
                 <div className={`rounded-xl border p-3 ${form.title.trim() ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     {form.title.trim() ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
@@ -403,6 +594,27 @@ const CompanyJobs = () => {
                     Skills
                   </div>
                   <p className="text-xs mt-1">{formSkills.length ? `${formSkills.length} skills will be used for matching.` : 'Add comma-separated skills.'}</p>
+                </div>
+                <div className={`rounded-xl border p-3 ${form.location.trim() ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {form.location.trim() ? <MapPin className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                    Location
+                  </div>
+                  <p className="text-xs mt-1">{form.location.trim() ? form.location : 'Add office or hiring location.'}</p>
+                </div>
+                <div className={`rounded-xl border p-3 ${Number(form.salary_min || 0) > 0 || Number(form.salary_max || 0) > 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {Number(form.salary_min || 0) > 0 || Number(form.salary_max || 0) > 0 ? <Banknote className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                    Salary
+                  </div>
+                  <p className="text-xs mt-1">{formatSalary(form)}</p>
+                </div>
+                <div className={`rounded-xl border p-3 ${form.application_deadline ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {form.application_deadline ? <Timer className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                    Deadline
+                  </div>
+                  <p className="text-xs mt-1">{formatDeadline(form)}</p>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
@@ -435,7 +647,7 @@ const CompanyJobs = () => {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search jobs by title, description, or skills..."
+            placeholder="Search jobs by title, skills, location, salary, or work mode..."
             className="w-full rounded-2xl border border-gray-200 bg-white pl-12 pr-4 py-3.5 text-sm shadow-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
           />
         </div>
@@ -493,6 +705,8 @@ const CompanyJobs = () => {
               const skills = splitSkills(job.required_skills)
               const currentStatus = job.status || 'active'
               const meta = getStatusMeta(currentStatus)
+              const expired = isJobExpired(job)
+              const acceptingApplications = isJobAcceptingApplications(job)
 
               return (
                 <article key={job.id} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:border-indigo-200 hover:shadow-md transition-all">
@@ -507,9 +721,21 @@ const CompanyJobs = () => {
                           <Calendar className="w-4 h-4" />
                           Posted {formatDate(job.created_at)}
                         </p>
-                        <span className={`inline-flex mt-2 px-2.5 py-1 rounded-full border text-xs font-semibold ${meta.className}`}>
-                          {meta.label}
-                        </span>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-semibold ${meta.className}`}>
+                            {meta.label}
+                          </span>
+                          {expired && (
+                            <span className="inline-flex px-2.5 py-1 rounded-full border text-xs font-semibold bg-red-50 text-red-600 border-red-100">
+                              Deadline passed
+                            </span>
+                          )}
+                          {acceptingApplications && (
+                            <span className="inline-flex px-2.5 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-100">
+                              Accepting
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -533,6 +759,33 @@ const CompanyJobs = () => {
                   </div>
 
                   <p className="text-sm text-gray-600 mt-4 line-clamp-3">{job.description}</p>
+
+                  <div className="grid sm:grid-cols-2 gap-2 mt-4 text-xs font-semibold">
+                    <span className="rounded-xl bg-gray-50 text-gray-600 border border-gray-100 px-3 py-2 flex items-center gap-2 min-w-0">
+                      <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                      <span className="truncate">{job.location || 'Location not set'}</span>
+                    </span>
+                    <span className="rounded-xl bg-sky-50 text-sky-700 border border-sky-100 px-3 py-2 flex items-center gap-2 min-w-0">
+                      <Laptop className="w-4 h-4 text-sky-500 shrink-0" />
+                      <span className="truncate">{formatWorkMode(job.work_mode)}</span>
+                    </span>
+                    <span className="rounded-xl bg-violet-50 text-violet-700 border border-violet-100 px-3 py-2 flex items-center gap-2 min-w-0">
+                      <Layers className="w-4 h-4 text-violet-500 shrink-0" />
+                      <span className="truncate">{formatJobType(job.job_type)} - {formatExperienceLevel(job.experience_level)}</span>
+                    </span>
+                    <span className="rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-2 flex items-center gap-2 min-w-0">
+                      <Banknote className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span className="truncate">{formatSalary(job)}</span>
+                    </span>
+                    <span className={`sm:col-span-2 rounded-xl border px-3 py-2 flex items-center gap-2 min-w-0 ${
+                      expired
+                        ? 'bg-red-50 text-red-600 border-red-100'
+                        : 'bg-amber-50 text-amber-700 border-amber-100'
+                    }`}>
+                      <Timer className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{formatDeadline(job)}</span>
+                    </span>
+                  </div>
 
                   <div className="flex flex-wrap gap-2 mt-4">
                     {skills.slice(0, 6).map((skill) => (

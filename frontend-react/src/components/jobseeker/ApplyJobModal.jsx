@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Briefcase, Loader2, Send, X } from 'lucide-react'
+import { Banknote, Briefcase, Loader2, MapPin, Send, Timer, X } from 'lucide-react'
 import CompanyLogo from '../CompanyLogo'
+import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
 const ApplyJobModal = ({ open, job, loading = false, onClose, onSubmit }) => {
   const [coverLetter, setCoverLetter] = useState('')
@@ -71,6 +72,37 @@ const ApplyJobModal = ({ open, job, loading = false, onClose, onSubmit }) => {
               </div>
             </div>
           )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+              <MapPin className="w-5 h-5 text-gray-400" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400">Location</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{job.location || 'Location not set'}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+              <Briefcase className="w-5 h-5 text-indigo-500" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400">Role setup</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{formatJobType(job.job_type)} - {formatWorkMode(job.work_mode)}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+              <Banknote className="w-5 h-5 text-emerald-500" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400">Salary</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{formatSalary(job)}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+              <Timer className="w-5 h-5 text-amber-500" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400">Deadline</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{formatDeadline(job)}</p>
+              </div>
+            </div>
+          </div>
 
           <label className="block">
             <span className="text-sm font-bold text-gray-900">Cover letter</span>

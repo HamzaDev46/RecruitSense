@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bookmark, BookmarkCheck, Briefcase, CheckCircle2, Search, Sparkles, X, XCircle } from 'lucide-react'
+import { Banknote, Bookmark, BookmarkCheck, Briefcase, CheckCircle2, MapPin, Search, Sparkles, Timer, X, XCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
+import {
+  formatDeadline,
+  formatExperienceLevel,
+  formatJobType,
+  formatSalary,
+  formatWorkMode,
+  isJobAcceptingApplications,
+} from '../../utils/jobDetails'
 
 const scoreColor = (score) => {
   if (score >= 70) return 'text-emerald-600 bg-emerald-50 border-emerald-100'
@@ -67,6 +75,11 @@ const RecommendedJobs = () => {
     return recommendations.filter(({ job, matched_skills, missing_skills }) =>
       job?.title?.toLowerCase().includes(query) ||
       job?.company?.name?.toLowerCase().includes(query) ||
+      job?.location?.toLowerCase().includes(query) ||
+      formatJobType(job?.job_type).toLowerCase().includes(query) ||
+      formatWorkMode(job?.work_mode).toLowerCase().includes(query) ||
+      formatExperienceLevel(job?.experience_level).toLowerCase().includes(query) ||
+      formatSalary(job).toLowerCase().includes(query) ||
       matched_skills?.some((skill) => skill.includes(query)) ||
       missing_skills?.some((skill) => skill.includes(query))
     )
@@ -197,7 +210,10 @@ const RecommendedJobs = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map(({ job, match_score, matched_skills, missing_skills, is_saved, has_applied }) => (
+            {filtered.map(({ job, match_score, matched_skills, missing_skills, is_saved, has_applied }) => {
+              const acceptingApplications = isJobAcceptingApplications(job)
+
+              return (
               <div key={job.id} className="bg-white border border-gray-100 rounded-2xl p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <CompanyLogo company={job.company} size="lg" />
@@ -209,6 +225,23 @@ const RecommendedJobs = () => {
                           <h2 className="text-lg font-bold text-gray-900 hover:text-indigo-600">{job.title}</h2>
                         </button>
                         <p className="text-sm text-gray-600 mt-0.5">{job.company?.name}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-gray-500">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-100 px-2.5 py-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            {job.location || 'Location not set'}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1">
+                            <Banknote className="w-3.5 h-3.5" />
+                            {formatSalary(job)}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-1">
+                            <Timer className="w-3.5 h-3.5" />
+                            {formatDeadline(job)}
+                          </span>
+                          <span className="inline-flex rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1">
+                            {formatJobType(job.job_type)} - {formatWorkMode(job.work_mode)}
+                          </span>
+                        </div>
                       </div>
                       <div className={`px-4 py-2 rounded-xl border text-center ${scoreColor(match_score)}`}>
                         <p className="text-2xl font-bold">{match_score}%</p>
@@ -253,11 +286,11 @@ const RecommendedJobs = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-5">
                       <button
                         onClick={() => openApply(job)}
-                        disabled={(applyModal.loading && applyModal.job?.id === job.id) || has_applied}
+                        disabled={(applyModal.loading && applyModal.job?.id === job.id) || has_applied || !acceptingApplications}
                         className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
                       >
                         <Briefcase className="w-4 h-4" />
-                        {has_applied ? 'Applied' : applyModal.loading && applyModal.job?.id === job.id ? 'Applying...' : 'Apply'}
+                        {has_applied ? 'Applied' : !acceptingApplications ? 'Closed' : applyModal.loading && applyModal.job?.id === job.id ? 'Applying...' : 'Apply'}
                       </button>
 
                       <button
@@ -283,7 +316,8 @@ const RecommendedJobs = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

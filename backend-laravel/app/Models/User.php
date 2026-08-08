@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'google_id', 'avatar_url', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -95,6 +95,22 @@ class User extends Authenticatable
 
     public function notificationEnabledFor(string $type): bool
     {
+        if ($this->role === 'company') {
+            $this->loadMissing('company');
+
+            if (!$this->company) {
+                return true;
+            }
+
+            return match (true) {
+                $type === 'message_received' => (bool) ($this->company->notify_messages ?? true),
+                in_array($type, ['candidate_applied', 'candidate_application_withdrawn'], true) => (bool) ($this->company->notify_candidate_activity ?? true),
+                $type === 'candidate_quiz_submitted' => (bool) ($this->company->notify_quiz_results ?? true),
+                in_array($type, ['post_like', 'post_comment', 'post_repost'], true) => (bool) ($this->company->notify_post_activity ?? true),
+                default => true,
+            };
+        }
+
         if ($this->role !== 'jobseeker') {
             return true;
         }

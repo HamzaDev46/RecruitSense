@@ -8,6 +8,8 @@ const pageImports = {
   landing: () => import('./pages/LandingPage'),
   login: () => import('./pages/auth/LoginPage'),
   register: () => import('./pages/auth/RegisterPage'),
+  forgotPassword: () => import('./pages/auth/ForgotPasswordPage'),
+  resetPassword: () => import('./pages/auth/ResetPasswordPage'),
   dashboard: () => import('./pages/jobseeker/Dashboard'),
   search: () => import('./pages/jobseeker/SearchPage'),
   feed: () => import('./pages/jobseeker/FeedPage'),
@@ -24,6 +26,7 @@ const pageImports = {
   jobAlerts: () => import('./pages/jobseeker/JobAlerts'),
   settings: () => import('./pages/jobseeker/SettingsPage'),
   companyDashboard: () => import('./pages/company/CompanyDashboard'),
+  companyAnalytics: () => import('./pages/company/CompanyAnalytics'),
   companyJobs: () => import('./pages/company/CompanyJobs'),
   companyApplicants: () => import('./pages/company/CompanyApplicants'),
   companyInterviews: () => import('./pages/company/CompanyInterviews'),
@@ -34,6 +37,8 @@ const pageImports = {
 const LandingPage = lazy(pageImports.landing)
 const LoginPage = lazy(pageImports.login)
 const RegisterPage = lazy(pageImports.register)
+const ForgotPasswordPage = lazy(pageImports.forgotPassword)
+const ResetPasswordPage = lazy(pageImports.resetPassword)
 const Dashboard = lazy(pageImports.dashboard)
 const SearchPage = lazy(pageImports.search)
 const FeedPage = lazy(pageImports.feed)
@@ -50,6 +55,7 @@ const RecommendedJobs = lazy(pageImports.recommendedJobs)
 const JobAlerts = lazy(pageImports.jobAlerts)
 const SettingsPage = lazy(pageImports.settings)
 const CompanyDashboard = lazy(pageImports.companyDashboard)
+const CompanyAnalytics = lazy(pageImports.companyAnalytics)
 const CompanyJobs = lazy(pageImports.companyJobs)
 const CompanyApplicants = lazy(pageImports.companyApplicants)
 const CompanyInterviews = lazy(pageImports.companyInterviews)
@@ -74,7 +80,7 @@ const jobseekerPreloadKeys = [
   'settings',
 ]
 
-const companyPreloadKeys = ['companyDashboard', 'companyJobs', 'companyApplicants', 'companyInterviews', 'notifications', 'messages', 'companyQuiz', 'companySettings']
+const companyPreloadKeys = ['companyDashboard', 'companyAnalytics', 'companyJobs', 'companyApplicants', 'companyInterviews', 'notifications', 'messages', 'companyQuiz', 'companySettings']
 
 const preloadAppPages = () => {
   const role = (() => {
@@ -178,6 +184,8 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/dashboard" element={
               <ProtectedRoute role="jobseeker">
                 <Dashboard />
@@ -271,6 +279,11 @@ function App() {
             <Route path="/company/dashboard" element={
               <ProtectedRoute role="company">
                 <CompanyDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/analytics" element={
+              <ProtectedRoute role="company">
+                <CompanyAnalytics />
               </ProtectedRoute>
             } />
             <Route path="/company/jobs" element={

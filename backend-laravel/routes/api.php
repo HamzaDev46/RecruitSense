@@ -29,6 +29,9 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/auth/google', [AuthController::class, 'googleAuth']);
 
 // Public job routes — job seekers can browse without login
 Route::get('/jobs', [JobPostingController::class, 'index']);

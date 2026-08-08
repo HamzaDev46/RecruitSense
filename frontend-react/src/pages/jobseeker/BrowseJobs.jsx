@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Briefcase, MapPin, Clock, ChevronRight, Bookmark, BookmarkCheck, X } from 'lucide-react'
+import { Search, Briefcase, MapPin, Clock, ChevronRight, Bookmark, BookmarkCheck, X, Banknote, Laptop, Layers, Timer } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
+import {
+  formatDeadline,
+  formatExperienceLevel,
+  formatJobType,
+  formatSalary,
+  formatWorkMode,
+  isJobAcceptingApplications,
+} from '../../utils/jobDetails'
 
 const BrowseJobs = () => {
   const { jobId } = useParams()
@@ -45,14 +53,20 @@ const BrowseJobs = () => {
     const q = search.trim().toLowerCase()
     if (!q) return jobs
 
-    return jobs.filter(j =>
-      j.title?.toLowerCase().includes(q) ||
-      j.company?.name?.toLowerCase().includes(q) ||
-      j.required_skills?.toLowerCase().includes(q)
-    )
+    return jobs.filter((job) => [
+      job.title,
+      job.company?.name,
+      job.required_skills,
+      job.location,
+      formatJobType(job.job_type),
+      formatWorkMode(job.work_mode),
+      formatExperienceLevel(job.experience_level),
+      formatSalary(job),
+    ].filter(Boolean).join(' ').toLowerCase().includes(q))
   }, [jobs, search])
 
   const selected = filtered.find(job => job.id === selectedId) || filtered[0] || null
+  const selectedAccepting = isJobAcceptingApplications(selected)
 
   const openApply = (job) => {
     setApplyModal({
@@ -128,7 +142,7 @@ const BrowseJobs = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search jobs, companies, or skills..."
+            placeholder="Search jobs, companies, skills, location, or salary..."
             className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
           />
           {search && (
@@ -169,6 +183,9 @@ const BrowseJobs = () => {
                           {job.title}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">{job.company?.name}</p>
+                        <p className="text-xs text-gray-400 mt-1 truncate">
+                          {job.location || 'Location not set'} - {formatJobType(job.job_type)}
+                        </p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {job.required_skills?.split(',').slice(0, 2).map((skill, i) => (
                             <span key={i} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
@@ -210,10 +227,10 @@ const BrowseJobs = () => {
                     <p className="text-gray-600 font-medium mt-0.5">{selected.company?.name}</p>
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2 text-sm text-gray-400">
                       <span className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" /> Pakistan
+                        <MapPin className="w-4 h-4" /> {selected.location || 'Location not set'}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" /> Full Time
+                        <Clock className="w-4 h-4" /> {formatJobType(selected.job_type)}
                       </span>
                     </div>
                   </div>
@@ -223,12 +240,12 @@ const BrowseJobs = () => {
                 <div className="flex flex-col sm:flex-row gap-3 mb-6">
                   <button
                     onClick={() => openApply(selected)}
-                    disabled={applyModal.loading}
+                    disabled={applyModal.loading || !selectedAccepting}
                     className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
                   >
                     {applyModal.loading && applyModal.job?.id === selected.id ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : 'Apply Now'}
+                    ) : selectedAccepting ? 'Apply Now' : 'Applications closed'}
                   </button>
                   <button
                     onClick={() => toggleSave(selected.id)}
@@ -246,6 +263,37 @@ const BrowseJobs = () => {
                     )}
                     {savedJobIds.includes(selected.id) ? 'Saved' : 'Save'}
                   </button>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+                    <Laptop className="w-5 h-5 text-sky-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400">Work mode</p>
+                      <p className="text-sm font-bold text-gray-900">{formatWorkMode(selected.work_mode)}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+                    <Layers className="w-5 h-5 text-violet-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400">Experience</p>
+                      <p className="text-sm font-bold text-gray-900">{formatExperienceLevel(selected.experience_level)}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+                    <Banknote className="w-5 h-5 text-emerald-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400">Salary</p>
+                      <p className="text-sm font-bold text-gray-900">{formatSalary(selected)}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex items-center gap-3">
+                    <Timer className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400">Deadline</p>
+                      <p className="text-sm font-bold text-gray-900">{formatDeadline(selected)}</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Required Skills */}

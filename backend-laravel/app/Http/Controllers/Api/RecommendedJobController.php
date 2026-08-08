@@ -20,7 +20,7 @@ class RecommendedJobController extends Controller
 
         $jobSeeker = $user->jobSeeker;
         $jobs = JobPosting::with('company')
-            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->acceptingApplications()
             ->latest()
             ->get();
         $candidateSkills = $this->detectCandidateSkills($jobSeeker, $this->skillCatalog($jobs));

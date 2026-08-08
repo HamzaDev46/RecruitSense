@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bookmark, Briefcase, Clock, MapPin, Search, Trash2, X } from 'lucide-react'
+import { Banknote, Bookmark, Briefcase, Clock, MapPin, Search, Timer, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
-
-const isActiveJob = (job) => (job?.status || 'active') === 'active'
+import {
+  formatDeadline,
+  formatJobType,
+  formatSalary,
+  formatWorkMode,
+  isJobAcceptingApplications,
+  isJobExpired,
+} from '../../utils/jobDetails'
 
 const SavedJobs = () => {
   const [savedJobs, setSavedJobs] = useState([])
@@ -56,7 +62,11 @@ const SavedJobs = () => {
     return savedJobs.filter(({ job }) =>
       job?.title?.toLowerCase().includes(query) ||
       job?.company?.name?.toLowerCase().includes(query) ||
-      job?.required_skills?.toLowerCase().includes(query)
+      job?.required_skills?.toLowerCase().includes(query) ||
+      job?.location?.toLowerCase().includes(query) ||
+      formatJobType(job?.job_type).toLowerCase().includes(query) ||
+      formatWorkMode(job?.work_mode).toLowerCase().includes(query) ||
+      formatSalary(job).toLowerCase().includes(query)
     )
   }, [savedJobs, search])
 
@@ -152,7 +162,8 @@ const SavedJobs = () => {
         ) : (
           <div className="space-y-4">
             {filtered.map(({ id, job, saved_at }) => {
-              const active = isActiveJob(job)
+              const active = isJobAcceptingApplications(job)
+              const expired = isJobExpired(job)
 
               return (
                 <div key={id} className="bg-white border border-gray-100 rounded-2xl p-5">
@@ -163,17 +174,34 @@ const SavedJobs = () => {
                         <h2 className="text-lg font-bold text-gray-900">{job?.title}</h2>
                         {!active && (
                           <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100 text-xs font-semibold capitalize">
-                            {job?.status || 'closed'}
+                            {expired ? 'Deadline passed' : job?.status || 'closed'}
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mt-0.5">{job?.company?.name}</p>
                       <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-400">
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" /> Pakistan
+                          <MapPin className="w-4 h-4" /> {job?.location || 'Location not set'}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" /> Saved {saved_at ? new Date(saved_at).toLocaleDateString() : 'recently'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3 text-xs font-semibold">
+                        <span className="rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1">
+                          {formatJobType(job?.job_type)} - {formatWorkMode(job?.work_mode)}
+                        </span>
+                        <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 inline-flex items-center gap-1">
+                          <Banknote className="w-3.5 h-3.5" />
+                          {formatSalary(job)}
+                        </span>
+                        <span className={`rounded-full border px-2.5 py-1 inline-flex items-center gap-1 ${
+                          expired
+                            ? 'bg-red-50 text-red-600 border-red-100'
+                            : 'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                          <Timer className="w-3.5 h-3.5" />
+                          {formatDeadline(job)}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2 mt-3">

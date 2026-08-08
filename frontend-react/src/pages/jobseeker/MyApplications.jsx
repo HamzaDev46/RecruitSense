@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import {
   AlertTriangle,
   Award,
+  Banknote,
   Brain,
   Briefcase,
   CalendarDays,
@@ -13,8 +14,10 @@ import {
   Clock,
   FileText,
   Loader2,
+  MapPin,
   Search,
   Send,
+  Timer,
   TrendingUp,
   Undo2,
   X,
@@ -25,6 +28,7 @@ import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import CompanyLogo from '../../components/CompanyLogo'
 import api from '../../services/api'
+import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
 const filters = [
   { key: 'all', label: 'All' },
@@ -699,6 +703,31 @@ const MyApplications = () => {
                             <div className="flex items-start justify-between gap-4">
                               <span className="text-gray-500">Applied</span>
                               <span className="font-semibold text-gray-900 text-right">{formatDate(app.created_at)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500 inline-flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                Location
+                              </span>
+                              <span className="font-semibold text-gray-900 text-right">{job?.location || 'Location not set'}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500">Role setup</span>
+                              <span className="font-semibold text-gray-900 text-right">{formatJobType(job?.job_type)} - {formatWorkMode(job?.work_mode)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500 inline-flex items-center gap-1">
+                                <Banknote className="w-3.5 h-3.5" />
+                                Salary
+                              </span>
+                              <span className="font-semibold text-gray-900 text-right">{formatSalary(job)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                              <span className="text-gray-500 inline-flex items-center gap-1">
+                                <Timer className="w-3.5 h-3.5" />
+                                Deadline
+                              </span>
+                              <span className="font-semibold text-gray-900 text-right">{formatDeadline(job)}</span>
                             </div>
                             {app.status === 'withdrawn' && (
                               <div className="flex items-start justify-between gap-4">

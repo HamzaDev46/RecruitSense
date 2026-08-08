@@ -32,7 +32,7 @@ class JobSeekerDashboardController extends Controller
             ->pluck('total', 'status');
 
         $recentJobs = JobPosting::with('company')
-            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->acceptingApplications()
             ->latest()
             ->limit(5)
             ->get();
@@ -49,7 +49,7 @@ class JobSeekerDashboardController extends Controller
 
         return response()->json([
             'stats' => [
-                'totalJobs' => JobPosting::where('status', JobPosting::STATUS_ACTIVE)->count(),
+                'totalJobs' => JobPosting::acceptingApplications()->count(),
                 'myApplications' => Application::where('job_seeker_id', $jobSeeker->id)->count(),
                 'savedJobs' => SavedJob::where('job_seeker_id', $jobSeeker->id)->count(),
                 'shortlisted' => (int) ($statusCounts['shortlisted'] ?? 0),

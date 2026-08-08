@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  BarChart3,
   Brain,
   Briefcase,
   Calendar,
@@ -19,6 +20,7 @@ import api from '../../services/api'
 
 const navItems = [
   { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard', path: '/company/dashboard' },
+  { icon: <BarChart3 className="w-5 h-5" />, label: 'Analytics', path: '/company/analytics' },
   { icon: <Briefcase className="w-5 h-5" />, label: 'Jobs', path: '/company/jobs' },
   { icon: <Users className="w-5 h-5" />, label: 'Applicants', path: '/company/applicants' },
   { icon: <Calendar className="w-5 h-5" />, label: 'Interviews', path: '/company/interviews' },

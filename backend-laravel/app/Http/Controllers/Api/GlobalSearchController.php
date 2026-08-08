@@ -65,11 +65,15 @@ class GlobalSearchController extends Controller
     private function searchJobs(Request $request, string $likeTerm): Collection
     {
         return JobPosting::with('company')
-            ->where('status', JobPosting::STATUS_ACTIVE)
+            ->acceptingApplications()
             ->where(function ($query) use ($likeTerm) {
                 $query->where('title', 'like', $likeTerm)
                     ->orWhere('description', 'like', $likeTerm)
                     ->orWhere('required_skills', 'like', $likeTerm)
+                    ->orWhere('location', 'like', $likeTerm)
+                    ->orWhere('job_type', 'like', $likeTerm)
+                    ->orWhere('work_mode', 'like', $likeTerm)
+                    ->orWhere('experience_level', 'like', $likeTerm)
                     ->orWhereHas('company', function ($companyQuery) use ($likeTerm) {
                         $companyQuery->where('name', 'like', $likeTerm)
                             ->orWhere('industry', 'like', $likeTerm);
@@ -159,6 +163,16 @@ class GlobalSearchController extends Controller
             'title' => $job->title,
             'description' => Str::limit((string) $job->description, 220),
             'required_skills' => $job->required_skills,
+            'job_type' => $job->job_type,
+            'work_mode' => $job->work_mode,
+            'experience_level' => $job->experience_level,
+            'location' => $job->location,
+            'salary_min' => $job->salary_min,
+            'salary_max' => $job->salary_max,
+            'salary_currency' => $job->salary_currency,
+            'application_deadline' => $job->application_deadline?->toDateString(),
+            'is_expired' => $job->is_expired,
+            'is_accepting_applications' => $job->is_accepting_applications,
             'status' => $job->status,
             'created_at' => $job->created_at?->toISOString(),
             'is_saved' => $saved,

@@ -44,7 +44,7 @@ class JobAlertMatcher
     {
         $job->loadMissing('company.user');
 
-        if ($job->status !== JobPosting::STATUS_ACTIVE) {
+        if (!$job->is_accepting_applications) {
             return 0;
         }
 
@@ -150,6 +150,10 @@ class JobAlertMatcher
             $job->title,
             $job->description,
             $job->required_skills,
+            $job->job_type,
+            $job->work_mode,
+            $job->experience_level,
+            $job->location,
             $job->company?->name,
             'Pakistan',
         ]))->lower()->toString();

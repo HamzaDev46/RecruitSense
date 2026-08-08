@@ -579,7 +579,11 @@ class QuizController extends Controller
 
         $companyUserId = $application->jobPosting?->company?->user_id;
 
-        if ($companyUserId && $companyUserId !== $user->id) {
+        if (
+            $companyUserId
+            && $companyUserId !== $user->id
+            && \App\Models\User::find($companyUserId)?->notificationEnabledFor('candidate_quiz_submitted')
+        ) {
             AppNotification::create([
                 'user_id' => $companyUserId,
                 'actor_id' => $user->id,

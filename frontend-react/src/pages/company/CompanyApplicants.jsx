@@ -24,12 +24,14 @@ import {
   Star,
   Target,
   User,
+  Users,
   X,
   XCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
 import api from '../../services/api'
+import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
 const pipelineStageOptions = [
   { key: 'pending', label: 'Pending' },
@@ -215,6 +217,14 @@ const splitSkills = (skills) => String(skills || '')
   .split(',')
   .map((skill) => skill.trim())
   .filter(Boolean)
+
+const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`
+
+const slug = (value) => String(value || 'applicants')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/(^-|-$)/g, '')
+  .slice(0, 60) || 'applicants'
 
 const fileName = (path) => {
   if (!path) return 'No resume uploaded'
@@ -476,6 +486,8 @@ const CompanyApplicants = () => {
   const [interviewModal, setInterviewModal] = useState(null)
   const [resumeAction, setResumeAction] = useState(null)
   const [reviewForm, setReviewForm] = useState(() => buildReviewForm())
+  const [compareIds, setCompareIds] = useState([])
+  const [showCompare, setShowCompare] = useState(false)
 
   useEffect(() => {
     const loadApplicants = async () => {
@@ -634,6 +646,13 @@ const CompanyApplicants = () => {
   const selectedHasResume = Boolean(selectedResume)
   const selectedHasQuiz = quizTotal > 0
   const selectedHasInterview = Boolean(selectedApplication?.interview_scheduled_at)
+  const compareApplications = useMemo(
+    () => compareIds
+      .map((id) => applications.find((application) => application.id === id))
+      .filter(Boolean),
+    [applications, compareIds],
+  )
+  const compareApplicationIds = useMemo(() => new Set(compareIds), [compareIds])
   const matchTone = finalScore >= 70 ? 'emerald' : finalScore >= 40 ? 'amber' : finalScore > 0 ? 'red' : 'gray'
   const activeFilterCount = [
     search.trim(),
@@ -642,6 +661,22 @@ const CompanyApplicants = () => {
     readinessFilter !== 'all',
     sortBy !== 'newest',
   ].filter(Boolean).length
+  const reportStats = useMemo(() => {
+    const total = filteredApplications.length
+    const scored = filteredApplications.filter((application) => Number(application.final_score || 0) > 0)
+    const average = scored.length
+      ? Math.round(scored.reduce((sum, application) => sum + Number(application.final_score || 0), 0) / scored.length)
+      : 0
+
+    return {
+      total,
+      average,
+      highMatch: filteredApplications.filter((application) => Number(application.final_score || 0) >= 70).length,
+      pending: filteredApplications.filter((application) => application.status === 'pending').length,
+      interviews: filteredApplications.filter((application) => Boolean(application.interview_scheduled_at)).length,
+      quizDone: filteredApplications.filter((application) => Number(application.quiz_responses_count || application.quiz_responses?.length || 0) > 0).length,
+    }
+  }, [filteredApplications])
   const activeReviewForm = reviewForm.applicationId === selectedApplication?.id
     ? reviewForm
     : buildReviewForm(selectedApplication)
@@ -658,6 +693,137 @@ const CompanyApplicants = () => {
     setApplications((current) => current.map((application) => (
       application.id === applicationId ? { ...application, ...updates } : application
     )))
+  }
+
+  const openApplicantDetail = (application) => {
+    setSelectedId(application.id)
+    setReviewForm(buildReviewForm(application))
+    setDetailTab('overview')
+  }
+
+  const toggleCompare = (application) => {
+    setCompareIds((current) => {
+      if (current.includes(application.id)) {
+        return current.filter((id) => id !== application.id)
+      }
+
+      if (current.length >= 4) {
+        toast.error('Compare up to 4 candidates at a time')
+        return current
+      }
+
+      return [...current, application.id]
+    })
+  }
+
+  const openCompareDetail = (application) => {
+    openApplicantDetail(application)
+    setShowCompare(false)
+  }
+
+  const removeCompare = (applicationId) => {
+    setCompareIds((current) => current.filter((id) => id !== applicationId))
+  }
+
+  const clearCompare = () => {
+    setCompareIds([])
+    setShowCompare(false)
+  }
+
+  const exportApplicantsCsv = () => {
+    if (loading || filteredApplications.length === 0) {
+      toast.error('No applicants available to export')
+      return
+    }
+
+    const headers = [
+      'Candidate name',
+      'Email',
+      'Phone',
+      'Headline',
+      'Candidate location',
+      'Current company',
+      'Job title',
+      'Job location',
+      'Job type',
+      'Work mode',
+      'Salary',
+      'Deadline',
+      'Application status',
+      'Final score',
+      'Resume similarity',
+      'Skill match',
+      'Soft skills',
+      'Quiz responses',
+      'Resume uploaded',
+      'Missing skills',
+      'Applied at',
+      'Interview at',
+      'Interview mode',
+      'Interview status',
+      'Recruiter rating',
+      'Recruiter notes',
+      'Interview rating',
+      'Interview feedback',
+      'Cover letter',
+    ]
+
+    const rows = filteredApplications.map((application) => {
+      const applicant = application.job_seeker || {}
+      const appliedJob = application.job_posting || job || {}
+      const missing = (application.skill_gaps || [])
+        .map((gap) => gap.missing_skill)
+        .filter(Boolean)
+        .join(', ')
+
+      return [
+        candidateName(application),
+        candidateEmail(application),
+        applicant.phone,
+        applicant.headline,
+        applicant.location,
+        applicant.company,
+        appliedJob.title,
+        appliedJob.location,
+        formatJobType(appliedJob.job_type),
+        formatWorkMode(appliedJob.work_mode),
+        formatSalary(appliedJob),
+        formatDeadline(appliedJob),
+        statusLabel(application.status),
+        scoreNumber(application.final_score),
+        scoreNumber(application.similarity_score),
+        scoreNumber(application.skill_gap_score),
+        scoreNumber(application.soft_skill_score),
+        Number(application.quiz_responses_count || application.quiz_responses?.length || 0),
+        applicant.resume ? 'Yes' : 'No',
+        missing,
+        formatDateTime(application.created_at),
+        application.interview_scheduled_at ? formatDateTime(application.interview_scheduled_at) : '',
+        application.interview_mode ? interviewModeLabel(application.interview_mode) : '',
+        application.interview_status ? interviewStatusLabel(application.interview_status) : '',
+        application.company_rating || '',
+        application.company_notes || '',
+        application.interview_rating || '',
+        application.interview_feedback || '',
+        application.cover_letter || '',
+      ]
+    })
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(csvCell).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const date = new Date().toISOString().slice(0, 10)
+
+    link.href = url
+    link.download = `recruitsense-${slug(job?.title || 'applicants')}-${date}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    toast.success(`Exported ${filteredApplications.length} applicant${filteredApplications.length === 1 ? '' : 's'}`)
   }
 
   const saveApplicationStatus = async () => {
@@ -917,6 +1083,24 @@ const CompanyApplicants = () => {
           <div className="grid grid-cols-2 sm:flex gap-2">
             <button
               type="button"
+              onClick={exportApplicantsCsv}
+              disabled={loading || filteredApplications.length === 0}
+              className="h-11 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCompare(true)}
+              disabled={compareApplications.length < 2}
+              className="h-11 px-4 rounded-xl border border-violet-200 bg-violet-50 text-sm font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Compare {compareApplications.length > 0 ? `(${compareApplications.length})` : ''}
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/company/jobs')}
               className="h-11 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-2"
             >
@@ -952,6 +1136,75 @@ const CompanyApplicants = () => {
             <p className="text-2xl font-bold text-indigo-600 mt-2">{loading ? '-' : `${averageMatch}%`}</p>
           </div>
         </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="font-bold text-gray-900">Pipeline report</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Export uses the current search, stage, score, readiness, and sort filters.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+              {[
+                { label: 'Shown', value: reportStats.total, tone: 'text-gray-900 bg-gray-50 border-gray-100' },
+                { label: 'Avg match', value: `${reportStats.average}%`, tone: 'text-indigo-700 bg-indigo-50 border-indigo-100' },
+                { label: 'High match', value: reportStats.highMatch, tone: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
+                { label: 'Pending', value: reportStats.pending, tone: 'text-amber-700 bg-amber-50 border-amber-100' },
+                { label: 'Interviews', value: reportStats.interviews, tone: 'text-violet-700 bg-violet-50 border-violet-100' },
+                { label: 'Quiz done', value: reportStats.quizDone, tone: 'text-sky-700 bg-sky-50 border-sky-100' },
+              ].map((item) => (
+                <div key={item.label} className={`rounded-xl border px-3 py-2 min-w-0 ${item.tone}`}>
+                  <p className="text-lg font-bold leading-tight">{loading ? '-' : item.value}</p>
+                  <p className="text-[11px] font-semibold mt-1 truncate">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {compareApplications.length > 0 && (
+          <div className="bg-violet-50 rounded-2xl border border-violet-100 p-4 mb-5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-violet-900">Compare candidates</p>
+                <p className="text-sm text-violet-700 mt-1">Select 2 to 4 candidates from the list, then compare them side by side.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {compareApplications.map((application) => (
+                    <span key={application.id} className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800">
+                      {candidateName(application)}
+                      <button
+                        type="button"
+                        onClick={() => removeCompare(application.id)}
+                        className="text-violet-400 hover:text-violet-700"
+                        aria-label={`Remove ${candidateName(application)} from comparison`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCompare(true)}
+                  disabled={compareApplications.length < 2}
+                  className="h-9 px-3 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Open comparison
+                </button>
+                <button
+                  type="button"
+                  onClick={clearCompare}
+                  className="h-9 px-3 rounded-xl border border-violet-200 bg-white text-xs font-bold text-violet-700 hover:bg-violet-100"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4 mb-5">
           <div className="flex flex-col lg:flex-row gap-3">
@@ -1082,16 +1335,22 @@ const CompanyApplicants = () => {
                   const hasCoverLetter = Boolean(application.cover_letter)
                   const hasQuiz = Number(application.quiz_responses_count || application.quiz_responses?.length || 0) > 0
                   const hasInterview = Boolean(application.interview_scheduled_at)
+                  const isComparing = compareApplicationIds.has(application.id)
 
                   return (
-                    <button
+                    <div
                       key={application.id}
-                      type="button"
                       onClick={() => {
-                        setSelectedId(application.id)
-                        setReviewForm(buildReviewForm(application))
-                        setDetailTab('overview')
+                        openApplicantDetail(application)
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          openApplicantDetail(application)
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
                       className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''}`}
                     >
                       <div className="flex items-start gap-3">
@@ -1130,9 +1389,24 @@ const CompanyApplicants = () => {
                             )}
                           </div>
                           <p className="text-xs text-gray-400 mt-3">Applied {formatDate(application.created_at)}</p>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleCompare(application)
+                            }}
+                            className={`mt-3 h-9 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-2 ${
+                              isComparing
+                                ? 'bg-violet-600 text-white border-violet-600'
+                                : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50'
+                            }`}
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            {isComparing ? 'Selected to compare' : 'Add to compare'}
+                          </button>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -1838,6 +2112,201 @@ const CompanyApplicants = () => {
           </section>
         </div>
       </div>
+
+      {showCompare && (
+        <div className="fixed inset-0 z-50 bg-gray-900/45 flex items-center justify-center px-4">
+          <div className="w-full max-w-6xl max-h-[90vh] rounded-2xl bg-white shadow-xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Candidate comparison</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Compare score, skills, interview status, and recruiter notes for selected candidates.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearCompare}
+                  className="h-9 px-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:border-violet-200 hover:text-violet-700"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCompare(false)}
+                  className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center"
+                  aria-label="Close candidate comparison"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 overflow-y-auto">
+              {compareApplications.length < 2 ? (
+                <div className="py-16 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-50 text-violet-300 mx-auto mb-3 flex items-center justify-center">
+                    <Users className="w-7 h-7" />
+                  </div>
+                  <p className="font-bold text-gray-900">Select at least two candidates</p>
+                  <p className="text-sm text-gray-500 mt-1">Use Add to compare from the applicant list.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div
+                    className="grid gap-4 min-w-max"
+                    style={{ gridTemplateColumns: `repeat(${compareApplications.length}, minmax(250px, 1fr))` }}
+                  >
+                    {compareApplications.map((application) => {
+                      const applicant = application.job_seeker || {}
+                      const appliedJob = application.job_posting || job || {}
+                      const score = scoreNumber(application.final_score)
+                      const tone = scoreMeta(score)
+                      const required = splitSkills(appliedJob.required_skills).slice(0, 5)
+                      const profileSkills = splitSkills(applicant.skills).slice(0, 5)
+                      const missing = (application.skill_gaps || [])
+                        .map((gap) => gap.missing_skill)
+                        .filter(Boolean)
+                        .slice(0, 5)
+                      const quizCount = Number(application.quiz_responses_count || application.quiz_responses?.length || 0)
+
+                      return (
+                        <article key={application.id} className="rounded-2xl border border-gray-100 bg-white p-4 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center mb-3">
+                                {initials(candidateName(application))}
+                              </div>
+                              <h3 className="font-bold text-gray-900 truncate">{candidateName(application)}</h3>
+                              <p className="text-sm text-gray-500 truncate">{applicant.headline || 'Job seeker'}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeCompare(application.id)}
+                              className="w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 flex items-center justify-center"
+                              aria-label={`Remove ${candidateName(application)} from comparison`}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className={`mt-4 rounded-2xl border p-4 text-center ${tone.className}`}>
+                            <p className="text-3xl font-bold">{score}%</p>
+                            <p className="text-xs font-semibold mt-1">{tone.label}</p>
+                          </div>
+
+                          <div className="mt-4 space-y-3 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Status</span>
+                              <span className={statusBadge(application.status)}>{statusLabel(application.status)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Job</span>
+                              <span className="font-semibold text-gray-900 text-right">{appliedJob.title || 'Job'}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Applied</span>
+                              <span className="font-semibold text-gray-900 text-right">{formatDate(application.created_at)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Resume</span>
+                              <span className={`font-semibold ${applicant.resume ? 'text-sky-700' : 'text-gray-400'}`}>{applicant.resume ? 'Uploaded' : 'Missing'}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Quiz</span>
+                              <span className={`font-semibold ${quizCount > 0 ? 'text-emerald-700' : 'text-gray-400'}`}>
+                                {quizCount > 0 ? `${quizCount} responses` : 'Pending'}
+                              </span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-gray-500">Interview</span>
+                              <span className={`font-semibold text-right ${application.interview_scheduled_at ? 'text-violet-700' : 'text-gray-400'}`}>
+                                {application.interview_scheduled_at ? formatDateTime(application.interview_scheduled_at) : 'Not scheduled'}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 pt-2">
+                              <div className="rounded-xl bg-gray-50 p-2 text-center">
+                                <p className="font-bold text-gray-900">{scoreNumber(application.similarity_score)}%</p>
+                                <p className="text-[11px] text-gray-500">Resume</p>
+                              </div>
+                              <div className="rounded-xl bg-gray-50 p-2 text-center">
+                                <p className="font-bold text-gray-900">{scoreNumber(application.skill_gap_score)}%</p>
+                                <p className="text-[11px] text-gray-500">Skills</p>
+                              </div>
+                              <div className="rounded-xl bg-gray-50 p-2 text-center">
+                                <p className="font-bold text-gray-900">{scoreNumber(application.soft_skill_score)}%</p>
+                                <p className="text-[11px] text-gray-500">Soft</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            <p className="text-xs font-bold uppercase text-gray-400 mb-2">Required skills</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {required.length > 0 ? required.map((skill) => (
+                                <span key={skill} className="rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 text-[11px] font-semibold">
+                                  {skill}
+                                </span>
+                              )) : <span className="text-xs text-gray-400">No skills listed</span>}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="text-xs font-bold uppercase text-gray-400 mb-2">Profile skills</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {profileSkills.length > 0 ? profileSkills.map((skill) => (
+                                <span key={skill} className="rounded-full bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 text-[11px] font-semibold">
+                                  {skill}
+                                </span>
+                              )) : <span className="text-xs text-gray-400">No skills added</span>}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="text-xs font-bold uppercase text-gray-400 mb-2">Missing skills</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {missing.length > 0 ? missing.map((skill) => (
+                                <span key={skill} className="rounded-full bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 text-[11px] font-semibold">
+                                  {skill}
+                                </span>
+                              )) : <span className="text-xs text-emerald-600 font-semibold">No major gaps</span>}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-3">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <p className="text-xs font-bold uppercase text-gray-400">Recruiter note</p>
+                              <span className="text-xs font-bold text-amber-700">
+                                {application.company_rating ? `${application.company_rating}/5` : 'No rating'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed line-clamp-4">
+                              {application.company_notes || 'No private notes saved.'}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => openCompareDetail(application)}
+                            className="mt-4 w-full h-10 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+                          >
+                            Open detail
+                          </button>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {interviewModal && (
         <div className="fixed inset-0 z-50 bg-gray-900/45 flex items-center justify-center px-4">

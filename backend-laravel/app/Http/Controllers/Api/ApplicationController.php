@@ -45,7 +45,7 @@ class ApplicationController extends Controller
 
         $job = JobPosting::with('company.user')->findOrFail($jobId);
 
-        if ($job->status !== JobPosting::STATUS_ACTIVE) {
+        if (!$job->is_accepting_applications) {
             return response()->json(['message' => 'This job is not accepting applications right now'], 422);
         }
 
