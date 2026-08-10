@@ -66,13 +66,17 @@ class Application extends Model
         'interview_scheduled_at', 'interview_mode', 'interview_location',
         'interview_notes', 'interview_status', 'company_notes',
         'company_rating', 'interview_feedback', 'interview_rating',
-        'interview_completed_at',
+        'interview_completed_at', 'offer_title', 'offer_compensation',
+        'offer_start_date', 'offer_notes', 'offer_sent_at', 'hired_at',
     ];
 
     protected $casts = [
         'withdrawn_at' => 'datetime',
         'interview_scheduled_at' => 'datetime',
         'interview_completed_at' => 'datetime',
+        'offer_start_date' => 'date',
+        'offer_sent_at' => 'datetime',
+        'hired_at' => 'datetime',
         'company_rating' => 'integer',
         'interview_rating' => 'integer',
     ];

@@ -9,6 +9,7 @@ use App\Models\JobPosting;
 use App\Models\Resume;
 use App\Models\SkillGap;
 use App\Mail\InterviewScheduledMail;
+use App\Mail\OfferDecisionMail;
 use App\Mail\RejectionMail;
 use App\Mail\ShortlistMail;
 use App\Services\FlaskAIService;
@@ -394,10 +395,42 @@ class ApplicationController extends Controller
 
         $validated = $request->validate([
             'status' => ['required', Rule::in(Application::COMPANY_PIPELINE_STATUSES)],
+            'offer_title' => ['nullable', 'string', 'max:255'],
+            'offer_compensation' => ['nullable', 'string', 'max:255'],
+            'offer_start_date' => ['nullable', 'date'],
+            'offer_notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $previousStatus = $application->status;
         $application->status = $validated['status'];
+        $offerStatuses = [Application::STATUS_OFFERED, Application::STATUS_HIRED];
+
+        if (in_array($application->status, $offerStatuses, true)) {
+            foreach (['offer_title', 'offer_compensation', 'offer_start_date', 'offer_notes'] as $field) {
+                if ($request->has($field)) {
+                    $application->{$field} = is_string($validated[$field] ?? null)
+                        ? trim($validated[$field]) ?: null
+                        : ($validated[$field] ?? null);
+                }
+            }
+
+            if (!$application->offer_title) {
+                $application->offer_title = $application->jobPosting?->title
+                    ? $application->jobPosting->title . ' offer'
+                    : 'Job offer';
+            }
+
+            if (!$application->offer_sent_at) {
+                $application->offer_sent_at = now();
+            }
+        }
+
+        if ($application->status === Application::STATUS_HIRED) {
+            $application->hired_at = $application->hired_at ?: now();
+        } elseif ($previousStatus === Application::STATUS_HIRED) {
+            $application->hired_at = null;
+        }
+
         $application->save();
 
         if ($previousStatus !== $application->status) {
@@ -407,7 +440,9 @@ class ApplicationController extends Controller
         $application->load($this->companyApplicantRelations())->loadCount('quizResponses');
 
         return response()->json([
-            'message' => 'Candidate stage updated',
+            'message' => in_array($application->status, $offerStatuses, true)
+                ? 'Offer decision saved'
+                : 'Candidate stage updated',
             'application' => $application,
         ]);
     }
@@ -597,11 +632,19 @@ class ApplicationController extends Controller
         $status = $application->status;
         $jobTitle = $application->jobPosting?->title ?: 'your application';
         $label = $this->statusLabel($status);
+        $offerStartDate = $application->offer_start_date
+            ? $application->offer_start_date->format('M j, Y')
+            : null;
 
         if ($status === Application::STATUS_SHORTLISTED) {
             Mail::to($candidateUser->email)->send(new ShortlistMail($application));
         } elseif ($status === Application::STATUS_REJECTED) {
             Mail::to($candidateUser->email)->send(new RejectionMail($application));
+        } elseif (in_array($status, [Application::STATUS_OFFERED, Application::STATUS_HIRED], true)) {
+            Mail::to($candidateUser->email)->send(new OfferDecisionMail(
+                $application,
+                $status === Application::STATUS_HIRED
+            ));
         }
 
         $type = match ($status) {
@@ -627,8 +670,8 @@ class ApplicationController extends Controller
         $message = match ($status) {
             Application::STATUS_SHORTLISTED => 'Your application for ' . $jobTitle . ' has been shortlisted.',
             Application::STATUS_REJECTED => 'Your application for ' . $jobTitle . ' was not selected.',
-            Application::STATUS_OFFERED => 'Your application for ' . $jobTitle . ' has moved to the offer stage.',
-            Application::STATUS_HIRED => 'Your application for ' . $jobTitle . ' has been marked as hired.',
+            Application::STATUS_OFFERED => 'Your application for ' . $jobTitle . ' has moved to the offer stage.' . ($offerStartDate ? ' Proposed start date: ' . $offerStartDate . '.' : ''),
+            Application::STATUS_HIRED => 'Your application for ' . $jobTitle . ' has been marked as hired.' . ($offerStartDate ? ' Start date: ' . $offerStartDate . '.' : ''),
             Application::STATUS_INTERVIEW => 'Your application for ' . $jobTitle . ' is now in the interview stage.',
             Application::STATUS_SCREENING => 'Your application for ' . $jobTitle . ' is being screened by the company.',
             default => 'Your application for ' . $jobTitle . ' was updated.',
@@ -647,6 +690,11 @@ class ApplicationController extends Controller
                 'status' => $status,
                 'status_label' => $label,
                 'previous_status' => $previousStatus,
+                'offer_title' => $application->offer_title,
+                'offer_compensation' => $application->offer_compensation,
+                'offer_start_date' => $application->offer_start_date?->toDateString(),
+                'offer_sent_at' => $application->offer_sent_at?->toISOString(),
+                'hired_at' => $application->hired_at?->toISOString(),
             ]
         );
     }

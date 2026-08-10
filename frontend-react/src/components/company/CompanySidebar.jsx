@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  Activity,
   BarChart3,
+  Bell,
   Brain,
   Briefcase,
   Calendar,
@@ -21,10 +23,12 @@ import api from '../../services/api'
 const navItems = [
   { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard', path: '/company/dashboard' },
   { icon: <BarChart3 className="w-5 h-5" />, label: 'Analytics', path: '/company/analytics' },
+  { icon: <Activity className="w-5 h-5" />, label: 'Activity', path: '/company/activity-log' },
   { icon: <Briefcase className="w-5 h-5" />, label: 'Jobs', path: '/company/jobs' },
   { icon: <Users className="w-5 h-5" />, label: 'Applicants', path: '/company/applicants' },
   { icon: <Calendar className="w-5 h-5" />, label: 'Interviews', path: '/company/interviews' },
-  { icon: <MessageCircle className="w-5 h-5" />, label: 'Messages', path: '/messages' },
+  { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: '/notifications', countKey: 'notifications' },
+  { icon: <MessageCircle className="w-5 h-5" />, label: 'Messages', path: '/messages', countKey: 'messages' },
   { icon: <ClipboardCheck className="w-5 h-5" />, label: 'Quiz', path: '/company/quiz' },
   { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/company/settings' },
 ]
@@ -34,6 +38,7 @@ const CompanySidebar = ({ mobileOpen = false, onClose }) => {
   const location = useLocation()
   const { user, logout } = useAuth()
   const [company, setCompany] = useState(null)
+  const [unreadCounts, setUnreadCounts] = useState({ notifications: 0, messages: 0 })
 
   useEffect(() => {
     let active = true
@@ -61,6 +66,56 @@ const CompanySidebar = ({ mobileOpen = false, onClose }) => {
     return () => {
       active = false
       window.removeEventListener('recruitsense-company-profile-updated', refreshCompany)
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    const loadNotificationCount = () => {
+      api.get('/notifications/unread-count')
+        .then((res) => {
+          if (active) {
+            setUnreadCounts((current) => ({
+              ...current,
+              notifications: res.data.unread_count || 0,
+            }))
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setUnreadCounts((current) => ({ ...current, notifications: 0 }))
+          }
+        })
+    }
+
+    const loadMessageCount = () => {
+      api.get('/messages/unread-count')
+        .then((res) => {
+          if (active) {
+            setUnreadCounts((current) => ({
+              ...current,
+              messages: res.data.unread_count || 0,
+            }))
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setUnreadCounts((current) => ({ ...current, messages: 0 }))
+          }
+        })
+    }
+
+    loadNotificationCount()
+    loadMessageCount()
+
+    window.addEventListener('recruitsense-notifications-updated', loadNotificationCount)
+    window.addEventListener('recruitsense-messages-updated', loadMessageCount)
+
+    return () => {
+      active = false
+      window.removeEventListener('recruitsense-notifications-updated', loadNotificationCount)
+      window.removeEventListener('recruitsense-messages-updated', loadMessageCount)
     }
   }, [])
 
@@ -135,6 +190,7 @@ const CompanySidebar = ({ mobileOpen = false, onClose }) => {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path ||
             (item.path === '/company/applicants' && location.pathname.includes('/applicants'))
+          const unreadCount = item.countKey ? unreadCounts[item.countKey] || 0 : 0
 
           return (
             <button
@@ -148,6 +204,13 @@ const CompanySidebar = ({ mobileOpen = false, onClose }) => {
             >
               {item.icon}
               <span className="flex-1 text-left">{item.label}</span>
+              {unreadCount > 0 && (
+                <span className={`min-w-5 h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                  isActive ? 'bg-white text-indigo-600' : 'bg-red-500 text-white'
+                }`}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
           )
         })}

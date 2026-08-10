@@ -601,6 +601,7 @@ const CompanyDashboard = () => {
                   { label: 'Post a job', helper: `${stats.accepting_jobs || 0} accepting applications`, path: '/company/jobs?compose=1', icon: <PlusCircle className="w-4 h-4" />, tone: 'bg-indigo-50 text-indigo-700' },
                   { label: 'Compare candidates', helper: `${stats.high_match_applicants || 0} strong matches`, path: '/company/applicants', icon: <Users className="w-4 h-4" />, tone: 'bg-emerald-50 text-emerald-700' },
                   { label: 'View analytics', helper: 'Open reports and charts', path: '/company/analytics', icon: <Target className="w-4 h-4" />, tone: 'bg-sky-50 text-sky-700' },
+                  { label: 'Activity log', helper: 'Recent company updates', path: '/company/activity-log', icon: <Clock className="w-4 h-4" />, tone: 'bg-gray-50 text-gray-700' },
                 ].map((action) => (
                   <ShortcutButton
                     key={action.label}
@@ -613,6 +614,7 @@ const CompanyDashboard = () => {
                 ))}
               </div>
             </section>
+
           </div>
 
           <section className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden">

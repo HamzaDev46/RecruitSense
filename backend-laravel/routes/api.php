@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/dashboard/jobseeker', [JobSeekerDashboardController::class, 'summary']);
     Route::get('/dashboard/company', [CompanyDashboardController::class, 'summary']);
+    Route::get('/company/activity-log', [CompanyDashboardController::class, 'activityLog']);
     Route::get('/company/profile', [CompanyProfileController::class, 'show']);
     Route::post('/company/profile', [CompanyProfileController::class, 'update']);
     Route::get('/search/global', [GlobalSearchController::class, 'index']);

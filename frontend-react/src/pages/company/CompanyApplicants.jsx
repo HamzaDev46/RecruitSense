@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
+  Banknote,
   Briefcase,
   Building2,
   Calendar,
@@ -50,6 +52,7 @@ const statusOptions = [
 ]
 
 const terminalApplicationStatuses = ['rejected', 'withdrawn', 'hired']
+const offerDecisionStatuses = ['offered', 'hired']
 
 const interviewStatusOptions = [
   { key: 'scheduled', label: 'Scheduled' },
@@ -201,6 +204,12 @@ const dateTimeInputValue = (value) => {
   return date.toISOString().slice(0, 16)
 }
 
+const dateInputValue = (value) => {
+  if (!value) return ''
+
+  return String(value).slice(0, 10)
+}
+
 const interviewModeLabel = (mode) => ({
   online: 'Online',
   phone: 'Phone call',
@@ -212,6 +221,21 @@ const interviewStatusLabel = (status) => interviewStatusOptions.find((option) =>
 const scoreNumber = (value) => Math.max(0, Math.min(100, Math.round(Number(value || 0))))
 const candidateName = (application) => application?.job_seeker?.user?.name || 'Candidate'
 const candidateEmail = (application) => application?.job_seeker?.user?.email || ''
+const isOfferDecisionStatus = (status) => offerDecisionStatuses.includes(status)
+
+const offerDecisionDetail = (application) => {
+  if (!application) return 'Offer, hired, or rejection decision has not been made yet.'
+
+  const parts = [
+    application.offer_title,
+    application.offer_compensation,
+    application.offer_start_date ? `starts ${formatDate(application.offer_start_date)}` : '',
+  ].filter(Boolean)
+
+  return parts.length
+    ? `${statusLabel(application.status)}: ${parts.join(' - ')}.`
+    : `Current decision stage: ${statusLabel(application.status)}.`
+}
 
 const splitSkills = (skills) => String(skills || '')
   .split(',')
@@ -465,6 +489,10 @@ const buildReviewForm = (application = null) => ({
   interview_status: application?.interview_status || 'scheduled',
   interview_rating: application?.interview_rating ? String(application.interview_rating) : '',
   interview_feedback: application?.interview_feedback || '',
+  offer_title: application?.offer_title || '',
+  offer_compensation: application?.offer_compensation || '',
+  offer_start_date: dateInputValue(application?.offer_start_date),
+  offer_notes: application?.offer_notes || '',
 })
 
 const CompanyApplicants = () => {
@@ -680,6 +708,21 @@ const CompanyApplicants = () => {
   const activeReviewForm = reviewForm.applicationId === selectedApplication?.id
     ? reviewForm
     : buildReviewForm(selectedApplication)
+  const offerDetailsChanged = Boolean(selectedApplication && isOfferDecisionStatus(activeReviewForm.status) && (
+    String(activeReviewForm.offer_title || '').trim() !== String(selectedApplication.offer_title || '').trim() ||
+    String(activeReviewForm.offer_compensation || '').trim() !== String(selectedApplication.offer_compensation || '').trim() ||
+    dateInputValue(selectedApplication.offer_start_date) !== dateInputValue(activeReviewForm.offer_start_date) ||
+    String(activeReviewForm.offer_notes || '').trim() !== String(selectedApplication.offer_notes || '').trim()
+  ))
+  const canSavePipelineStage = Boolean(
+    selectedApplication &&
+    selectedApplication.status !== 'withdrawn' &&
+    (
+      selectedApplication.status !== activeReviewForm.status ||
+      offerDetailsChanged
+    ) &&
+    actionLoading === null,
+  )
 
   const resetFilters = () => {
     updateSearch('')
@@ -699,6 +742,23 @@ const CompanyApplicants = () => {
     setSelectedId(application.id)
     setReviewForm(buildReviewForm(application))
     setDetailTab('overview')
+  }
+
+  const prepareOfferDecision = (status) => {
+    if (!selectedApplication) return
+
+    const roleTitle = selectedApplication.job_posting?.title || job?.title || 'Role'
+
+    setReviewForm({
+      ...activeReviewForm,
+      applicationId: selectedApplication.id,
+      status,
+      offer_title: activeReviewForm.offer_title || selectedApplication.offer_title || `${roleTitle} offer`,
+      offer_compensation: activeReviewForm.offer_compensation || selectedApplication.offer_compensation || '',
+      offer_start_date: activeReviewForm.offer_start_date || dateInputValue(selectedApplication.offer_start_date),
+      offer_notes: activeReviewForm.offer_notes || selectedApplication.offer_notes || '',
+    })
+    setDetailTab('pipeline')
   }
 
   const toggleCompare = (application) => {
@@ -765,6 +825,12 @@ const CompanyApplicants = () => {
       'Recruiter notes',
       'Interview rating',
       'Interview feedback',
+      'Offer title',
+      'Offer compensation',
+      'Offer start date',
+      'Offer notes',
+      'Offer sent at',
+      'Hired at',
       'Cover letter',
     ]
 
@@ -805,6 +871,12 @@ const CompanyApplicants = () => {
         application.company_notes || '',
         application.interview_rating || '',
         application.interview_feedback || '',
+        application.offer_title || '',
+        application.offer_compensation || '',
+        application.offer_start_date ? formatDate(application.offer_start_date) : '',
+        application.offer_notes || '',
+        application.offer_sent_at ? formatDateTime(application.offer_sent_at) : '',
+        application.hired_at ? formatDateTime(application.hired_at) : '',
         application.cover_letter || '',
       ]
     })
@@ -836,9 +908,18 @@ const CompanyApplicants = () => {
 
     setActionLoading(`status-${selectedApplication.id}`)
     try {
-      const res = await api.put(`/applications/${selectedApplication.id}/status`, {
+      const payload = {
         status: activeReviewForm.status,
-      })
+      }
+
+      if (isOfferDecisionStatus(activeReviewForm.status)) {
+        payload.offer_title = activeReviewForm.offer_title
+        payload.offer_compensation = activeReviewForm.offer_compensation
+        payload.offer_start_date = activeReviewForm.offer_start_date || null
+        payload.offer_notes = activeReviewForm.offer_notes
+      }
+
+      const res = await api.put(`/applications/${selectedApplication.id}/status`, payload)
       const updatedApplication = res.data.application || {}
 
       syncApplication(selectedApplication.id, updatedApplication)
@@ -1512,6 +1593,17 @@ const CompanyApplicants = () => {
                       <Calendar className="w-4 h-4" />
                       {selectedApplication.interview_scheduled_at ? 'Update interview' : 'Schedule interview'}
                     </button>
+                    {!terminalApplicationStatuses.includes(selectedApplication.status) && (
+                      <button
+                        type="button"
+                        disabled={actionLoading !== null}
+                        onClick={() => prepareOfferDecision(selectedApplication.status === 'offered' ? 'hired' : 'offered')}
+                        className="h-10 px-4 rounded-xl border border-violet-200 bg-violet-50 text-violet-700 text-sm font-semibold hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Award className="w-4 h-4" />
+                        {selectedApplication.status === 'offered' ? 'Mark hired' : 'Send offer'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={!['pending', 'screening'].includes(selectedApplication.status) || actionLoading !== null}
@@ -1684,7 +1776,18 @@ const CompanyApplicants = () => {
                               <select
                                 value={activeReviewForm.status}
                                 disabled={selectedApplication.status === 'withdrawn' || actionLoading !== null}
-                                onChange={(event) => setReviewForm({ ...activeReviewForm, status: event.target.value })}
+                                onChange={(event) => {
+                                  const nextStatus = event.target.value
+                                  const roleTitle = selectedApplication.job_posting?.title || job?.title || 'Role'
+
+                                  setReviewForm({
+                                    ...activeReviewForm,
+                                    status: nextStatus,
+                                    offer_title: isOfferDecisionStatus(nextStatus) && !activeReviewForm.offer_title
+                                      ? `${roleTitle} offer`
+                                      : activeReviewForm.offer_title,
+                                  })
+                                }}
                                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-gray-50"
                               >
                                 {pipelineStageOptions.map((stage) => (
@@ -1694,11 +1797,7 @@ const CompanyApplicants = () => {
                             </label>
                             <button
                               type="button"
-                              disabled={
-                                selectedApplication.status === 'withdrawn' ||
-                                selectedApplication.status === activeReviewForm.status ||
-                                actionLoading !== null
-                              }
+                              disabled={!canSavePipelineStage}
                               onClick={saveApplicationStatus}
                               className="self-end h-11 px-5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
                             >
@@ -1707,9 +1806,95 @@ const CompanyApplicants = () => {
                               ) : (
                                 <Save className="w-4 h-4" />
                               )}
-                              Update stage
+                              {activeReviewForm.status === 'hired'
+                                ? 'Mark hired'
+                                : activeReviewForm.status === 'offered'
+                                  ? 'Send offer'
+                                  : 'Update stage'}
                             </button>
                           </div>
+
+                          {isOfferDecisionStatus(activeReviewForm.status) && (
+                            <div className="mt-5 rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white text-violet-600 flex items-center justify-center flex-shrink-0 border border-violet-100">
+                                  <Award className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-violet-950">
+                                    {activeReviewForm.status === 'hired' ? 'Hiring details' : 'Offer details'}
+                                  </p>
+                                  <p className="text-xs text-violet-700 mt-1">
+                                    These details are visible to the candidate in their application tracker.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid sm:grid-cols-2 gap-3">
+                                <label className="block">
+                                  <span className="text-sm font-semibold text-gray-800">Offer title</span>
+                                  <div className="mt-2 relative">
+                                    <Briefcase className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                    <input
+                                      type="text"
+                                      value={activeReviewForm.offer_title}
+                                      onChange={(event) => setReviewForm({ ...activeReviewForm, offer_title: event.target.value })}
+                                      placeholder="Customer Service Representative offer"
+                                      className="w-full rounded-xl border border-violet-100 bg-white pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    />
+                                  </div>
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-semibold text-gray-800">Compensation</span>
+                                  <div className="mt-2 relative">
+                                    <Banknote className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                    <input
+                                      type="text"
+                                      value={activeReviewForm.offer_compensation}
+                                      onChange={(event) => setReviewForm({ ...activeReviewForm, offer_compensation: event.target.value })}
+                                      placeholder="PKR 80,000/month"
+                                      className="w-full rounded-xl border border-violet-100 bg-white pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    />
+                                  </div>
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-semibold text-gray-800">Start date</span>
+                                  <div className="mt-2 relative">
+                                    <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                    <input
+                                      type="date"
+                                      value={activeReviewForm.offer_start_date}
+                                      onChange={(event) => setReviewForm({ ...activeReviewForm, offer_start_date: event.target.value })}
+                                      className="w-full rounded-xl border border-violet-100 bg-white pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    />
+                                  </div>
+                                </label>
+
+                                <div className="rounded-xl border border-violet-100 bg-white p-3">
+                                  <p className="text-xs font-bold uppercase text-violet-500">Candidate status</p>
+                                  <p className="text-sm font-bold text-violet-950 mt-1">{statusLabel(activeReviewForm.status)}</p>
+                                  <p className="text-xs text-violet-700 mt-1">
+                                    {activeReviewForm.status === 'hired'
+                                      ? 'Candidate will see this as a confirmed hiring update.'
+                                      : 'Candidate will see this as an offer-stage update.'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <label className="block mt-3">
+                                <span className="text-sm font-semibold text-gray-800">Candidate-facing notes</span>
+                                <textarea
+                                  rows={4}
+                                  value={activeReviewForm.offer_notes}
+                                  onChange={(event) => setReviewForm({ ...activeReviewForm, offer_notes: event.target.value })}
+                                  placeholder="Add joining instructions, next steps, documents required, or HR contact details."
+                                  className="mt-2 w-full rounded-xl border border-violet-100 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                                />
+                              </label>
+                            </div>
+                          )}
                         </div>
                       </section>
                     )}
@@ -1801,7 +1986,7 @@ const CompanyApplicants = () => {
                           active={selectedApplication.status === 'offered'}
                           title="Final decision"
                           detail={['offered', 'hired', 'rejected'].includes(selectedApplication.status)
-                            ? `Current decision stage: ${statusLabel(selectedApplication.status)}.`
+                            ? offerDecisionDetail(selectedApplication)
                             : 'Offer, hired, or rejection decision has not been made yet.'}
                         />
                       </div>

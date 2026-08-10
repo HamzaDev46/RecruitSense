@@ -151,6 +151,20 @@ const statusConfig = (status) => {
   }
 }
 
+const offerSummary = (app) => {
+  if (!['offered', 'hired'].includes(app?.status)) {
+    return statusConfig(app?.status).nextStep
+  }
+
+  const parts = [
+    app.offer_title || 'The company has shared an offer update',
+    app.offer_compensation ? `Compensation: ${app.offer_compensation}` : '',
+    app.offer_start_date ? `Start date: ${formatDate(app.offer_start_date)}` : '',
+  ].filter(Boolean)
+
+  return parts.join('. ') + '.'
+}
+
 const scoreColor = (score) => {
   const value = numberValue(score)
   if (value === 0) return 'text-gray-400'
@@ -494,7 +508,7 @@ const MyApplications = () => {
           active={app.status === 'offered' || app.status === 'rejected' || withdrawn}
           icon={Award}
           label="Final update"
-          detail={statusConfig(app.status).nextStep}
+          detail={offerSummary(app)}
         />
       </div>
     )
@@ -601,6 +615,7 @@ const MyApplications = () => {
               const skillGaps = app.skill_gaps || []
               const quizSubmitted = numberValue(app.quiz_responses_count) > 0 ||
                 (app.soft_skill_score !== null && app.soft_skill_score !== undefined)
+              const showOfferDetails = ['offered', 'hired'].includes(app.status)
 
               return (
                 <motion.div
@@ -752,6 +767,49 @@ const MyApplications = () => {
                                 )}
                                 {app.interview_notes && (
                                   <p className="text-sm text-indigo-800/80 mt-3 leading-relaxed whitespace-pre-line">{app.interview_notes}</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {showOfferDetails && (
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
+                                <p className="text-sm font-bold text-violet-950 flex items-center gap-2">
+                                  <Award className="w-4 h-4 text-violet-600" />
+                                  {app.status === 'hired' ? 'Hiring details' : 'Offer details'}
+                                </p>
+                                <div className="mt-3 space-y-2 text-sm">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <span className="text-violet-700">Offer</span>
+                                    <span className="font-semibold text-violet-950 text-right">{app.offer_title || job?.title || 'Offer update'}</span>
+                                  </div>
+                                  {app.offer_compensation && (
+                                    <div className="flex items-start justify-between gap-4">
+                                      <span className="text-violet-700">Compensation</span>
+                                      <span className="font-semibold text-violet-950 text-right">{app.offer_compensation}</span>
+                                    </div>
+                                  )}
+                                  {app.offer_start_date && (
+                                    <div className="flex items-start justify-between gap-4">
+                                      <span className="text-violet-700">Start date</span>
+                                      <span className="font-semibold text-violet-950 text-right">{formatDate(app.offer_start_date)}</span>
+                                    </div>
+                                  )}
+                                  {app.offer_sent_at && (
+                                    <div className="flex items-start justify-between gap-4">
+                                      <span className="text-violet-700">Sent</span>
+                                      <span className="font-semibold text-violet-950 text-right">{formatDate(app.offer_sent_at)}</span>
+                                    </div>
+                                  )}
+                                  {app.hired_at && (
+                                    <div className="flex items-start justify-between gap-4">
+                                      <span className="text-violet-700">Hired on</span>
+                                      <span className="font-semibold text-violet-950 text-right">{formatDate(app.hired_at)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {app.offer_notes && (
+                                  <p className="mt-3 text-sm text-violet-900 leading-relaxed whitespace-pre-line">{app.offer_notes}</p>
                                 )}
                               </div>
                             </div>

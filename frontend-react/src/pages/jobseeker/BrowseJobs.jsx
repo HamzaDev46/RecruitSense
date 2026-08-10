@@ -14,13 +14,48 @@ import {
   formatSalary,
   formatWorkMode,
   isJobAcceptingApplications,
+  jobTypeLabels,
+  workModeLabels,
 } from '../../utils/jobDetails'
+
+const initialFilters = {
+  company: 'all',
+  location: 'all',
+  jobType: 'all',
+  workMode: 'all',
+  salaryMin: '',
+  salaryMax: '',
+}
+
+const uniqueOptions = (items) => Array.from(new Set(items.filter(Boolean)))
+  .sort((a, b) => a.localeCompare(b))
+
+const salaryMatches = (job, salaryMin, salaryMax) => {
+  const minFilter = Number(salaryMin || 0)
+  const maxFilter = Number(salaryMax || 0)
+
+  if (!minFilter && !maxFilter) return true
+
+  const jobMin = Number(job.salary_min || 0)
+  const jobMax = Number(job.salary_max || 0)
+
+  if (!jobMin && !jobMax) return false
+
+  const effectiveMin = jobMin || jobMax
+  const effectiveMax = jobMax || jobMin
+
+  if (minFilter && effectiveMax < minFilter) return false
+  if (maxFilter && effectiveMin > maxFilter) return false
+
+  return true
+}
 
 const BrowseJobs = () => {
   const { jobId } = useParams()
   const [jobs, setJobs] = useState([])
   const [selectedId, setSelectedId] = useState(jobId ? Number(jobId) : null)
   const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState(initialFilters)
   const [loading, setLoading] = useState(true)
   const [applyModal, setApplyModal] = useState({
     open: false,
@@ -49,9 +84,27 @@ const BrowseJobs = () => {
     fetchJobs()
   }, [])
 
+  const companyOptions = useMemo(
+    () => uniqueOptions(jobs.map((job) => job.company?.name)),
+    [jobs],
+  )
+
+  const locationOptions = useMemo(
+    () => uniqueOptions(jobs.map((job) => job.location)),
+    [jobs],
+  )
+
+  const activeFilterCount = useMemo(() => [
+    filters.company !== 'all',
+    filters.location !== 'all',
+    filters.jobType !== 'all',
+    filters.workMode !== 'all',
+    filters.salaryMin,
+    filters.salaryMax,
+  ].filter(Boolean).length, [filters])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return jobs
 
     return jobs.filter((job) => [
       job.title,
@@ -63,10 +116,27 @@ const BrowseJobs = () => {
       formatExperienceLevel(job.experience_level),
       formatSalary(job),
     ].filter(Boolean).join(' ').toLowerCase().includes(q))
-  }, [jobs, search])
+      .filter((job) => filters.company === 'all' || job.company?.name === filters.company)
+      .filter((job) => filters.location === 'all' || job.location === filters.location)
+      .filter((job) => filters.jobType === 'all' || job.job_type === filters.jobType)
+      .filter((job) => filters.workMode === 'all' || job.work_mode === filters.workMode)
+      .filter((job) => salaryMatches(job, filters.salaryMin, filters.salaryMax))
+  }, [filters, jobs, search])
 
   const selected = filtered.find(job => job.id === selectedId) || filtered[0] || null
   const selectedAccepting = isJobAcceptingApplications(selected)
+
+  const updateFilter = (key, value) => {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+    }))
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilters(initialFilters)
+  }
 
   const openApply = (job) => {
     setApplyModal({
@@ -132,28 +202,137 @@ const BrowseJobs = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Browse Jobs</h1>
-          <p className="text-gray-500 text-sm mt-1">{filtered.length} positions available</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {filtered.length} of {jobs.length} positions available
+          </p>
         </div>
 
         {/* Search Bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search jobs, companies, skills, location, or salary..."
-            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-6 shadow-sm">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search jobs, companies, skills, location, or salary..."
+              className="w-full pl-12 pr-11 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-gray-900">Filter jobs</p>
+              <p className="text-xs text-gray-500 mt-0.5">Narrow results by company, location, work setup, and salary.</p>
+            </div>
+            {(activeFilterCount > 0 || search) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-9 px-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Clear {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <label className="block lg:col-span-2">
+              <span className="text-xs font-bold uppercase text-gray-400">Company</span>
+              <select
+                value={filters.company}
+                onChange={(event) => updateFilter('company', event.target.value)}
+                className="mt-1 w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All companies</option>
+                {companyOptions.map((company) => (
+                  <option key={company} value={company}>{company}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block lg:col-span-2">
+              <span className="text-xs font-bold uppercase text-gray-400">Location</span>
+              <select
+                value={filters.location}
+                onChange={(event) => updateFilter('location', event.target.value)}
+                className="mt-1 w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All locations</option>
+                {locationOptions.map((location) => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-bold uppercase text-gray-400">Job type</span>
+              <select
+                value={filters.jobType}
+                onChange={(event) => updateFilter('jobType', event.target.value)}
+                className="mt-1 w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All types</option>
+                {Object.entries(jobTypeLabels).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-bold uppercase text-gray-400">Work mode</span>
+              <select
+                value={filters.workMode}
+                onChange={(event) => updateFilter('workMode', event.target.value)}
+                className="mt-1 w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All modes</option>
+                {Object.entries(workModeLabels).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block lg:col-span-3">
+              <span className="text-xs font-bold uppercase text-gray-400">Minimum salary</span>
+              <div className="mt-1 relative">
+                <Banknote className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                <input
+                  type="number"
+                  min="0"
+                  value={filters.salaryMin}
+                  onChange={(event) => updateFilter('salaryMin', event.target.value)}
+                  placeholder="e.g. 50000"
+                  className="w-full h-11 rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </label>
+
+            <label className="block lg:col-span-3">
+              <span className="text-xs font-bold uppercase text-gray-400">Maximum salary</span>
+              <div className="mt-1 relative">
+                <Banknote className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                <input
+                  type="number"
+                  min="0"
+                  value={filters.salaryMax}
+                  onChange={(event) => updateFilter('salaryMax', event.target.value)}
+                  placeholder="e.g. 150000"
+                  className="w-full h-11 rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* LinkedIn Style - List + Detail Panel */}
-        <div className="grid lg:grid-cols-5 gap-4 lg:gap-6 lg:h-[calc(100vh-280px)]">
+        <div className="grid lg:grid-cols-5 gap-4 lg:gap-6 lg:h-[calc(100vh-430px)] lg:min-h-[560px]">
 
           {/* Left - Job List */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-y-auto max-h-[42vh] lg:max-h-none">
