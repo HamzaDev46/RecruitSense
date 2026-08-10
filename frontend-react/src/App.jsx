@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { Brain } from 'lucide-react'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -100,17 +101,25 @@ const preloadAppPages = () => {
   })
 }
 
-const PageLoader = () => (
-  <div className="min-h-screen bg-[#f3f2ef]">
-    <div className="h-16 bg-white border-b border-gray-200" />
-    <div className="pt-6 flex justify-center">
-      <div
-        className="h-9 w-9 rounded-full border-[3px] border-gray-300 border-t-gray-700 animate-spin"
-        aria-label="Loading page"
-      />
+const BrandLoader = ({ compact = false }) => (
+  <div className={`flex flex-col items-center justify-center ${compact ? 'pt-8' : 'min-h-screen bg-white'}`}>
+    <div className={`${compact ? 'w-12 h-12 rounded-2xl' : 'w-20 h-20 rounded-[1.5rem]'} bg-gradient-to-r from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/25 animate-pulse`}>
+      <Brain className={compact ? 'w-7 h-7' : 'w-11 h-11'} />
+    </div>
+    <div className="mt-4 text-center">
+      <p className={`${compact ? 'text-lg' : 'text-3xl'} font-bold text-gray-900`}>
+        Recruit<span className="text-indigo-600">Sense</span>
+      </p>
+      <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Loading RecruitSense">
+        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
+        <span className="w-2 h-2 rounded-full bg-purple-500 animate-bounce [animation-delay:120ms]" />
+        <span className="w-2 h-2 rounded-full bg-cyan-500 animate-bounce [animation-delay:240ms]" />
+      </div>
     </div>
   </div>
 )
+
+const PageLoader = () => <BrandLoader />
 
 const RouteClickSpinner = () => {
   const location = useLocation()
@@ -153,12 +162,7 @@ const RouteClickSpinner = () => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 top-16 md:top-0 md:left-64 z-30 bg-[#f3f2ef]/80 pointer-events-none">
-      <div className="pt-8 flex justify-center">
-        <div
-          className="h-9 w-9 rounded-full border-[3px] border-gray-300 border-t-gray-700 animate-spin"
-          aria-label="Loading page"
-        />
-      </div>
+      <BrandLoader compact />
     </div>
   )
 }
