@@ -168,6 +168,14 @@ const RouteClickSpinner = () => {
 }
 
 function App() {
+  const [showInitialLoader, setShowInitialLoader] = useState(true)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowInitialLoader(false), 2400)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
   useEffect(() => {
     const runPreload = () => preloadAppPages()
 
@@ -179,6 +187,10 @@ function App() {
     const timer = window.setTimeout(runPreload, 1500)
     return () => window.clearTimeout(timer)
   }, [])
+
+  if (showInitialLoader) {
+    return <BrandLoader />
+  }
 
   return (
     <BrowserRouter>
