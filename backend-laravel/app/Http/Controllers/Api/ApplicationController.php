@@ -94,10 +94,20 @@ class ApplicationController extends Controller
                 2
             );
 
+            // AUTO-SCREENING LOGIC:
+            // If candidate achieves a high score (>= 75%), automatically advance to shortlisted
+            $isAutoShortlisted = $finalScore >= 75;
+            $status = $isAutoShortlisted ? Application::STATUS_SHORTLISTED : Application::STATUS_PENDING;
+            $companyNotes = $isAutoShortlisted
+                ? "✨ Automatically shortlisted by RecruitSense AI Auto-Screening (Match Score: {$finalScore}%)."
+                : null;
+
             $application->update([
                 'similarity_score' => $similarityScore,
                 'skill_gap_score'  => $skillGapScore,
                 'final_score'      => $finalScore,
+                'status'           => $status,
+                'company_notes'    => $companyNotes,
             ]);
 
             // Save missing skills (skill gaps)
@@ -111,23 +121,94 @@ class ApplicationController extends Controller
                 }
             }
 
+            if ($isAutoShortlisted) {
+                // 1. Send Shortlist email to candidate
+                try {
+                    Mail::to($user->email)->send(new ShortlistMail($application));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning('Auto-shortlist email sending failed: ' . $e->getMessage());
+                }
+
+                // 2. Candidate In-app notification
+                $this->createNotification(
+                    $user->id,
+                    $job->company?->user_id,
+                    'application_shortlisted',
+                    '✨ Application Shortlisted!',
+                    'Great news! Your profile for ' . $job->title . ' was automatically shortlisted based on a strong AI match score (' . $finalScore . '%).',
+                    [
+                        'link' => '/my-applications?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $job->id,
+                    ]
+                );
+
+                // 3. Recruiter High-Priority In-app notification
+                $this->createNotification(
+                    $job->company?->user_id,
+                    $user->id,
+                    'candidate_auto_shortlisted',
+                    '🔥 Star Candidate Auto-Shortlisted',
+                    $user->name . ' achieved a ' . $finalScore . '% AI match score for ' . $job->title . ' and was automatically shortlisted.',
+                    [
+                        'link' => '/company/applicants?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $job->id,
+                        'final_score' => $finalScore,
+                    ]
+                );
+            } else {
+                $this->createNotification(
+                    $job->company?->user_id,
+                    $user->id,
+                    'candidate_applied',
+                    'New applicant',
+                    $user->name . ' applied for ' . $job->title . '.',
+                    [
+                        'link' => '/company/applicants?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $job->id,
+                    ]
+                );
+            }
+
+            // Automation 2: Ensure skill assessment questions exist for this job/company
+            $hasQuizQuestions = \App\Models\QuizQuestion::where('company_id', $job->company_id)->exists();
+            if (!$hasQuizQuestions) {
+                try {
+                    app(\App\Http\Controllers\Api\QuizController::class)->autoGenerateQuestionsForCompany(
+                        (int) $job->company_id,
+                        'Communication',
+                        5,
+                        $job->title,
+                        $job->required_skills
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning('Quiz pre-generation failed: ' . $e->getMessage());
+                }
+            }
+
+            // Send assessment invitation notification to candidate
             $this->createNotification(
-                $job->company?->user_id,
                 $user->id,
-                'candidate_applied',
-                'New applicant',
-                $user->name . ' applied for ' . $job->title . '.',
+                $job->company?->user_id,
+                'quiz_available',
+                '📋 Skill Assessment Ready',
+                'Complete your 5-minute skill assessment for ' . $job->title . ' to boost your candidate match score.',
                 [
-                    'link' => '/company/applicants?application=' . $application->id,
+                    'link' => '/my-applications?application=' . $application->id . '&take_quiz=1',
                     'application_id' => $application->id,
                     'job_id' => $job->id,
                 ]
             );
 
             return response()->json([
-                'message'     => 'Application submitted successfully',
-                'application' => $application,
-                'ai_analysis' => [
+                'message'             => $isAutoShortlisted
+                    ? 'Application submitted and automatically shortlisted by AI!'
+                    : 'Application submitted successfully',
+                'application'         => $application,
+                'is_auto_shortlisted' => $isAutoShortlisted,
+                'ai_analysis'         => [
                     'similarity_score' => $similarityScore,
                     'skill_gap_score'  => $skillGapScore,
                     'final_score'      => $finalScore,

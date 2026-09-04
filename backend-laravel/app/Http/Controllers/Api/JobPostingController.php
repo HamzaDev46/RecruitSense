@@ -58,14 +58,19 @@ class JobPostingController extends Controller
             ...$payload,
             'status' => $payload['status'] ?? JobPosting::STATUS_ACTIVE,
         ]);
+        $matcher = app(JobAlertMatcher::class);
         $alertNotifications = $job->is_accepting_applications
-            ? app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'))
+            ? $matcher->notifyMatchingAlerts($job->fresh('company.user'))
+            : 0;
+        $talentMatches = $job->is_accepting_applications
+            ? $matcher->notifyTopMatchingJobSeekers($job->fresh('company.user'))
             : 0;
 
         return response()->json([
             'message' => 'Job posted successfully',
             'job' => $this->withApplicationCounts($job),
             'job_alert_notifications' => $alertNotifications,
+            'talent_pool_matches' => $talentMatches,
         ], 201);
     }
 
@@ -90,14 +95,20 @@ class JobPostingController extends Controller
 
         $previousStatus = $job->status;
         $job->update($this->jobPayload($validator->validated(), true));
-        $alertNotifications = $previousStatus !== JobPosting::STATUS_ACTIVE && $job->is_accepting_applications
-            ? app(JobAlertMatcher::class)->notifyMatchingAlerts($job->fresh('company.user'))
+        $shouldNotify = $previousStatus !== JobPosting::STATUS_ACTIVE && $job->is_accepting_applications;
+        $matcher = app(JobAlertMatcher::class);
+        $alertNotifications = $shouldNotify
+            ? $matcher->notifyMatchingAlerts($job->fresh('company.user'))
+            : 0;
+        $talentMatches = $shouldNotify
+            ? $matcher->notifyTopMatchingJobSeekers($job->fresh('company.user'))
             : 0;
 
         return response()->json([
             'message' => 'Job updated successfully',
             'job' => $this->withApplicationCounts($job),
             'job_alert_notifications' => $alertNotifications,
+            'talent_pool_matches' => $talentMatches,
         ]);
     }
 

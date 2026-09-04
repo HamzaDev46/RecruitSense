@@ -97,6 +97,115 @@ class JobAlertMatcher
         return $notificationsCreated;
     }
 
+    /**
+     * Automated Talent Pool Sourcing: Match and notify active jobseekers for a new job.
+     */
+    public function notifyTopMatchingJobSeekers(JobPosting $job): int
+    {
+        $job->loadMissing('company.user');
+
+        if (!$job->is_accepting_applications) {
+            return 0;
+        }
+
+        $jobSkills = $this->normalizeSkills($job->required_skills);
+        if (empty($jobSkills)) {
+            return 0;
+        }
+
+        $matchedCount = 0;
+        $companyUserId = $job->company?->user_id;
+
+        \App\Models\JobSeeker::with('user', 'resume', 'applications')
+            ->whereNotNull('user_id')
+            ->chunkById(50, function ($jobSeekers) use ($job, $jobSkills, $companyUserId, &$matchedCount) {
+                foreach ($jobSeekers as $jobSeeker) {
+                    $user = $jobSeeker->user;
+                    if (!$user || $user->role !== 'jobseeker') {
+                        continue;
+                    }
+
+                    // Skip if candidate already applied to this job
+                    $alreadyApplied = $jobSeeker->applications->contains('job_id', $job->id);
+                    if ($alreadyApplied) {
+                        continue;
+                    }
+
+                    // Extract all candidate skills
+                    $candidateSkillsRaw = implode(',', array_filter([
+                        $jobSeeker->skills,
+                        $jobSeeker->resume?->parsed_skills,
+                        $jobSeeker->headline,
+                    ]));
+                    $candidateSkills = $this->normalizeSkills($candidateSkillsRaw);
+
+                    if (empty($candidateSkills)) {
+                        continue;
+                    }
+
+                    $matchedSkills = $this->matchedSkills($candidateSkills, $jobSkills);
+                    $matchScore = (int) round((count($matchedSkills) / count($jobSkills)) * 100);
+
+                    // Alert threshold: >= 70% match
+                    if ($matchScore < 70) {
+                        continue;
+                    }
+
+                    // Check if already notified
+                    $alreadyNotified = AppNotification::where('user_id', $user->id)
+                        ->where('type', 'smart_job_match')
+                        ->where('data->job_id', $job->id)
+                        ->exists();
+
+                    if ($alreadyNotified) {
+                        continue;
+                    }
+
+                    AppNotification::create([
+                        'user_id' => $user->id,
+                        'actor_id' => $companyUserId,
+                        'type' => 'smart_job_match',
+                        'title' => '💼 Smart Job Match (' . $matchScore . '%)',
+                        'message' => ($job->company?->name ?: 'A company') . ' just posted ' . $job->title . ' which strongly matches your skills (' . count($matchedSkills) . ' matching skills).',
+                        'data' => [
+                            'job_id' => $job->id,
+                            'match_score' => $matchScore,
+                            'matched_skills' => $matchedSkills,
+                            'link' => '/jobs/' . $job->id,
+                        ],
+                    ]);
+                    UserCache::forgetUnreadNotifications($user->id);
+                    $matchedCount++;
+                }
+            });
+
+        // Notify recruiter of identified talent in the pool
+        if ($matchedCount > 0 && $companyUserId) {
+            $alreadyNotifiedCompany = AppNotification::where('user_id', $companyUserId)
+                ->where('type', 'talent_pool_sourcing_summary')
+                ->where('data->job_id', $job->id)
+                ->exists();
+
+            if (!$alreadyNotifiedCompany) {
+                AppNotification::create([
+                    'user_id' => $companyUserId,
+                    'actor_id' => null,
+                    'type' => 'talent_pool_sourcing_summary',
+                    'title' => '✨ Talent Pool Match Alert',
+                    'message' => 'We identified ' . $matchedCount . ' qualified candidate(s) in the talent pool matching your new job: ' . $job->title . '.',
+                    'data' => [
+                        'job_id' => $job->id,
+                        'matched_candidate_count' => $matchedCount,
+                        'link' => '/company/candidates?job=' . $job->id,
+                    ],
+                ]);
+                UserCache::forgetUnreadNotifications($companyUserId);
+            }
+        }
+
+        return $matchedCount;
+    }
+
     private function alertSkills(JobAlert $alert): array
     {
         $profileSkills = implode(',', [

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ShortlistMail;
 use App\Models\AppNotification;
 use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
@@ -11,6 +12,7 @@ use App\Services\FlaskAIService;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class QuizController extends Controller
@@ -226,19 +228,66 @@ class QuizController extends Controller
             return response()->json(['message' => 'Only job seekers can access this'], 403);
         }
 
-        $questions = QuizQuestion::where('company_id', $companyId)
-            ->get()
-            ->map(function ($q) {
-                return [
-                    'id'            => $q->id,
-                    'category'      => $q->category,
-                    'question_text' => $q->question_text,
-                    'options'       => $q->options,
-                    // correct_answer hidden
-                ];
-            });
+        $questions = QuizQuestion::where('company_id', $companyId)->get();
 
-        return response()->json($questions);
+        // If company has no quiz questions in its bank yet, automatically generate questions
+        if ($questions->isEmpty()) {
+            $this->autoGenerateQuestionsForCompany((int) $companyId);
+            $questions = QuizQuestion::where('company_id', $companyId)->get();
+        }
+
+        $formatted = $questions->map(function ($q) {
+            return [
+                'id'            => $q->id,
+                'category'      => $q->category,
+                'question_text' => $q->question_text,
+                'options'       => $q->options,
+                // correct_answer hidden
+            ];
+        });
+
+        return response()->json($formatted);
+    }
+
+    /**
+     * Auto-generate questions for a company if question bank is empty or needs populating.
+     */
+    public function autoGenerateQuestionsForCompany(int $companyId, string $category = 'Communication', int $count = 5, ?string $jobTitle = null, ?string $requiredSkills = null): void
+    {
+        try {
+            $aiResult = $this->flaskAIService->generateQuiz($category, $count, $jobTitle, $requiredSkills);
+
+            if (!isset($aiResult['error']) && !empty($aiResult['questions']) && is_array($aiResult['questions'])) {
+                $bank = $this->normalizeGeneratedQuestions($aiResult['questions'], $category);
+            } else {
+                $bank = $this->generatedQuestionBank($category);
+            }
+
+            if (empty($bank)) {
+                $bank = $this->generatedQuestionBank($category);
+            }
+
+            $existingTexts = QuizQuestion::where('company_id', $companyId)
+                ->where('category', $category)
+                ->pluck('question_text')
+                ->map(fn ($text) => mb_strtolower(trim($text)))
+                ->all();
+
+            collect($bank)
+                ->reject(fn ($question) => in_array(mb_strtolower(trim($question['question_text'])), $existingTexts, true))
+                ->take($count)
+                ->each(function ($question) use ($companyId, $category) {
+                    QuizQuestion::create([
+                        'company_id'    => $companyId,
+                        'category'      => $category,
+                        'question_text' => $question['question_text'],
+                        'options'       => $question['options'],
+                        'correct_answer'=> $question['correct_answer'],
+                    ]);
+                });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Auto-generation of quiz questions for company {$companyId} failed: " . $e->getMessage());
+        }
     }
 
     private function validatedQuestionPayload(array $data, ?QuizQuestion $question = null): array
@@ -572,33 +621,75 @@ class QuizController extends Controller
             2
         );
 
-        // Update application
-        $application->soft_skill_score = $softSkillScore;
-        $application->final_score      = $finalScore;
-        $application->save();
+        // Check if application was pending and updated final score qualifies for auto-shortlisting
+        $previousStatus = $application->status;
+        $isNewlyAutoShortlisted = ($previousStatus === Application::STATUS_PENDING && $finalScore >= 75);
+
+        if ($isNewlyAutoShortlisted) {
+            $application->status = Application::STATUS_SHORTLISTED;
+            $application->company_notes = "✨ Automatically shortlisted following skill assessment completion (Final Match Score: {$finalScore}%).";
+            $application->save();
+
+            try {
+                Mail::to($user->email)->send(new ShortlistMail($application));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto-shortlist email after quiz failed: ' . $e->getMessage());
+            }
+
+            // In-app notification to candidate
+            if (\App\Models\User::find($user->id)?->notificationEnabledFor('application_shortlisted')) {
+                AppNotification::create([
+                    'user_id' => $user->id,
+                    'actor_id' => $companyUserId,
+                    'type' => 'application_shortlisted',
+                    'title' => '✨ Application Shortlisted!',
+                    'message' => 'Congratulations! Your assessment score helped you qualify for shortlisting for ' . $application->jobPosting->title . ' (Final Match Score: ' . $finalScore . '%).',
+                    'data' => [
+                        'link' => '/my-applications?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $application->job_id,
+                    ],
+                ]);
+                UserCache::forgetUnreadNotifications($user->id);
+            }
+        }
 
         $companyUserId = $application->jobPosting?->company?->user_id;
 
-        if (
-            $companyUserId
-            && $companyUserId !== $user->id
-            && \App\Models\User::find($companyUserId)?->notificationEnabledFor('candidate_quiz_submitted')
-        ) {
-            AppNotification::create([
-                'user_id' => $companyUserId,
-                'actor_id' => $user->id,
-                'type' => 'candidate_quiz_submitted',
-                'title' => 'Quiz submitted',
-                'message' => $user->name . ' submitted the quiz for ' . $application->jobPosting->title . '.',
-                'data' => [
-                    'link' => '/company/applicants?application=' . $application->id,
-                    'application_id' => $application->id,
-                    'job_id' => $application->job_id,
-                    'soft_skill_score' => $softSkillScore,
-                    'final_score' => $finalScore,
-                ],
-            ]);
-            UserCache::forgetUnreadNotifications($companyUserId);
+        if ($companyUserId && $companyUserId !== $user->id) {
+            if ($isNewlyAutoShortlisted) {
+                AppNotification::create([
+                    'user_id' => $companyUserId,
+                    'actor_id' => $user->id,
+                    'type' => 'candidate_auto_shortlisted',
+                    'title' => '🔥 Star Candidate Shortlisted (Quiz Completed)',
+                    'message' => '✨ ' . $user->name . ' scored ' . $softSkillScore . '% on the assessment and was auto-shortlisted with a final match score of ' . $finalScore . '% for ' . $application->jobPosting->title . '.',
+                    'data' => [
+                        'link' => '/company/applicants?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $application->job_id,
+                        'soft_skill_score' => $softSkillScore,
+                        'final_score' => $finalScore,
+                    ],
+                ]);
+                UserCache::forgetUnreadNotifications($companyUserId);
+            } elseif (\App\Models\User::find($companyUserId)?->notificationEnabledFor('candidate_quiz_submitted')) {
+                AppNotification::create([
+                    'user_id' => $companyUserId,
+                    'actor_id' => $user->id,
+                    'type' => 'candidate_quiz_submitted',
+                    'title' => 'Quiz submitted',
+                    'message' => $user->name . ' submitted the quiz for ' . $application->jobPosting->title . ' (Score: ' . $softSkillScore . '%, Final Match: ' . $finalScore . '%).',
+                    'data' => [
+                        'link' => '/company/applicants?application=' . $application->id,
+                        'application_id' => $application->id,
+                        'job_id' => $application->job_id,
+                        'soft_skill_score' => $softSkillScore,
+                        'final_score' => $finalScore,
+                    ],
+                ]);
+                UserCache::forgetUnreadNotifications($companyUserId);
+            }
         }
 
         return response()->json([

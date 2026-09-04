@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Briefcase,
+  Building2,
   Check,
   ExternalLink,
   Inbox,
@@ -41,19 +42,35 @@ const formatTime = (value) => {
 }
 
 const Avatar = ({ user, size = 'w-11 h-11' }) => {
-  if (user?.profile_image_url) {
-    return (
-      <img
-        src={user.profile_image_url}
-        alt={user.name}
-        className={`${size} rounded-full object-cover object-top border border-gray-100`}
-      />
-    )
-  }
+  const isCompanyUser = user?.role === 'company'
 
   return (
-    <div className={`${size} rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold`}>
-      {initials(user?.name)}
+    <div className="relative shrink-0">
+      {user?.profile_image_url ? (
+        <img
+          src={user.profile_image_url}
+          alt={user.name}
+          className={`${size} rounded-full object-cover object-top border border-gray-100 shadow-sm`}
+        />
+      ) : (
+        <div
+          className={`${size} rounded-full ${
+            isCompanyUser
+              ? 'bg-gradient-to-br from-purple-600 to-indigo-700'
+              : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+          } text-white flex items-center justify-center font-bold text-sm shadow-sm`}
+        >
+          {initials(user?.name)}
+        </div>
+      )}
+      <div
+        className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] border border-white shadow-sm ${
+          isCompanyUser ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white'
+        }`}
+        title={isCompanyUser ? 'Company' : 'Person'}
+      >
+        {isCompanyUser ? <Building2 className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
+      </div>
     </div>
   )
 }
@@ -68,7 +85,7 @@ const MessagesPage = () => {
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
   const [search, setSearch] = useState('')
-  const [conversationFilter, setConversationFilter] = useState('all')
+  const [conversationFilter, setConversationFilter] = useState('all') // 'all' | 'people' | 'companies' | 'unread'
   const [body, setBody] = useState('')
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -84,20 +101,29 @@ const MessagesPage = () => {
   const messageStats = useMemo(() => {
     const unreadMessages = conversations.reduce((total, conversation) => total + Number(conversation.unread_count || 0), 0)
     const unreadThreads = conversations.filter((conversation) => Number(conversation.unread_count || 0) > 0).length
-    const candidateThreads = conversations.filter((conversation) => conversation.other_user?.role === 'jobseeker').length
+    const peopleThreads = conversations.filter((conversation) => (conversation.other_user?.role || 'jobseeker') === 'jobseeker').length
+    const companyThreads = conversations.filter((conversation) => conversation.other_user?.role === 'company').length
 
     return {
       total: conversations.length,
       unreadMessages,
       unreadThreads,
-      candidateThreads,
+      peopleThreads,
+      companyThreads,
     }
   }, [conversations])
 
   const filteredConversations = useMemo(() => {
-    const scopedConversations = conversationFilter === 'unread'
-      ? conversations.filter((conversation) => Number(conversation.unread_count || 0) > 0)
-      : conversations
+    let scopedConversations = conversations
+
+    if (conversationFilter === 'unread') {
+      scopedConversations = scopedConversations.filter((conversation) => Number(conversation.unread_count || 0) > 0)
+    } else if (conversationFilter === 'people') {
+      scopedConversations = scopedConversations.filter((conversation) => (conversation.other_user?.role || 'jobseeker') === 'jobseeker')
+    } else if (conversationFilter === 'companies') {
+      scopedConversations = scopedConversations.filter((conversation) => conversation.other_user?.role === 'company')
+    }
+
     const query = search.trim().toLowerCase()
     if (!query) return scopedConversations
 
@@ -350,86 +376,69 @@ const MessagesPage = () => {
             <p className="text-sm text-gray-500 mt-1">
               {isCompany
                 ? 'Chat with candidates who applied to your jobs.'
-                : 'Chat with people from your accepted network.'}
+                : 'Connect with people from your network and hiring companies.'}
             </p>
           </div>
           <button
             onClick={loadConversations}
-            className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
         </div>
 
-        {isCompany && (
-          <div className="grid sm:grid-cols-3 gap-3 mb-4">
-            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase text-gray-400">Candidate chats</p>
-                <p className="text-2xl font-bold text-gray-900">{messageStats.candidateThreads}</p>
-              </div>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                <Inbox className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase text-gray-400">Unread messages</p>
-                <p className="text-2xl font-bold text-gray-900">{messageStats.unreadMessages}</p>
-              </div>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase text-gray-400">Active chat</p>
-                <p className="text-lg font-bold text-gray-900 truncate">
-                  {selectedConversation?.other_user?.name || 'None selected'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid lg:grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0">
           <aside className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} lg:col-span-4 bg-white border border-gray-100 rounded-xl overflow-hidden flex-col min-h-[60vh] lg:min-h-0`}>
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-4 border-b border-gray-100 space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search conversations"
+                  placeholder="Search by name, headline, or message..."
                   className="w-full pl-9 pr-9 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
-              <div className="flex gap-2 mt-3">
+
+              {/* Categorization Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 {[
-                  { key: 'all', label: `All ${messageStats.total}` },
-                  { key: 'unread', label: `Unread ${messageStats.unreadThreads}` },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setConversationFilter(item.key)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                      conversationFilter === item.key
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                  { key: 'all', label: 'All', count: messageStats.total, icon: null },
+                  { key: 'people', label: 'People', count: messageStats.peopleThreads, icon: User },
+                  { key: 'companies', label: 'Companies', count: messageStats.companyThreads, icon: Building2 },
+                  { key: 'unread', label: 'Unread', count: messageStats.unreadThreads, icon: null },
+                ].map((item) => {
+                  const Icon = item.icon
+                  const isActive = conversationFilter === item.key
+
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => setConversationFilter(item.key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 shrink-0 ${
+                        isActive
+                          ? item.key === 'companies'
+                            ? 'bg-purple-600 border-purple-600 text-white shadow-sm shadow-purple-200'
+                            : 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-200'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {Icon && <Icon className="w-3.5 h-3.5" />}
+                      <span>{item.label}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {item.count}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -442,21 +451,51 @@ const MessagesPage = () => {
                 </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">
-                  <MessageCircle className="w-11 h-11 text-gray-300 mx-auto mb-3" />
+                  <div className="w-12 h-12 rounded-2xl bg-gray-50 text-gray-300 flex items-center justify-center mx-auto mb-3">
+                    {conversationFilter === 'companies' ? (
+                      <Building2 className="w-6 h-6" />
+                    ) : conversationFilter === 'people' ? (
+                      <Users className="w-6 h-6" />
+                    ) : (
+                      <MessageCircle className="w-6 h-6" />
+                    )}
+                  </div>
                   <h2 className="font-bold text-gray-900">
-                    {search || conversationFilter !== 'all' ? 'No matching conversations' : 'No conversations'}
+                    {search
+                      ? 'No matching conversations'
+                      : conversationFilter === 'people'
+                        ? 'No people conversations'
+                        : conversationFilter === 'companies'
+                          ? 'No company conversations'
+                          : conversationFilter === 'unread'
+                            ? 'No unread messages'
+                            : 'No conversations'}
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {isCompany
-                      ? 'Open an applicant profile and start a candidate chat.'
-                      : 'Start a chat from My Network or a connected profile.'}
+                  <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
+                    {conversationFilter === 'people'
+                      ? 'Start a chat from My Network or a connected candidate profile.'
+                      : conversationFilter === 'companies'
+                        ? isCompany
+                          ? 'Applicant conversations will appear here.'
+                          : 'Chats with hiring companies and recruiters will appear here.'
+                        : isCompany
+                          ? 'Open an applicant profile and start a candidate chat.'
+                          : 'Start a chat from My Network or when a company contacts you.'}
                   </p>
-                  {isCompany && !search && conversationFilter === 'all' && (
+                  {!isCompany && conversationFilter === 'people' && !search && (
                     <button
-                      onClick={() => navigate('/company/applicants')}
+                      onClick={() => navigate('/network')}
                       className="mt-4 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
                     >
-                      Open applicants
+                      Find People in Network
+                    </button>
+                  )}
+                  {!isCompany && conversationFilter === 'companies' && !search && (
+                    <button
+                      onClick={() => navigate('/jobs')}
+                      className="mt-4 px-4 py-2 rounded-full bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+                    >
+                      Browse Jobs & Companies
                     </button>
                   )}
                   {(search || conversationFilter !== 'all') && (
@@ -465,7 +504,7 @@ const MessagesPage = () => {
                         setSearch('')
                         setConversationFilter('all')
                       }}
-                      className="mt-4 px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                      className="mt-3 px-4 py-1.5 rounded-full border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 block mx-auto"
                     >
                       Reset filters
                     </button>
@@ -475,35 +514,46 @@ const MessagesPage = () => {
                 <div className="divide-y divide-gray-100">
                   {filteredConversations.map((conversation) => {
                     const active = selectedConversation?.id === conversation.id
+                    const otherUser = conversation.other_user
+                    const isOtherCompany = otherUser?.role === 'company'
 
                     return (
                       <button
                         key={conversation.id}
                         onClick={() => openConversation(conversation)}
-                        className={`w-full p-4 text-left flex items-center gap-3 transition-colors ${
-                          active ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                        className={`w-full p-4 text-left flex items-start gap-3 transition-colors ${
+                          active ? 'bg-indigo-50/70 border-l-4 border-indigo-600' : 'hover:bg-gray-50'
                         }`}
                       >
-                        <Avatar user={conversation.other_user} />
+                        <Avatar user={otherUser} />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-bold text-gray-900 truncate">{conversation.other_user?.name}</p>
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <p className="font-bold text-gray-900 truncate text-sm">
+                              {otherUser?.name}
+                            </p>
                             {conversation.unread_count > 0 && (
-                              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                              <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                                 {conversation.unread_count}
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500 truncate">
-                            {conversation.latest_message?.body || conversation.other_user?.headline || 'Conversation ready'}
+
+                          <p className="text-xs text-gray-500 truncate mb-1">
+                            {conversation.latest_message?.body || otherUser?.headline || 'Conversation ready'}
                           </p>
+
                           <div className="flex items-center justify-between gap-2 mt-1">
-                            <p className="text-xs text-gray-400">
+                            <span className="text-[11px] text-gray-400">
                               {formatTime(conversation.latest_message?.created_at || conversation.created_at)}
-                            </p>
-                            {isCompany && (
-                              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                Candidate
+                            </span>
+
+                            {isOtherCompany ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-100/80 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                                <Building2 className="w-2.5 h-2.5" /> Company
+                              </span>
+                            ) : (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                                <User className="w-2.5 h-2.5" /> Person
                               </span>
                             )}
                           </div>
@@ -524,16 +574,16 @@ const MessagesPage = () => {
                     <MessageCircle className="w-8 h-8" />
                   </div>
                   <h2 className="font-bold text-gray-900">Select a conversation</h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
                     {isCompany
-                      ? 'Candidate messages will appear here.'
-                      : 'Messages from your network will appear here.'}
+                      ? 'Select a candidate conversation to view chat history and send updates.'
+                      : 'Select a conversation with a connection or company from the list to start messaging.'}
                   </p>
                 </div>
               </div>
             ) : (
               <>
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-white">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
@@ -546,66 +596,80 @@ const MessagesPage = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/profile/${selectedConversation.other_user?.id}`)}
-                      className="flex items-center gap-3 text-left min-w-0"
+                      className="flex items-center gap-3 text-left min-w-0 group"
                     >
                       <Avatar user={selectedConversation.other_user} />
                       <div className="min-w-0">
-                        <p className="font-bold text-gray-900 truncate">{selectedConversation.other_user?.name}</p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {selectedConversation.other_user?.headline || (isCompany ? 'Candidate' : 'RecruitSense member')}
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                            {selectedConversation.other_user?.name}
+                          </p>
+                          {selectedConversation.other_user?.role === 'company' ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                              <Building2 className="w-3 h-3" /> Company
+                            </span>
+                          ) : (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                              <User className="w-3 h-3" /> Person
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">
+                          {selectedConversation.other_user?.headline ||
+                            (selectedConversation.other_user?.role === 'company' ? 'RecruitSense Verified Company' : 'RecruitSense Member')}
                         </p>
                       </div>
                     </button>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    {isCompany && selectedConversation.other_user?.id && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/profile/${selectedConversation.other_user.id}`)}
-                          title="View candidate profile"
-                          aria-label="View candidate profile"
-                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate('/company/applicants')}
-                          title="Open applicants"
-                          aria-label="Open applicants"
-                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center"
-                        >
-                          <Briefcase className="w-4 h-4" />
-                        </button>
-                      </>
+                    {selectedConversation.other_user?.id && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/profile/${selectedConversation.other_user.id}`)}
+                        title="View Profile"
+                        aria-label="View Profile"
+                        className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    )}
+                    {isCompany && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/company/applicants')}
+                        title="Open applicants"
+                        aria-label="Open applicants"
+                        className="w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                      >
+                        <Briefcase className="w-4 h-4" />
+                      </button>
                     )}
                     {selectedMessage?.is_mine && (
                       <>
-                      <button
-                        onClick={() => startEdit(selectedMessage)}
-                        title="Edit message"
-                        aria-label="Edit message"
-                        className="w-9 h-9 rounded-full border border-indigo-100 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => requestDeleteMessage(selectedMessage)}
-                        disabled={messageActionId === selectedMessage.id}
-                        title="Delete message"
-                        aria-label="Delete message"
-                        className="w-9 h-9 rounded-full border border-red-100 text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-50 flex items-center justify-center"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setSelectedMessage(null)}
-                        aria-label="Clear selected message"
-                        className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                        <button
+                          onClick={() => startEdit(selectedMessage)}
+                          title="Edit message"
+                          aria-label="Edit message"
+                          className="w-9 h-9 rounded-full border border-indigo-100 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => requestDeleteMessage(selectedMessage)}
+                          disabled={messageActionId === selectedMessage.id}
+                          title="Delete message"
+                          aria-label="Delete message"
+                          className="w-9 h-9 rounded-full border border-red-100 text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-50 flex items-center justify-center transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedMessage(null)}
+                          aria-label="Clear selected message"
+                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </>
                     )}
                   </div>
@@ -621,12 +685,16 @@ const MessagesPage = () => {
                   ) : messages.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-center">
                       <div>
-                        <User className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                        {selectedConversation.other_user?.role === 'company' ? (
+                          <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                        ) : (
+                          <User className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                        )}
                         <p className="font-bold text-gray-800">No messages yet</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {isCompany
-                            ? 'Send a clear update to begin the candidate conversation.'
-                            : 'Send the first message to start the conversation.'}
+                        <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
+                          {selectedConversation.other_user?.role === 'company'
+                            ? `Send a message to ${selectedConversation.other_user?.name} regarding job opportunities.`
+                            : `Say hello to ${selectedConversation.other_user?.name} to start the conversation.`}
                         </p>
                       </div>
                     </div>
@@ -682,7 +750,7 @@ const MessagesPage = () => {
                                 className={`rounded-2xl px-4 py-2.5 transition ${
                                   message.is_mine
                                     ? 'bg-indigo-600 text-white rounded-br-md'
-                                    : 'bg-white border border-gray-100 text-gray-800 rounded-bl-md'
+                                    : 'bg-white border border-gray-100 text-gray-800 rounded-bl-md shadow-sm'
                                 } ${isSelected ? 'ring-2 ring-indigo-300 ring-offset-2 ring-offset-gray-50' : ''}`}
                               >
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
@@ -692,7 +760,6 @@ const MessagesPage = () => {
                                 </p>
                               </div>
                             )}
-
                           </div>
                         </div>
                       )
@@ -701,20 +768,24 @@ const MessagesPage = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className="p-3 sm:p-4 border-t border-gray-100">
+                <div className="p-3 sm:p-4 border-t border-gray-100 bg-white">
                   <div className="flex items-end gap-2 sm:gap-3">
                     <textarea
                       value={body}
                       onChange={(event) => setBody(event.target.value)}
                       onKeyDown={handleKeyDown}
                       rows="2"
-                      placeholder={isCompany ? 'Write to this candidate...' : 'Write a message...'}
+                      placeholder={
+                        selectedConversation.other_user?.role === 'company'
+                          ? `Write to ${selectedConversation.other_user?.name}...`
+                          : 'Write a message...'
+                      }
                       className="min-w-0 flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <button
                       onClick={sendMessage}
                       disabled={sending || !body.trim()}
-                      className="px-4 sm:px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2"
+                      className="px-4 sm:px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2 shadow-md shadow-indigo-500/20 transition-all"
                     >
                       <Send className="w-4 h-4" />
                       <span className="hidden sm:inline">{sending ? 'Sending...' : 'Send'}</span>

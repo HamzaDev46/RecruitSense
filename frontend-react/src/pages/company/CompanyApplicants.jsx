@@ -1454,6 +1454,12 @@ const CompanyApplicants = () => {
                             <span className={statusBadge(application.status)}>
                               {statusMeta[application.status]?.label || application.status}
                             </span>
+                            {Boolean(application.company_notes?.includes('Automatically shortlisted by RecruitSense AI') || (score >= 75 && application.status === 'shortlisted')) && (
+                              <span className="px-2.5 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 inline-flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-emerald-600" />
+                                AI Auto-Shortlisted
+                              </span>
+                            )}
                             <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${hasResume ? 'bg-sky-50 text-sky-700 border-sky-100' : 'bg-gray-50 text-gray-500 border-gray-100'}`}>
                               {hasResume ? 'Resume' : 'No resume'}
                             </span>
@@ -1517,6 +1523,12 @@ const CompanyApplicants = () => {
                           <span className={statusBadge(selectedApplication.status)}>
                             {statusMeta[selectedApplication.status]?.label || selectedApplication.status}
                           </span>
+                          {Boolean(selectedApplication.company_notes?.includes('Automatically shortlisted by RecruitSense AI') || (finalScore >= 75 && selectedApplication.status === 'shortlisted')) && (
+                            <span className="px-2.5 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200 inline-flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                              AI Auto-Shortlisted
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{selectedJobSeeker?.headline || 'Job seeker'}</p>
                         {candidateEmail(selectedApplication) && (

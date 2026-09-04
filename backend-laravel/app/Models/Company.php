@@ -25,6 +25,8 @@ class Company extends Model
         'contact_email',
         'company_size',
         'founded_year',
+        'verification_status',
+        'admin_note',
         'dark_mode',
         'notify_messages',
         'notify_candidate_activity',

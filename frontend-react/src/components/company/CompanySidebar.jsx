@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Settings,
   Search,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -26,6 +27,7 @@ const navItems = [
   { icon: <Activity className="w-5 h-5" />, label: 'Activity', path: '/company/activity-log' },
   { icon: <Briefcase className="w-5 h-5" />, label: 'Jobs', path: '/company/jobs' },
   { icon: <Users className="w-5 h-5" />, label: 'Applicants', path: '/company/applicants' },
+  { icon: <Sparkles className="w-5 h-5" />, label: 'Find Talent', path: '/company/candidates' },
   { icon: <Calendar className="w-5 h-5" />, label: 'Interviews', path: '/company/interviews' },
   { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: '/notifications', countKey: 'notifications' },
   { icon: <MessageCircle className="w-5 h-5" />, label: 'Messages', path: '/messages', countKey: 'messages' },

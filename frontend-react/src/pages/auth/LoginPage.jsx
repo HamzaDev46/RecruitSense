@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, RefreshCw } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
@@ -13,6 +13,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null)
+  const [resending, setResending] = useState(false)
 
   const finishLogin = useCallback((user, token, message = `Welcome back, ${user.name}!`) => {
     login(user, token)
@@ -33,14 +35,36 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setUnverifiedEmail(null)
     try {
       const res = await axios.post('http://127.0.0.1:8000/api/login', form)
       const { token, user } = res.data
       finishLogin(user, token)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed')
+      if (err.response?.data?.requires_verification) {
+        setUnverifiedEmail(err.response?.data?.email || form.email)
+      }
+      const errors = err.response?.data?.errors
+      if (errors) {
+        Object.values(errors).forEach(e => toast.error(e[0]))
+      } else {
+        toast.error(err.response?.data?.message || 'Login failed')
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return
+    setResending(true)
+    try {
+      const res = await axios.post('http://127.0.0.1:8000/api/resend-verification', { email: unverifiedEmail })
+      toast.success(res.data.message || 'Activation link re-sent!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not resend email.')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -66,6 +90,27 @@ const LoginPage = () => {
           <p className="text-gray-500 text-sm mt-1">Sign in to your RecruitSense account</p>
         </div>
 
+        {unverifiedEmail && (
+          <div className="mb-5 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              Account Not Activated
+            </div>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              We sent a verification link to <strong>{unverifiedEmail}</strong>. Please verify your email before logging in.
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="w-full mt-2 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
+              {resending ? 'Sending...' : 'Resend Verification Email'}
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Email Address</label>
@@ -76,7 +121,7 @@ const LoginPage = () => {
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="you@example.com"
+                placeholder="you@gmail.com"
                 required
                 className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />

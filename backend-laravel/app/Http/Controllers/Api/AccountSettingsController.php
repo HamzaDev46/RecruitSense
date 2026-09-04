@@ -15,6 +15,7 @@ use App\Models\ProfileView;
 use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Rules\TrustedEmailDomain;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -35,7 +36,7 @@ class AccountSettingsController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id), new TrustedEmailDomain()],
         ]);
 
         if ($validator->fails()) {

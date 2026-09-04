@@ -109,11 +109,36 @@ class MessageController extends Controller
             'user_two_id' => $userTwoId,
         ]);
 
+        $initialBody = trim((string) ($request->input('body') ?: $request->input('message', '')));
+        $sentMessage = null;
+
+        if ($initialBody !== '') {
+            $sentMessage = Message::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $currentUser->id,
+                'body' => $initialBody,
+            ]);
+
+            $this->syncLastMessageAt($conversation);
+
+            AppNotification::create([
+                'user_id' => $user->id,
+                'type' => 'new_message',
+                'title' => 'New Message from ' . ($currentUser->company?->name ?: $currentUser->name),
+                'message' => Str::limit($initialBody, 120),
+                'link' => '/messages?conversation=' . $conversation->id,
+                'actor_user_id' => $currentUser->id,
+            ]);
+
+            UserCache::forgetUnreadMessages($user->id);
+        }
+
         $conversation->load(['userOne.jobSeeker', 'userOne.company', 'userTwo.jobSeeker', 'userTwo.company', 'latestMessage.sender']);
 
         return response()->json([
             'message' => 'Conversation ready',
             'conversation' => $this->conversationPayload($conversation, $currentUser->id),
+            'chat_message' => $sentMessage ? $this->messagePayload($sentMessage, $currentUser->id) : null,
         ]);
     }
 
@@ -448,12 +473,18 @@ class MessageController extends Controller
             return $this->areConnected($sender->id, $receiver->id);
         }
 
+        // Verified / active companies can reach out to any active job seeker
         if ($sender->role === 'company' && $receiver->role === 'jobseeker') {
-            return $this->companyHasApplicant($sender, $receiver);
+            return true;
         }
 
+        // Job seekers can message companies if applied or if conversation exists
         if ($sender->role === 'jobseeker' && $receiver->role === 'company') {
-            return $this->companyHasApplicant($receiver, $sender);
+            return $this->companyHasApplicant($receiver, $sender) || Conversation::where(function ($query) use ($sender, $receiver) {
+                $query->where('user_one_id', $sender->id)->where('user_two_id', $receiver->id);
+            })->orWhere(function ($query) use ($sender, $receiver) {
+                $query->where('user_one_id', $receiver->id)->where('user_two_id', $sender->id);
+            })->exists();
         }
 
         return false;

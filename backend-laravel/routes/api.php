@@ -22,12 +22,16 @@ use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\ContentReportController;
 use App\Http\Controllers\Api\CompanyDashboardController;
 use App\Http\Controllers\Api\CompanyProfileController;
+use App\Http\Controllers\Api\CandidateDiscoveryController;
+use App\Http\Controllers\Api\AdminController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+Route::post('/resend-verification', [AuthController::class, 'resendVerification']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -45,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/company/activity-log', [CompanyDashboardController::class, 'activityLog']);
     Route::get('/company/profile', [CompanyProfileController::class, 'show']);
     Route::post('/company/profile', [CompanyProfileController::class, 'update']);
+    Route::get('/company/candidates', [CandidateDiscoveryController::class, 'index']);
     Route::get('/search/global', [GlobalSearchController::class, 'index']);
     Route::post('/reports', [ContentReportController::class, 'store']);
     Route::get('/settings', [AccountSettingsController::class, 'show']);
@@ -159,4 +164,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // Quiz routes — Job Seeker takes quiz
     Route::get('/companies/{companyId}/quiz-questions', [QuizController::class, 'getQuestionsForCompany']);
     Route::post('/applications/{applicationId}/submit-quiz', [QuizController::class, 'submitAnswers']);
+
+
+     // Admin routes
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/admin/analytics', [AdminController::class, 'analytics']);
+    Route::get('/admin/activity-log', [AdminController::class, 'activityLog']);
+    Route::post('/admin/broadcast', [AdminController::class, 'broadcast']);
+    Route::get('/admin/settings', [AdminController::class, 'getSettings']);
+    Route::put('/admin/settings', [AdminController::class, 'updateSettings']);
+    Route::get('/admin/users', [AdminController::class, 'getUsers']);
+    Route::get('/admin/companies', [AdminController::class, 'getCompanies']);
+    Route::get('/admin/jobs', [AdminController::class, 'getJobs']);
+    Route::get('/admin/applications', [AdminController::class, 'getApplications']);
+    Route::put('/admin/users/{id}/status', [AdminController::class, 'updateUserStatus']);
+    Route::put('/admin/companies/{id}/status', [AdminController::class, 'updateCompanyStatus']);
+    Route::put('/admin/jobs/{id}/status', [AdminController::class, 'updateJobStatus']);
+    Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
+    Route::delete('/admin/companies/{id}', [AdminController::class, 'deleteCompany']);
+    Route::delete('/admin/jobs/{id}', [AdminController::class, 'deleteJob']);
 });
+

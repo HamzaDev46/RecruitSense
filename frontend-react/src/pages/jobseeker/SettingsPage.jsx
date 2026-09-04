@@ -25,6 +25,7 @@ import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
+import { validateTrustedEmail } from '../../utils/emailValidation'
 
 const defaultPreferences = {
   profile_visibility: 'public',
@@ -177,6 +178,13 @@ const SettingsPage = () => {
 
   const saveAccount = async (event) => {
     event.preventDefault()
+    if (accountForm.email) {
+      const check = validateTrustedEmail(accountForm.email)
+      if (!check.isValid) {
+        toast.error(check.message || 'Please use a trusted email address.')
+        return
+      }
+    }
     setSavingAccount(true)
 
     try {
@@ -289,14 +297,44 @@ const SettingsPage = () => {
                       className={inputClass()}
                     />
                   </Field>
-                  <Field label="Email address" icon={<Mail className="w-4 h-4" />}>
-                    <input
-                      type="email"
-                      value={accountForm.email}
-                      onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
-                      className={inputClass(true)}
-                    />
-                  </Field>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-semibold text-gray-700">Email address</span>
+                      {accountForm.email && accountForm.email.includes('@') && (
+                        <span className={`text-xs font-semibold ${
+                          validateTrustedEmail(accountForm.email).isValid ? 'text-emerald-600' : 'text-red-500'
+                        }`}>
+                          {validateTrustedEmail(accountForm.email).isValid ? '✓ Trusted provider' : '✕ Invalid domain'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+                        accountForm.email && accountForm.email.includes('@')
+                          ? validateTrustedEmail(accountForm.email).isValid
+                            ? 'text-emerald-500'
+                            : 'text-red-400'
+                          : 'text-gray-400'
+                      }`} />
+                      <input
+                        type="email"
+                        value={accountForm.email}
+                        onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
+                        className={`w-full pl-9 pr-3 py-2.5 rounded-lg border text-sm outline-none transition-all ${
+                          accountForm.email && accountForm.email.includes('@')
+                            ? validateTrustedEmail(accountForm.email).isValid
+                              ? 'border-emerald-300 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20'
+                              : 'border-red-300 focus:ring-2 focus:ring-red-200 bg-red-50/20'
+                            : 'border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+                        }`}
+                      />
+                    </div>
+                    {accountForm.email && accountForm.email.includes('@') && !validateTrustedEmail(accountForm.email).isValid && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {validateTrustedEmail(accountForm.email).message}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex justify-end">
                     <button
                       type="submit"

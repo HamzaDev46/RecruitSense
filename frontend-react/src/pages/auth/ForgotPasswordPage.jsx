@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Brain, Mail, Send } from 'lucide-react'
+import { ArrowLeft, Brain, Mail, Send, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
+import { validateTrustedEmail } from '../../utils/emailValidation'
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate()
@@ -11,8 +12,18 @@ const ForgotPasswordPage = () => {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
 
+  const emailValidation = email ? validateTrustedEmail(email) : null
+
   const handleSubmit = async (event) => {
     event.preventDefault()
+    if (email) {
+      const check = validateTrustedEmail(email)
+      if (!check.isValid) {
+        toast.error(check.message || 'Please use a trusted email address.')
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -69,18 +80,53 @@ const ForgotPasswordPage = () => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Email Address</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-gray-700 block">Email Address</label>
+                {emailValidation && email.includes('@') && (
+                  <span className={`text-xs font-semibold flex items-center gap-1 ${
+                    emailValidation.isValid ? 'text-emerald-600' : 'text-red-500'
+                  }`}>
+                    {emailValidation.isValid ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Trusted
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5" /> Invalid domain
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${
+                  emailValidation && email.includes('@')
+                    ? emailValidation.isValid
+                      ? 'text-emerald-500'
+                      : 'text-red-400'
+                    : 'text-gray-400'
+                }`} />
                 <input
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
+                  placeholder="you@gmail.com"
                   required
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className={`w-full pl-11 pr-4 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
+                    emailValidation && email.includes('@')
+                      ? emailValidation.isValid
+                        ? 'border-emerald-300 focus:ring-2 focus:ring-emerald-400 bg-emerald-50/20'
+                        : 'border-red-300 focus:ring-2 focus:ring-red-400 bg-red-50/20'
+                      : 'border-gray-200 focus:ring-2 focus:ring-indigo-500'
+                  }`}
                 />
               </div>
+              {emailValidation && !emailValidation.isValid && email.includes('@') && (
+                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                  {emailValidation.message}
+                </p>
+              )}
             </div>
 
             <button

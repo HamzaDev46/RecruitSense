@@ -9,6 +9,7 @@ const pageImports = {
   landing: () => import('./pages/LandingPage'),
   login: () => import('./pages/auth/LoginPage'),
   register: () => import('./pages/auth/RegisterPage'),
+  verifyEmail: () => import('./pages/auth/VerifyEmailPage'),
   forgotPassword: () => import('./pages/auth/ForgotPasswordPage'),
   resetPassword: () => import('./pages/auth/ResetPasswordPage'),
   dashboard: () => import('./pages/jobseeker/Dashboard'),
@@ -31,14 +32,25 @@ const pageImports = {
   companyActivityLog: () => import('./pages/company/CompanyActivityLog'),
   companyJobs: () => import('./pages/company/CompanyJobs'),
   companyApplicants: () => import('./pages/company/CompanyApplicants'),
+  candidateDiscovery: () => import('./pages/company/CandidateDiscovery'),
   companyInterviews: () => import('./pages/company/CompanyInterviews'),
   companyQuiz: () => import('./pages/company/CompanyQuiz'),
   companySettings: () => import('./pages/company/CompanySettings'),
+  // Admin pages
+  adminDashboard: () => import('./pages/admin/AdminDashboard'),
+  adminUsers: () => import('./pages/admin/ManageUsers'),
+  adminCompanies: () => import('./pages/admin/ManageCompanies'),
+  adminJobs: () => import('./pages/admin/ManageJobs'),
+  adminAnalytics: () => import('./pages/admin/AdminAnalytics'),
+  adminBroadcast: () => import('./pages/admin/Broadcast'),
+  adminActivity: () => import('./pages/admin/ActivityLog'),
+  adminSettings: () => import('./pages/admin/AdminSettings'),
 }
 
 const LandingPage = lazy(pageImports.landing)
 const LoginPage = lazy(pageImports.login)
 const RegisterPage = lazy(pageImports.register)
+const VerifyEmailPage = lazy(pageImports.verifyEmail)
 const ForgotPasswordPage = lazy(pageImports.forgotPassword)
 const ResetPasswordPage = lazy(pageImports.resetPassword)
 const Dashboard = lazy(pageImports.dashboard)
@@ -61,29 +73,37 @@ const CompanyAnalytics = lazy(pageImports.companyAnalytics)
 const CompanyActivityLog = lazy(pageImports.companyActivityLog)
 const CompanyJobs = lazy(pageImports.companyJobs)
 const CompanyApplicants = lazy(pageImports.companyApplicants)
+const CandidateDiscovery = lazy(pageImports.candidateDiscovery)
 const CompanyInterviews = lazy(pageImports.companyInterviews)
 const CompanyQuiz = lazy(pageImports.companyQuiz)
 const CompanySettings = lazy(pageImports.companySettings)
+// Admin lazy imports
+const AdminDashboard = lazy(pageImports.adminDashboard)
+const ManageUsers = lazy(pageImports.adminUsers)
+const ManageCompanies = lazy(pageImports.adminCompanies)
+const ManageJobs = lazy(pageImports.adminJobs)
+const AdminAnalytics = lazy(pageImports.adminAnalytics)
+const Broadcast = lazy(pageImports.adminBroadcast)
+const AdminActivityLog = lazy(pageImports.adminActivity)
+const AdminSettings = lazy(pageImports.adminSettings)
 
 const jobseekerPreloadKeys = [
-  'dashboard',
-  'search',
-  'feed',
-  'jobs',
-  'applications',
-  'resume',
-  'resumeCoach',
-  'profile',
-  'network',
-  'notifications',
-  'messages',
-  'savedJobs',
-  'recommendedJobs',
-  'jobAlerts',
-  'settings',
+  'dashboard', 'search', 'feed', 'jobs', 'applications',
+  'resume', 'resumeCoach', 'profile', 'network', 'notifications',
+  'messages', 'savedJobs', 'recommendedJobs', 'jobAlerts', 'settings',
 ]
 
-const companyPreloadKeys = ['companyDashboard', 'companyAnalytics', 'companyActivityLog', 'companyJobs', 'companyApplicants', 'companyInterviews', 'notifications', 'messages', 'companyQuiz', 'companySettings']
+const companyPreloadKeys = [
+  'companyDashboard', 'companyAnalytics', 'companyActivityLog',
+  'companyJobs', 'companyApplicants', 'companyInterviews',
+  'notifications', 'messages', 'companyQuiz', 'companySettings',
+]
+
+const adminPreloadKeys = [
+  'adminDashboard', 'adminUsers', 'adminCompanies',
+  'adminJobs', 'adminAnalytics', 'adminBroadcast',
+  'adminActivity', 'adminSettings',
+]
 
 const preloadAppPages = () => {
   const role = (() => {
@@ -94,7 +114,10 @@ const preloadAppPages = () => {
     }
   })()
 
-  const preloadKeys = role === 'company' ? companyPreloadKeys : jobseekerPreloadKeys
+  const preloadKeys =
+    role === 'company' ? companyPreloadKeys :
+    role === 'admin' ? adminPreloadKeys :
+    jobseekerPreloadKeys
 
   preloadKeys.forEach((key) => {
     pageImports[key]?.().catch(() => {})
@@ -132,9 +155,7 @@ const RouteClickSpinner = () => {
         startedAt: Date.now(),
       })
     }
-
     window.addEventListener('recruitsense-route-loading', showSpinner)
-
     return () => {
       window.removeEventListener('recruitsense-route-loading', showSpinner)
     }
@@ -143,18 +164,14 @@ const RouteClickSpinner = () => {
   useEffect(() => {
     if (!loadingRoute) return undefined
     if (loadingRoute.path && location.pathname !== loadingRoute.path) return undefined
-
     const elapsed = Date.now() - loadingRoute.startedAt
     const timer = window.setTimeout(() => setLoadingRoute(null), Math.max(260 - elapsed, 0))
-
     return () => window.clearTimeout(timer)
   }, [loadingRoute, location.pathname])
 
   useEffect(() => {
     if (!loadingRoute) return undefined
-
     const timer = window.setTimeout(() => setLoadingRoute(null), 1600)
-
     return () => window.clearTimeout(timer)
   }, [loadingRoute])
 
@@ -172,18 +189,15 @@ function App() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowInitialLoader(false), 2400)
-
     return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
     const runPreload = () => preloadAppPages()
-
     if ('requestIdleCallback' in window) {
       const idleId = window.requestIdleCallback(runPreload, { timeout: 3000 })
       return () => window.cancelIdleCallback?.(idleId)
     }
-
     const timer = window.setTimeout(runPreload, 1500)
     return () => window.clearTimeout(timer)
   }, [])
@@ -199,11 +213,15 @@ function App() {
         <RouteClickSpinner />
         <Suspense fallback={<PageLoader />}>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Job Seeker Routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute role="jobseeker">
                 <Dashboard />
@@ -289,6 +307,8 @@ function App() {
                 <ProfilePage />
               </ProtectedRoute>
             } />
+
+            {/* Company Routes */}
             <Route path="/company" element={
               <ProtectedRoute role="company">
                 <Navigate to="/company/dashboard" replace />
@@ -319,6 +339,11 @@ function App() {
                 <CompanyApplicants />
               </ProtectedRoute>
             } />
+            <Route path="/company/candidates" element={
+              <ProtectedRoute role="company">
+                <CandidateDiscovery />
+              </ProtectedRoute>
+            } />
             <Route path="/company/interviews" element={
               <ProtectedRoute role="company">
                 <CompanyInterviews />
@@ -337,6 +362,53 @@ function App() {
             <Route path="/company/jobs/:jobId/applicants" element={
               <ProtectedRoute role="company">
                 <CompanyApplicants />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute role="admin">
+                <Navigate to="/admin/dashboard" replace />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute role="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute role="admin">
+                <ManageUsers />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/companies" element={
+              <ProtectedRoute role="admin">
+                <ManageCompanies />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/jobs" element={
+              <ProtectedRoute role="admin">
+                <ManageJobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute role="admin">
+                <AdminAnalytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/broadcast" element={
+              <ProtectedRoute role="admin">
+                <Broadcast />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/activity" element={
+              <ProtectedRoute role="admin">
+                <AdminActivityLog />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute role="admin">
+                <AdminSettings />
               </ProtectedRoute>
             } />
           </Routes>

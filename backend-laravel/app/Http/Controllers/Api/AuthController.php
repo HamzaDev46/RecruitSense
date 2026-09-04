@@ -6,7 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\JobSeeker;
+use App\Models\AdminSetting;
 use App\Mail\PasswordResetMail;
+use App\Mail\EmailVerificationMail;
+use App\Mail\JobSeekerWelcomeMail;
+use App\Mail\CompanyWelcomeMail;
+use App\Rules\TrustedEmailDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -15,19 +20,40 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
-use App\Mail\JobSeekerWelcomeMail;
-use App\Mail\CompanyWelcomeMail;
-
 class AuthController extends Controller
 {
     /**
-     * Register a new user (jobseeker or company)
+     * Generate secure activation verification URL for user.
+     */
+    public static function generateVerificationUrl(User $user): string
+    {
+        $hash = hash_hmac('sha256', $user->id . '|' . $user->email . '|' . ($user->created_at?->timestamp ?? 0), config('app.key'));
+        $frontendUrl = rtrim(config('services.frontend.url', 'http://localhost:5173'), '/');
+
+        return "{$frontendUrl}/verify-email?id={$user->id}&email=" . urlencode($user->email) . "&token={$hash}";
+    }
+
+    /**
+     * Validate verification token.
+     */
+    public static function isValidVerificationToken(User $user, string $token): bool
+    {
+        $expectedHash = hash_hmac('sha256', $user->id . '|' . $user->email . '|' . ($user->created_at?->timestamp ?? 0), config('app.key'));
+        return hash_equals($expectedHash, $token);
+    }
+
+    /**
+     * Register a new user (jobseeker or company) with email verification required
      */
     public function register(Request $request)
     {
+        if (!AdminSetting::getValue('allow_registrations', true)) {
+            return response()->json(['message' => 'New registrations are currently disabled.'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users', new TrustedEmailDomain()],
             'password' => 'required|string|min:6',
             'role' => 'required|in:company,jobseeker',
         ]);
@@ -41,36 +67,126 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'email_verified_at' => null,
         ]);
 
-        if ($request->role === 'company') {
-            Company::create([
-                'user_id' => $user->id,
-                'name' => $request->name,
-            ]);
+        $this->ensureRoleProfile($user);
 
-            Mail::to($user->email)->send(new CompanyWelcomeMail($user));
-        } elseif ($request->role === 'jobseeker') {
-            JobSeeker::create([
-                'user_id' => $user->id,
-            ]);
+        // Send Email Verification Link
+        try {
+            $verifyUrl = self::generateVerificationUrl($user);
+            Mail::to($user->email)->send(new EmailVerificationMail($user, $verifyUrl));
+        } catch (\Throwable $e) {
+            // Log mail exception if mailer is offline in dev
+        }
 
-            Mail::to($user->email)->send(new JobSeekerWelcomeMail($user));
+        return response()->json([
+            'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox and verify your email to activate your account.',
+            'requires_verification' => true,
+            'email' => $user->email,
+            'user' => $user,
+        ], 201);
+    }
+
+    /**
+     * Verify email address and activate account
+     */
+    public function verifyEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|integer',
+            'email' => 'required|email',
+            'token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('id', $request->id)
+            ->where('email', $request->email)
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Account not found or invalid activation link.'], 404);
+        }
+
+        if ($user->email_verified_at) {
+            $token = $user->createToken('auth_token')->plainTextToken;
+            return response()->json([
+                'message' => 'Your email is already verified. Welcome back!',
+                'already_verified' => true,
+                'user' => $user,
+                'token' => $token,
+            ], 200);
+        }
+
+        if (!self::isValidVerificationToken($user, $request->token)) {
+            return response()->json(['message' => 'The verification link is invalid or has expired.'], 422);
+        }
+
+        $user->forceFill([
+            'email_verified_at' => now(),
+        ])->save();
+
+        $this->ensureRoleProfile($user);
+
+        try {
+            $this->sendWelcomeMail($user);
+        } catch (\Throwable) {
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'User registered successfully',
-            'user' => $user,
+            'message' => 'Email verified successfully! Your account is now active.',
+            'user' => $user->fresh(),
             'token' => $token,
-        ], 201);
+        ], 200);
+    }
+
+    /**
+     * Resend verification email
+     */
+    public function resendVerification(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'No account found with this email address.'], 404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json([
+                'message' => 'This account is already verified. You can sign in directly.',
+                'already_verified' => true,
+            ], 200);
+        }
+
+        try {
+            $verifyUrl = self::generateVerificationUrl($user);
+            Mail::to($user->email)->send(new EmailVerificationMail($user, $verifyUrl));
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
+        }
+
+        return response()->json([
+            'message' => 'A fresh verification link has been sent to ' . $user->email . '. Please check your inbox.',
+        ], 200);
     }
 
     public function forgotPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email' => ['required', 'email', new TrustedEmailDomain()],
         ]);
 
         if ($validator->fails()) {
@@ -83,7 +199,10 @@ class AuthController extends Controller
             $token = Password::broker()->createToken($user);
             $resetUrl = rtrim(config('services.frontend.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 
-            Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
+            try {
+                Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
+            } catch (\Throwable) {
+            }
         }
 
         return response()->json([
@@ -196,7 +315,10 @@ class AuthController extends Controller
             ]);
 
             $this->ensureRoleProfile($user);
-            $this->sendWelcomeMail($user);
+            try {
+                $this->sendWelcomeMail($user);
+            } catch (\Throwable) {
+            }
         } else {
             if ($request->role && $user->role !== $request->role) {
                 return response()->json([
@@ -213,6 +335,10 @@ class AuthController extends Controller
             $this->ensureRoleProfile($user);
         }
 
+        if (($user->account_status ?? 'active') === 'suspended') {
+            return response()->json(['message' => 'Your account is suspended. Please contact support.'], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -223,7 +349,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Login user
+     * Login user with verification check
      */
     public function login(Request $request)
     {
@@ -240,6 +366,19 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        // Check if account email is verified (skip for admin if needed, but enforce for jobseeker and company)
+        if (!$user->email_verified_at && $user->role !== 'admin') {
+            return response()->json([
+                'message' => 'Your email address is not verified yet. Please check your inbox or resend the activation link.',
+                'requires_verification' => true,
+                'email' => $user->email,
+            ], 403);
+        }
+
+        if (($user->account_status ?? 'active') === 'suspended') {
+            return response()->json(['message' => 'Your account is suspended. Please contact support.'], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -274,7 +413,10 @@ class AuthController extends Controller
         if ($user->role === 'company') {
             Company::firstOrCreate(
                 ['user_id' => $user->id],
-                ['name' => $user->name]
+                [
+                    'name' => $user->name,
+                    'verification_status' => AdminSetting::getValue('auto_verify_companies', true) ? 'verified' : 'pending',
+                ]
             );
         }
 

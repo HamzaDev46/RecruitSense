@@ -17,6 +17,7 @@ import {
   MapPin,
   Search,
   Send,
+  Sparkles,
   Timer,
   TrendingUp,
   Undo2,
@@ -267,9 +268,9 @@ const MyApplications = () => {
   useEffect(() => {
     if (loading || !highlightedApplicationId) return undefined
 
-    const targetExists = applications.some((app) => app.id === highlightedApplicationId)
+    const targetApp = applications.find((app) => app.id === highlightedApplicationId)
 
-    if (!targetExists) {
+    if (!targetApp) {
       toast.error('The application is no longer available')
       return undefined
     }
@@ -279,10 +280,14 @@ const MyApplications = () => {
         behavior: 'smooth',
         block: 'center',
       })
+
+      if (searchParams.get('take_quiz') === '1' && !(targetApp.quiz_responses_count || targetApp.quiz_responses?.length)) {
+        openQuiz(targetApp)
+      }
     }, 140)
 
     return () => window.clearTimeout(timer)
-  }, [applications, highlightedApplicationId, loading])
+  }, [applications, highlightedApplicationId, loading, searchParams])
 
   const stats = useMemo(() => {
     const scored = applications.filter((app) => numberValue(app.final_score) > 0)
@@ -555,6 +560,36 @@ const MyApplications = () => {
             <p className="text-2xl font-bold text-indigo-600 mt-1">{stats.average}%</p>
           </div>
         </div>
+
+        {applications.some((app) => !(app.quiz_responses_count || app.quiz_responses?.length) && app.status !== 'withdrawn') && (
+          <div className="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-purple-50 to-white p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-indigo-200">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-gray-900">Skill Assessment Ready</p>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide">Action Required</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  AI has automatically prepared your 5-minute skill assessment questions. Complete the quiz now to boost your soft skills score & qualify for auto-shortlisting!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const pendingApp = applications.find((app) => !(app.quiz_responses_count || app.quiz_responses?.length) && app.status !== 'withdrawn')
+                if (pendingApp) openQuiz(pendingApp)
+              }}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5 shadow-sm whitespace-nowrap flex-shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              Take Assessment Now
+            </button>
+          </div>
+        )}
 
         <div className="bg-white border border-gray-100 rounded-xl p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
