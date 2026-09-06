@@ -51,12 +51,26 @@ class AuthController extends Controller
             return response()->json(['message' => 'New registrations are currently disabled.'], 403);
         }
 
-        $validator = Validator::make($request->all(), [
+        $isCompany = $request->role === 'company';
+
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users', new TrustedEmailDomain()],
             'password' => 'required|string|min:6',
             'role' => 'required|in:company,jobseeker',
-        ]);
+        ];
+
+        if ($isCompany) {
+            $rules['company_name'] = 'nullable|string|max:255';
+            $rules['industry'] = 'nullable|string|max:255';
+            $rules['location'] = 'nullable|string|max:255';
+            $rules['website'] = 'nullable|string|max:255';
+            $rules['description'] = 'nullable|string|max:2000';
+            $rules['company_size'] = 'nullable|string|max:100';
+            $rules['phone'] = 'nullable|string|max:50';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -70,7 +84,7 @@ class AuthController extends Controller
             'email_verified_at' => null,
         ]);
 
-        $this->ensureRoleProfile($user);
+        $this->ensureRoleProfile($user, $request->all());
 
         // Send Email Verification Link
         try {
@@ -197,7 +211,8 @@ class AuthController extends Controller
 
         if ($user) {
             $token = Password::broker()->createToken($user);
-            $resetUrl = rtrim(config('services.frontend.url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
+            $frontendUrl = rtrim((string) config('services.frontend.url', 'http://localhost:5173'), '/');
+            $resetUrl = $frontendUrl . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 
             try {
                 Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
@@ -408,13 +423,20 @@ class AuthController extends Controller
         return response()->json($request->user());
     }
 
-    private function ensureRoleProfile(User $user): void
+    private function ensureRoleProfile(User $user, array $extraData = []): void
     {
         if ($user->role === 'company') {
             Company::firstOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'name' => $user->name,
+                    'name' => trim($extraData['company_name'] ?? '') ?: $user->name,
+                    'industry' => trim($extraData['industry'] ?? '') ?: null,
+                    'location' => trim($extraData['location'] ?? '') ?: null,
+                    'website' => trim($extraData['website'] ?? '') ?: null,
+                    'description' => trim($extraData['description'] ?? '') ?: null,
+                    'company_size' => trim($extraData['company_size'] ?? '') ?: null,
+                    'phone' => trim($extraData['phone'] ?? '') ?: null,
+                    'contact_email' => trim($extraData['contact_email'] ?? '') ?: $user->email,
                     'verification_status' => AdminSetting::getValue('auto_verify_companies', true) ? 'verified' : 'pending',
                 ]
             );

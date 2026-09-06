@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class FlaskAIService
 {
@@ -20,9 +21,17 @@ class FlaskAIService
     public function analyzeResume(string $resumePath, string $jobDescription, string $requiredSkills): array
     {
         try {
-            $response = Http::attach(
+            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            if (!$disk->exists($resumePath)) {
+                Log::warning("Resume file not found at path: {$resumePath}");
+                return ['error' => 'Resume file not found'];
+            }
+
+            $fileContents = $disk->get($resumePath);
+
+            $response = Http::timeout(30)->attach(
                 'resume',
-                file_get_contents(storage_path('app/public/' . $resumePath)),
+                $fileContents,
                 'resume.pdf'
             )->post($this->baseUrl . '/analyze-resume', [
                 'job_description' => $jobDescription,

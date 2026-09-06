@@ -35,6 +35,9 @@ return new class extends Migration
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
             DB::statement("ALTER TABLE applications MODIFY status ENUM('pending', 'screening', 'shortlisted', 'interview', 'offered', 'hired', 'rejected', 'withdrawn') DEFAULT 'pending'");
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check");
+            DB::statement("ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'screening', 'shortlisted', 'interview', 'offered', 'hired', 'rejected', 'withdrawn'))");
         }
     }
 
@@ -42,12 +45,15 @@ return new class extends Migration
     {
         $driver = DB::getDriverName();
 
-        if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            DB::table('applications')
-                ->whereIn('status', ['screening', 'interview', 'offered', 'hired'])
-                ->update(['status' => 'shortlisted']);
+        DB::table('applications')
+            ->whereIn('status', ['screening', 'interview', 'offered', 'hired'])
+            ->update(['status' => 'shortlisted']);
 
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
             DB::statement("ALTER TABLE applications MODIFY status ENUM('pending', 'shortlisted', 'rejected', 'withdrawn') DEFAULT 'pending'");
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check");
+            DB::statement("ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'shortlisted', 'rejected', 'withdrawn'))");
         }
 
         Schema::table('applications', function (Blueprint $table) {

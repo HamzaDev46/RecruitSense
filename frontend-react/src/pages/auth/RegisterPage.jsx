@@ -1,16 +1,37 @@
 import { useCallback, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Brain, Mail, Lock, User, Eye, EyeOff, ArrowRight,
   Briefcase, UserCheck, CheckCircle2, AlertCircle, ShieldAlert,
-  Send, RefreshCw
+  Send, RefreshCw, Building2, MapPin, Globe, Users
 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
 import GoogleAuthButton from '../../components/auth/GoogleAuthButton'
 import { validateTrustedEmail } from '../../utils/emailValidation'
+
+const INDUSTRY_OPTIONS = [
+  'Software & IT',
+  'Artificial Intelligence',
+  'Healthcare & Pharma',
+  'Banking & Financial Services',
+  'E-commerce & Retail',
+  'Education & EdTech',
+  'Telecommunications',
+  'Manufacturing',
+  'Marketing & Advertising',
+  'Other',
+]
+
+const COMPANY_SIZE_OPTIONS = [
+  '1-10 employees (Startup)',
+  '11-50 employees (Small)',
+  '51-200 employees (Medium)',
+  '201-500 employees (Mid-Enterprise)',
+  '500+ employees (Enterprise)',
+]
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -21,7 +42,11 @@ const RegisterPage = () => {
     name: '',
     email: '',
     password: '',
-    role: 'jobseeker'
+    role: 'jobseeker',
+    industry: 'Software & IT',
+    location: '',
+    website: '',
+    company_size: '11-50 employees (Small)',
   })
 
   const [verificationSent, setVerificationSent] = useState(false)
@@ -64,7 +89,11 @@ const RegisterPage = () => {
 
     setLoading(true)
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/register', form)
+      const payload = {
+        ...form,
+        company_name: form.role === 'company' ? form.name : undefined,
+      }
+      const res = await axios.post('http://127.0.0.1:8000/api/register', payload)
       if (res.data.requires_verification) {
         setRegisteredEmail(res.data.email || form.email)
         setVerificationSent(true)
@@ -109,7 +138,7 @@ const RegisterPage = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative z-10"
+        className={`bg-white rounded-3xl shadow-2xl p-8 w-full ${form.role === 'company' ? 'max-w-xl' : 'max-w-md'} transition-all duration-300 relative z-10`}
       >
         <div className="text-center mb-8">
           <div
@@ -119,10 +148,14 @@ const RegisterPage = () => {
             <Brain className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {verificationSent ? 'Verify Your Email' : 'Create Account'}
+            {verificationSent ? 'Verify Your Email' : form.role === 'company' ? 'Register Your Company' : 'Create Candidate Account'}
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            {verificationSent ? 'One final step to activate your account' : "Join RecruitSense today - it's free"}
+            {verificationSent
+              ? 'One final step to activate your account'
+              : form.role === 'company'
+                ? 'Start hiring top AI-screened talent today'
+                : "Join RecruitSense today - it's free"}
           </p>
         </div>
 
@@ -195,22 +228,114 @@ const RegisterPage = () => {
                   {form.role === 'company' ? 'Company Name' : 'Full Name'}
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  {form.role === 'company' ? (
+                    <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  ) : (
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  )}
                   <input
                     type="text"
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    placeholder={form.role === 'company' ? 'TechCorp Solutions' : 'Ali Khan'}
+                    placeholder={form.role === 'company' ? 'e.g. Acme Technologies Ltd' : 'e.g. Ali Khan'}
                     required
                     className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
+              {/* Company Specific Profile Fields */}
+              {form.role === 'company' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-4 pt-1"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        Industry
+                      </label>
+                      <div className="relative">
+                        <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <select
+                          name="industry"
+                          value={form.industry}
+                          onChange={handleChange}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
+                        >
+                          {INDUSTRY_OPTIONS.map((ind) => (
+                            <option key={ind} value={ind}>{ind}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        Company Size
+                      </label>
+                      <div className="relative">
+                        <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <select
+                          name="company_size"
+                          value={form.company_size}
+                          onChange={handleChange}
+                          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
+                        >
+                          {COMPANY_SIZE_OPTIONS.map((sz) => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        Headquarters / Location
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          name="location"
+                          value={form.location}
+                          onChange={handleChange}
+                          placeholder="e.g. Islamabad, Pakistan"
+                          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        Website <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="url"
+                          name="website"
+                          value={form.website}
+                          onChange={handleChange}
+                          placeholder="https://acme.com"
+                          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-semibold text-gray-700 block">Email Address</label>
+                  <label className="text-sm font-semibold text-gray-700 block">
+                    {form.role === 'company' ? 'Work / Official Email' : 'Email Address'}
+                  </label>
                   {emailValidation && form.email.includes('@') && (
                     <span className={`text-xs font-semibold flex items-center gap-1 ${
                       emailValidation.isValid ? 'text-emerald-600' : 'text-red-500'
@@ -240,7 +365,7 @@ const RegisterPage = () => {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    placeholder="you@gmail.com"
+                    placeholder={form.role === 'company' ? 'hr@company.com' : 'you@gmail.com'}
                     required
                     className={`w-full pl-11 pr-4 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
                       emailValidation && form.email.includes('@')
@@ -294,7 +419,10 @@ const RegisterPage = () => {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <>Create Account <ArrowRight className="w-4 h-4" /></>
+                  <>
+                    {form.role === 'company' ? 'Register Company' : 'Create Account'}{' '}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
               </button>
             </form>

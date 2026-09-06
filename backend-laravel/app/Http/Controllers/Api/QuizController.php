@@ -624,6 +624,7 @@ class QuizController extends Controller
         // Check if application was pending and updated final score qualifies for auto-shortlisting
         $previousStatus = $application->status;
         $isNewlyAutoShortlisted = ($previousStatus === Application::STATUS_PENDING && $finalScore >= 75);
+        $companyUserId = $application->jobPosting?->company?->user_id;
 
         if ($isNewlyAutoShortlisted) {
             $application->status = Application::STATUS_SHORTLISTED;
@@ -653,8 +654,6 @@ class QuizController extends Controller
                 UserCache::forgetUnreadNotifications($user->id);
             }
         }
-
-        $companyUserId = $application->jobPosting?->company?->user_id;
 
         if ($companyUserId && $companyUserId !== $user->id) {
             if ($isNewlyAutoShortlisted) {

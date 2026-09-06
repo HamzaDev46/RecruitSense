@@ -7,19 +7,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'mysql') {
+        $driver = DB::getDriverName();
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
             DB::statement("ALTER TABLE applications MODIFY status ENUM('pending', 'shortlisted', 'rejected', 'withdrawn') DEFAULT 'pending'");
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check");
+            DB::statement("ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'shortlisted', 'rejected', 'withdrawn'))");
         }
     }
 
     public function down(): void
     {
-        if (DB::getDriverName() === 'mysql') {
-            DB::table('applications')
-                ->where('status', 'withdrawn')
-                ->update(['status' => 'pending']);
+        $driver = DB::getDriverName();
+        DB::table('applications')
+            ->where('status', 'withdrawn')
+            ->update(['status' => 'pending']);
 
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
             DB::statement("ALTER TABLE applications MODIFY status ENUM('pending', 'shortlisted', 'rejected') DEFAULT 'pending'");
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check");
+            DB::statement("ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'shortlisted', 'rejected'))");
         }
     }
 };
