@@ -137,6 +137,17 @@ class JobService {
     }
   }
 
+  Future<JobPosting> updateJob(int id, Map<String, dynamic> jobData) async {
+    try {
+      final response = await _apiService.dio.put('/jobs/$id', data: jobData);
+      final data = response.data;
+      final updated = (data['job'] ?? data['data'] ?? data) as Map<String, dynamic>;
+      return JobPosting.fromJson(updated);
+    } catch (e) {
+      throw Exception(_apiService.handleDioError(e));
+    }
+  }
+
   Future<void> deleteJob(int id) async {
     try {
       await _apiService.dio.delete('/jobs/$id');

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/user.dart';
 import '../../services/job_service.dart';
 import '../jobseeker/chat_detail_screen.dart';
+import '../jobseeker/public_profile_screen.dart';
 
 class CandidateDiscoveryScreen extends StatefulWidget {
   const CandidateDiscoveryScreen({super.key});
@@ -125,7 +126,7 @@ class _CandidateDiscoveryScreenState extends State<CandidateDiscoveryScreen> {
     final initial = candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : 'C';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -138,60 +139,80 @@ class _CandidateDiscoveryScreenState extends State<CandidateDiscoveryScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF6366F1),
-                child: Text(
-                  initial,
-                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PublicProfileScreen(
+                  userId: candidate.id,
+                  initialUser: candidate,
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      candidate.name,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0F172A),
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFF6366F1),
+                      child: Text(
+                        initial,
+                        style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                       ),
                     ),
-                    Text(
-                      candidate.email,
-                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            candidate.name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            candidate.email,
+                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ChatDetailScreen(otherUser: candidate)),
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                      label: Text('Message', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEEF2FF),
+                        foregroundColor: const Color(0xFF6366F1),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: const Size(0, 36),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ChatDetailScreen(otherUser: candidate)),
-                  );
-                },
-                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                label: Text('Message', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEEF2FF),
-                  foregroundColor: const Color(0xFF6366F1),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: const Size(0, 36),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

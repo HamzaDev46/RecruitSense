@@ -10,6 +10,7 @@ import 'package:recruitsense_mobile/models/resume_insight.dart';
 import 'package:recruitsense_mobile/models/network_user.dart';
 import 'package:recruitsense_mobile/models/message_conversation.dart';
 import 'package:recruitsense_mobile/models/notification_item.dart';
+import 'package:recruitsense_mobile/models/job_experience.dart';
 
 void main() {
   group('RecruitSense Models Serialization Tests', () {
@@ -214,6 +215,49 @@ void main() {
       expect(notif.id, 88);
       expect(notif.isRead, false);
       expect(notif.title, 'Interview Scheduled');
+    });
+
+    test('JobExperience model fromJson & toJson', () {
+      final expJson = {
+        'id': 7,
+        'job_seeker_id': 10,
+        'title': 'Senior Flutter Engineer',
+        'company_name': 'Google',
+        'location': 'Mountain View, CA',
+        'start_date': '2023-01-01',
+        'end_date': null,
+        'is_current': true,
+        'description': 'Leading mobile core features',
+      };
+
+      final exp = JobExperience.fromJson(expJson);
+      expect(exp.id, 7);
+      expect(exp.title, 'Senior Flutter Engineer');
+      expect(exp.companyName, 'Google');
+      expect(exp.isCurrent, true);
+      expect(exp.toJson()['company_name'], 'Google');
+    });
+
+    test('Application interview details and feedback parsing', () {
+      final appJson = {
+        'id': 33,
+        'job_posting_id': 5,
+        'job_seeker_id': 10,
+        'status': 'interview',
+        'interview_scheduled_at': '2026-09-15T14:00:00.000Z',
+        'interview_type': 'online',
+        'interview_notes': 'https://meet.google.com/xyz',
+        'interview_status': 'scheduled',
+        'interview_rating': 5,
+        'interview_feedback': 'Exceptional problem-solving skills.',
+      };
+
+      final app = Application.fromJson(appJson);
+      expect(app.id, 33);
+      expect(app.isInterview, true);
+      expect(app.interviewType, 'online');
+      expect(app.interviewRating, 5);
+      expect(app.interviewFeedback, 'Exceptional problem-solving skills.');
     });
   });
 }

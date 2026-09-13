@@ -67,6 +67,27 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> signInWithGoogle({String? role}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _authService.signInWithGoogle(role: role);
+
+    _isLoading = false;
+    if (result['success'] == true) {
+      _token = result['token'];
+      _user = result['user'];
+      _errorMessage = null;
+      notifyListeners();
+      return result;
+    } else {
+      _errorMessage = result['error'];
+      notifyListeners();
+      return result;
+    }
+  }
+
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,
@@ -131,6 +152,12 @@ class AuthProvider extends ChangeNotifier {
       _user = freshUser;
       notifyListeners();
     }
+  }
+
+  Future<void> setAuthSession({required String token, required User user}) async {
+    _token = token;
+    _user = user;
+    notifyListeners();
   }
 
   void clearError() {

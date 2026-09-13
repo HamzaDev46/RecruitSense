@@ -31,4 +31,8 @@ class AppConstants {
   static const String roleJobSeeker = 'job_seeker';
   static const String roleCompany = 'company';
   static const String roleAdmin = 'admin';
+
+  // Google OAuth
+  static const String googleClientId = '658382350534-sk01tco3qjc09ra742futf45afck1b62.apps.googleusercontent.com';
+  static const String googleAndroidClientId = '658382350534-p4d5bqi4t6ll5eot0adkcvau66sih206.apps.googleusercontent.com';
 }

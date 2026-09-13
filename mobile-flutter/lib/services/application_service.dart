@@ -155,9 +155,51 @@ class ApplicationService {
     }
   }
 
-  Future<void> withdrawApplication(int applicationId) async {
+  Future<bool> withdrawApplication(int applicationId, [String? reason]) async {
     try {
-      await _apiService.dio.post('/applications/$applicationId/withdraw');
+      await _apiService.dio.post(
+        '/applications/$applicationId/withdraw',
+        data: {
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
+      );
+      return true;
+    } catch (e) {
+      throw Exception(_apiService.handleDioError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> askAI(int applicationId, String question) async {
+    try {
+      final response = await _apiService.dio.post(
+        '/applications/$applicationId/ask-ai',
+        data: {'question': question},
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data;
+      }
+      return {'answer': response.data.toString()};
+    } catch (e) {
+      throw Exception(_apiService.handleDioError(e));
+    }
+  }
+
+  Future<bool> saveInterviewFeedback({
+    required int applicationId,
+    required String interviewStatus,
+    String? interviewFeedback,
+    int? interviewRating,
+  }) async {
+    try {
+      await _apiService.dio.put(
+        '/applications/$applicationId/interview-feedback',
+        data: {
+          'interview_status': interviewStatus,
+          if (interviewFeedback != null && interviewFeedback.isNotEmpty) 'interview_feedback': interviewFeedback,
+          if (interviewRating != null) 'interview_rating': interviewRating,
+        },
+      );
+      return true;
     } catch (e) {
       throw Exception(_apiService.handleDioError(e));
     }

@@ -5,6 +5,8 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_text_field.dart';
+import '../../widgets/google_auth_button.dart';
+import '../../widgets/recruitsense_logo.dart';
 import '../company/company_dashboard_screen.dart';
 import '../jobseeker/jobseeker_nav_screen.dart';
 
@@ -199,6 +201,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const RecruitSenseLogo(iconSize: 44, alignment: MainAxisAlignment.start),
+                const SizedBox(height: 16),
                 Text(
                   'Join RecruitSense',
                   style: GoogleFonts.outfit(
@@ -493,6 +497,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             color: Colors.white,
                           ),
                         ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Divider
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'OR',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF94A3B8)),
+                      ),
+                    ),
+                    const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+
+                // Google Sign Up
+                GoogleAuthButton(
+                  mode: GoogleAuthMode.signUp,
+                  role: _selectedRole,
+                  height: 50,
                 ),
 
                 const SizedBox(height: 20),

@@ -136,6 +136,32 @@ class JobProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateJob(int id, Map<String, dynamic> data) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updated = await _jobService.updateJob(id, data);
+      final idx = _myCompanyJobs.indexWhere((j) => j.id == id);
+      if (idx != -1) {
+        _myCompanyJobs[idx] = updated;
+      }
+      final jobIdx = _jobs.indexWhere((j) => j.id == id);
+      if (jobIdx != -1) {
+        _jobs[jobIdx] = updated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteJob(int id) async {
     try {
       await _jobService.deleteJob(id);

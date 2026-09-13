@@ -56,20 +56,30 @@ class User {
       company = Company.fromJson(json['company']);
     }
 
+    String? profilePic = json['profile_image_url'] ??
+        json['profile_picture'] ??
+        json['avatar_url'] ??
+        json['avatar'] ??
+        json['profile']?['profile_image_url'] ??
+        json['profile']?['profile_image'] ??
+        json['job_seeker']?['profile_image_url'];
+
     return User(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      role: json['role'] ?? 'job_seeker',
-      profilePicture: json['profile_picture'] ?? json['avatar'],
+      role: json['role'] ?? 'jobseeker',
+      profilePicture: profilePic,
       emailVerifiedAt: json['email_verified_at'],
       companyProfile: company,
-      title: json['profile']?['title'] ?? json['title'],
-      bio: json['profile']?['bio'] ?? json['bio'],
-      location: json['profile']?['location'] ?? json['location'],
+      title: json['profile']?['title'] ?? json['title'] ?? json['headline'] ?? json['job_seeker']?['headline'],
+      bio: json['profile']?['bio'] ?? json['bio'] ?? json['about'] ?? json['job_seeker']?['about'],
+      location: json['profile']?['location'] ?? json['location'] ?? json['job_seeker']?['location'],
       skills: parsedSkills,
     );
   }
+
+  String? get profileImageUrl => profilePicture;
 
   Map<String, dynamic> toJson() {
     return {

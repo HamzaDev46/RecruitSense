@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../models/job_posting.dart';
 import '../../providers/job_provider.dart';
 import '../../widgets/app_text_field.dart';
 
 class CreateJobScreen extends StatefulWidget {
-  const CreateJobScreen({super.key});
+  final JobPosting? jobToEdit;
+
+  const CreateJobScreen({super.key, this.jobToEdit});
 
   @override
   State<CreateJobScreen> createState() => _CreateJobScreenState();
@@ -15,18 +18,38 @@ class CreateJobScreen extends StatefulWidget {
 class _CreateJobScreenState extends State<CreateJobScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _titleController = TextEditingController();
-  final _locationController = TextEditingController(text: 'Remote');
-  final _salaryController = TextEditingController(text: '\$80,000 - \$120,000');
-  final _skillsController = TextEditingController(text: 'Flutter, Dart, REST APIs, Git');
-  final _descriptionController = TextEditingController();
-  final _requirementsController = TextEditingController();
+  late TextEditingController _titleController;
+  late TextEditingController _locationController;
+  late TextEditingController _salaryController;
+  late TextEditingController _skillsController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _requirementsController;
 
-  String _jobType = 'Full-time';
-  String _experienceLevel = 'Mid Level';
+  late String _jobType;
+  late String _experienceLevel;
+  late String _status;
 
   final List<String> _jobTypes = ['Full-time', 'Part-time', 'Remote', 'Contract', 'Hybrid'];
   final List<String> _experienceLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Lead / Director'];
+  final List<String> _statuses = ['active', 'closed'];
+
+  @override
+  void initState() {
+    super.initState();
+    final job = widget.jobToEdit;
+    _titleController = TextEditingController(text: job?.title ?? '');
+    _locationController = TextEditingController(text: job?.location ?? 'Remote');
+    _salaryController = TextEditingController(text: job?.salaryRange ?? '\$80,000 - \$120,000');
+    _skillsController = TextEditingController(text: job?.skillsRequired.join(', ') ?? 'Flutter, Dart, REST APIs, Git');
+    _descriptionController = TextEditingController(text: job?.description ?? '');
+    _requirementsController = TextEditingController(text: job?.requirements ?? '');
+
+    _jobType = (job != null && _jobTypes.contains(job.jobType)) ? job.jobType : 'Full-time';
+    _experienceLevel = (job != null && job.experienceLevel != null && _experienceLevels.contains(job.experienceLevel))
+        ? job.experienceLevel!
+        : 'Mid Level';
+    _status = (job != null && _statuses.contains(job.status.toLowerCase())) ? job.status.toLowerCase() : 'active';
+  }
 
   @override
   void dispose() {
@@ -50,7 +73,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         .where((s) => s.isNotEmpty)
         .toList();
 
-    final success = await jobProvider.createJob({
+    final data = {
       'title': _titleController.text.trim(),
       'description': _descriptionController.text.trim(),
       'requirements': _requirementsController.text.trim(),
@@ -59,23 +82,30 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       'salary_range': _salaryController.text.trim(),
       'experience_level': _experienceLevel,
       'skills_required': skillsList,
-      'status': 'active',
-    });
+      'status': _status,
+    };
+
+    bool success;
+    if (widget.jobToEdit != null) {
+      success = await jobProvider.updateJob(widget.jobToEdit!.id, data);
+    } else {
+      success = await jobProvider.createJob(data);
+    }
 
     if (!mounted) return;
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Job posted successfully! Candidates can now apply.'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text(widget.jobToEdit != null ? 'Job updated successfully!' : 'Job posted successfully! Candidates can now apply.'),
+          backgroundColor: const Color(0xFF10B981),
         ),
       );
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(jobProvider.errorMessage ?? 'Failed to post job'),
+          content: Text(jobProvider.errorMessage ?? 'Failed to save job'),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -85,11 +115,12 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   @override
   Widget build(BuildContext context) {
     final jobProvider = Provider.of<JobProvider>(context);
+    final isEdit = widget.jobToEdit != null;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
-        title: Text('Post New Job', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        title: Text(isEdit ? 'Edit Job Posting' : 'Post New Job', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -101,133 +132,183 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Job Details',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-                Text(
-                  'Post an open position to receive instant AI-ranked applicants',
-                  style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
-                ),
-                const SizedBox(height: 20),
-
-                // Job Title
+                // Title
                 AppTextField(
                   controller: _titleController,
                   label: 'Job Title',
                   hint: 'e.g. Senior Flutter Developer',
                   prefixIcon: Icons.work_outline_rounded,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Job title is required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Job title is required';
+                    return null;
+                  },
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 14),
-
-                // Location
-                AppTextField(
-                  controller: _locationController,
-                  label: 'Location / Workstyle',
-                  hint: 'e.g. Remote, San Francisco, CA',
-                  prefixIcon: Icons.location_on_outlined,
-                ),
-
-                const SizedBox(height: 14),
-
-                // Job Type & Experience Grid
+                // Location & Salary Row
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Job Type', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: _jobType,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            items: _jobTypes.map((type) => DropdownMenuItem(value: type, child: Text(type, style: GoogleFonts.inter(fontSize: 13)))).toList(),
-                            onChanged: (v) {
-                              if (v != null) setState(() => _jobType = v);
-                            },
-                          ),
-                        ],
+                      child: AppTextField(
+                        controller: _locationController,
+                        label: 'Location',
+                        hint: 'e.g. Remote / New York, NY',
+                        prefixIcon: Icons.location_on_outlined,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Location is required';
+                          return null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Experience', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: _experienceLevel,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            items: _experienceLevels.map((lvl) => DropdownMenuItem(value: lvl, child: Text(lvl, style: GoogleFonts.inter(fontSize: 13)))).toList(),
-                            onChanged: (v) {
-                              if (v != null) setState(() => _experienceLevel = v);
-                            },
-                          ),
-                        ],
+                      child: AppTextField(
+                        controller: _salaryController,
+                        label: 'Salary Range',
+                        hint: 'e.g. \$90,000 - \$130,000',
+                        prefixIcon: Icons.attach_money_rounded,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 14),
-
-                // Salary Range
-                AppTextField(
-                  controller: _salaryController,
-                  label: 'Salary Range',
-                  hint: 'e.g. \$80,000 - \$110,000 / year',
-                  prefixIcon: Icons.payments_outlined,
+                // Job Type Selector
+                Text(
+                  'Job Type',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _jobTypes.map((type) {
+                    final isSelected = _jobType == type;
+                    return ChoiceChip(
+                      label: Text(type),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _jobType = type);
+                      },
+                      selectedColor: AppTheme.primary,
+                      backgroundColor: Colors.white,
+                      labelStyle: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? Colors.white : const Color(0xFF475569),
+                      ),
+                      side: BorderSide(color: isSelected ? AppTheme.primary : const Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      showCheckmark: false,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 14),
+                // Experience Level
+                Text(
+                  'Experience Level',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _experienceLevels.map((level) {
+                    final isSelected = _experienceLevel == level;
+                    return ChoiceChip(
+                      label: Text(level),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _experienceLevel = level);
+                      },
+                      selectedColor: const Color(0xFF06B6D4),
+                      backgroundColor: Colors.white,
+                      labelStyle: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? Colors.white : const Color(0xFF475569),
+                      ),
+                      side: BorderSide(color: isSelected ? const Color(0xFF06B6D4) : const Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      showCheckmark: false,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                // Status if editing
+                if (isEdit) ...[
+                  Text(
+                    'Listing Status',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF334155)),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Active'),
+                        selected: _status == 'active',
+                        onSelected: (selected) {
+                          if (selected) setState(() => _status = 'active');
+                        },
+                        selectedColor: const Color(0xFF10B981),
+                        backgroundColor: Colors.white,
+                        labelStyle: TextStyle(color: _status == 'active' ? Colors.white : const Color(0xFF475569)),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Closed / Inactive'),
+                        selected: _status == 'closed',
+                        onSelected: (selected) {
+                          if (selected) setState(() => _status = 'closed');
+                        },
+                        selectedColor: const Color(0xFFEF4444),
+                        backgroundColor: Colors.white,
+                        labelStyle: TextStyle(color: _status == 'closed' ? Colors.white : const Color(0xFF475569)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Required Skills
                 AppTextField(
                   controller: _skillsController,
                   label: 'Required Skills (comma separated)',
-                  hint: 'Flutter, Dart, Provider, REST API',
+                  hint: 'Flutter, Dart, Provider, REST APIs, Git',
                   prefixIcon: Icons.psychology_outlined,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'At least one skill is required';
+                    return null;
+                  },
                 ),
-
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // Job Description
                 AppTextField(
                   controller: _descriptionController,
                   label: 'Job Description',
-                  hint: 'Describe the key responsibilities and expectations...',
+                  hint: 'Describe the role responsibilities, team, and day-to-day work...',
                   maxLines: 4,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Description is required';
+                    return null;
+                  },
                 ),
-
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // Requirements
                 AppTextField(
                   controller: _requirementsController,
-                  label: 'Requirements & Qualifications',
-                  hint: '3+ years with Flutter, solid state management experience...',
-                  maxLines: 3,
+                  label: 'Candidate Requirements & Qualifications',
+                  hint: 'e.g. 3+ years Flutter development, experience with state management...',
+                  maxLines: 4,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Requirements are required';
+                    return null;
+                  },
                 ),
-
                 const SizedBox(height: 28),
 
                 // Submit Button
@@ -235,8 +316,10 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                   onPressed: jobProvider.isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: jobProvider.isLoading
                       ? const SizedBox(
@@ -248,7 +331,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                           ),
                         )
                       : Text(
-                          'Publish Job Posting',
+                          isEdit ? 'Update Job Listing' : 'Publish Job Listing',
                           style: GoogleFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -256,7 +339,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                           ),
                         ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
               ],
             ),
           ),

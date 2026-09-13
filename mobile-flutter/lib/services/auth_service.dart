@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
 import '../models/user.dart';
@@ -6,6 +7,65 @@ import 'api_service.dart';
 
 class AuthService {
   final ApiService _apiService = ApiService();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: AppConstants.googleClientId,
+  );
+
+  Future<Map<String, dynamic>> signInWithGoogle({String? role}) async {
+    try {
+      // Sign out first to ensure account picker appears cleanly
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return {
+          'success': false,
+          'cancelled': true,
+          'error': 'Google sign-in was cancelled.',
+        };
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Could not obtain Google authentication token.',
+        };
+      }
+
+      final Map<String, dynamic> body = {
+        'credential': idToken,
+      };
+      if (role != null && role.isNotEmpty) {
+        body['role'] = role;
+      }
+
+      final response = await _apiService.dio.post('/auth/google', data: body);
+      final data = response.data;
+      final token = data['token'] ?? data['access_token'] ?? '';
+      final userJson = data['user'] ?? data['data'] ?? {};
+      final user = User.fromJson(userJson);
+
+      await saveSession(token, user);
+
+      return {
+        'success': true,
+        'token': token,
+        'user': user,
+        'message': data['message'] ?? 'Google sign-in successful',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': _apiService.handleDioError(e),
+      };
+    }
+  }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -119,6 +179,9 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
     try {
       await _apiService.dio.post('/logout');
     } catch (_) {}

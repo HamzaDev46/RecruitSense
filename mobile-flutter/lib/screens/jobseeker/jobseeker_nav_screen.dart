@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/message_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../widgets/jobseeker_drawer.dart';
+import '../../widgets/recruitsense_logo.dart';
 import 'dashboard_screen.dart';
 import 'browse_jobs_screen.dart';
 import 'community_feed_screen.dart';
@@ -52,33 +54,20 @@ class _JobSeekerNavScreenState extends State<JobSeekerNavScreen> {
     ];
 
     return Scaffold(
+      drawer: JobSeekerDrawer(
+        currentIndex: _currentIndex,
+        onSelectTab: _navigateToTab,
+      ),
       appBar: AppBar(
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                ),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'RecruitSense',
-              style: GoogleFonts.outfit(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF0F172A),
-              ),
-            ),
-          ],
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Color(0xFF1E293B)),
+            tooltip: 'Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
         ),
+        title: const RecruitSenseLogo(iconSize: 30, fontSize: 18),
         actions: [
           // Network icon
           IconButton(

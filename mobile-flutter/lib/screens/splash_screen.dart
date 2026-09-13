@@ -4,9 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
-import 'auth/login_screen.dart';
+import '../widgets/recruitsense_logo.dart';
 import 'company/company_dashboard_screen.dart';
 import 'jobseeker/jobseeker_nav_screen.dart';
+import 'landing_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
       );
     }
   }
@@ -63,25 +64,9 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo Icon
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(26),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.4),
-                      blurRadius: 28,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 46,
-                  color: Colors.white,
-                ),
+              const RecruitSenseLogo(
+                iconSize: 88,
+                showText: false,
               )
                   .animate()
                   .scale(duration: 600.ms, curve: Curves.easeOutBack)

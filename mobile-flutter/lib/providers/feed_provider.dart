@@ -30,12 +30,21 @@ class FeedProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> createPost(String content) async {
+  Future<bool> createPost(
+    String content, {
+    List<String>? filePaths,
+    String visibility = 'public',
+  }) async {
     _isCreating = true;
+    _error = null;
     notifyListeners();
 
     try {
-      final newPost = await _feedService.createPost(content);
+      final newPost = await _feedService.createPost(
+        content,
+        filePaths: filePaths,
+        visibility: visibility,
+      );
       _posts.insert(0, newPost);
       _isCreating = false;
       notifyListeners();
@@ -44,6 +53,18 @@ class FeedProvider extends ChangeNotifier {
       _error = e.toString();
       _isCreating = false;
       notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deletePost(int postId) async {
+    try {
+      await _feedService.deletePost(postId);
+      _posts.removeWhere((p) => p.id == postId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
       return false;
     }
   }

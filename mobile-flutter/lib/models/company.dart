@@ -34,11 +34,14 @@ class Company {
       location: json['location'],
       website: json['website'],
       companySize: json['company_size'],
-      contactEmail: json['contact_email'],
+      contactEmail: json['contact_email'] ?? json['email'],
       description: json['description'],
       logo: json['logo'] ?? json['logo_url'],
     );
   }
+
+  String? get logoUrl => logo;
+  String get name => companyName;
 
   Map<String, dynamic> toJson() {
     return {

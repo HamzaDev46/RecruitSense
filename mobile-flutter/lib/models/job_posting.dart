@@ -75,6 +75,11 @@ class JobPosting {
     );
   }
 
+  String? get workMode => jobType;
+  num? get salaryMin => null;
+  num? get salaryMax => null;
+  String? get salary => salaryRange;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

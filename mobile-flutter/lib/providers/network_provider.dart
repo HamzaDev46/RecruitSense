@@ -16,6 +16,7 @@ class NetworkProvider extends ChangeNotifier {
   NetworkSummary get summary => _summary;
   List<User> get suggestions => _suggestions;
   List<NetworkInvitation> get invitations => _invitations;
+  List<NetworkInvitation> get pendingInvitations => _invitations;
   List<NetworkConnection> get connections => _connections;
   bool get isLoading => _isLoading;
   String? get error => _error;

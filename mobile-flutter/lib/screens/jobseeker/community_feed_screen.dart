@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../models/post.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/feed_provider.dart';
+import 'public_profile_screen.dart';
 
 class CommunityFeedScreen extends StatefulWidget {
   const CommunityFeedScreen({super.key});
@@ -16,6 +19,8 @@ class CommunityFeedScreen extends StatefulWidget {
 
 class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   final TextEditingController _postController = TextEditingController();
+  final List<String> _selectedImagePaths = [];
+  String _visibility = 'public';
 
   @override
   void initState() {
@@ -31,23 +36,122 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImages() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+
+      if (result != null && result.paths.isNotEmpty) {
+        setState(() {
+          for (final path in result.paths) {
+            if (path != null && !_selectedImagePaths.contains(path)) {
+              if (_selectedImagePaths.length < 4) {
+                _selectedImagePaths.add(path);
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not pick images: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _removeSelectedImage(int index) {
+    setState(() {
+      _selectedImagePaths.removeAt(index);
+    });
+  }
+
   void _handleCreatePost() async {
     final text = _postController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _selectedImagePaths.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a message or attach a photo to post.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     final provider = context.read<FeedProvider>();
-    final success = await provider.createPost(text);
+    final success = await provider.createPost(
+      text,
+      filePaths: _selectedImagePaths.isNotEmpty ? List.from(_selectedImagePaths) : null,
+      visibility: _visibility,
+    );
+
+    if (!mounted) return;
 
     if (success) {
       _postController.clear();
-      if (!mounted) return;
+      setState(() {
+        _selectedImagePaths.clear();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Post published to network!'),
           backgroundColor: Color(0xFF10B981),
         ),
       );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Failed to publish post.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
+  }
+
+  void _openImagePreview(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 3.5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    padding: const EdgeInsets.all(24),
+                    color: Colors.white,
+                    child: const Text('Failed to load full image'),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showCommentsBottomSheet(CommunityPost post) {
@@ -122,10 +226,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                                     CircleAvatar(
                                       radius: 16,
                                       backgroundColor: const Color(0xFF6366F1),
-                                      child: Text(
-                                        c.user?.name.isNotEmpty == true ? c.user!.name[0].toUpperCase() : 'U',
-                                        style: GoogleFonts.outfit(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
-                                      ),
+                                      backgroundImage: c.user?.profileImageUrl != null
+                                          ? NetworkImage(c.user!.profileImageUrl!)
+                                          : null,
+                                      child: c.user?.profileImageUrl == null
+                                          ? Text(
+                                              c.user?.name.isNotEmpty == true ? c.user!.name[0].toUpperCase() : 'U',
+                                              style: GoogleFonts.outfit(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                                            )
+                                          : null,
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -224,7 +333,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Create Post Box
+              // Create Post Box with Photo Picker & Visibility
               _buildCreatePostCard(auth.user?.name ?? 'You', feedProvider.isCreating),
 
               const SizedBox(height: 16),
@@ -245,7 +354,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Share insights or career milestones to kickstart the feed!',
+                          'Share insights, achievements, or photos to kickstart the feed!',
                           style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
                           textAlign: TextAlign.center,
                         ),
@@ -282,6 +391,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,10 +408,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               Expanded(
                 child: TextField(
                   controller: _postController,
-                  maxLines: 3,
-                  minLines: 1,
+                  maxLines: 4,
+                  minLines: 2,
                   decoration: const InputDecoration(
-                    hintText: 'Share career updates, tips, or hiring news...',
+                    hintText: 'Share an update, project photo, achievement, or career thought...',
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -312,33 +422,136 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               ),
             ],
           ),
+
+          // Attached Images Preview
+          if (_selectedImagePaths.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _selectedImagePaths.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (ctx, index) {
+                  final imagePath = _selectedImagePaths[index];
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(imagePath),
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: InkWell(
+                          onTap: () => _removeSelectedImage(index),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const SizedBox(height: 10),
+
+          // Action Toolbar (Photo attach, Hashtag, Emoji, Visibility, Submit)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.tag_rounded, color: Color(0xFF64748B), size: 20),
-                    onPressed: () {
-                      _postController.text += ' #hiring #career ';
-                    },
+              // Photo attachment button
+              InkWell(
+                onTap: _selectedImagePaths.length >= 4 ? null : _pickImages,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _selectedImagePaths.isNotEmpty ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _selectedImagePaths.isNotEmpty ? const Color(0xFFC7D2FE) : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.emoji_emotions_outlined, color: Color(0xFF64748B), size: 20),
-                    onPressed: () {
-                      _postController.text += ' 🚀 ';
-                    },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 18,
+                        color: _selectedImagePaths.isNotEmpty ? const Color(0xFF4F46E5) : const Color(0xFF475569),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _selectedImagePaths.isEmpty ? 'Photo' : '${_selectedImagePaths.length}/4',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _selectedImagePaths.isNotEmpty ? const Color(0xFF4F46E5) : const Color(0xFF475569),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
+
+              const SizedBox(width: 6),
+
+              // Visibility toggle button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _visibility = _visibility == 'public' ? 'connections' : 'public';
+                  });
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _visibility == 'public' ? Icons.public_rounded : Icons.people_alt_outlined,
+                        size: 15,
+                        color: const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _visibility == 'public' ? 'Public' : 'Network',
+                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // Submit Button
               ElevatedButton(
                 onPressed: isCreating ? null : _handleCreatePost,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   minimumSize: const Size(0, 36),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
@@ -346,7 +559,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : Text(
                         'Post',
-                        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
               ),
             ],
@@ -385,50 +598,106 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           // Author Header
           Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: role == 'company' ? const Color(0xFF8B5CF6) : const Color(0xFF6366F1),
-                child: Text(
-                  initial,
-                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+              InkWell(
+                onTap: () {
+                  if (post.userId > 0) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PublicProfileScreen(userId: post.userId, initialUser: author),
+                      ),
+                    );
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 19,
+                  backgroundColor: role == 'company' ? const Color(0xFF8B5CF6) : const Color(0xFF6366F1),
+                  backgroundImage: author?.profileImageUrl != null
+                      ? NetworkImage(author!.profileImageUrl!)
+                      : null,
+                  child: author?.profileImageUrl == null
+                      ? Text(
+                          initial,
+                          style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      authorName,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0F172A),
+                child: InkWell(
+                  onTap: () {
+                    if (post.userId > 0) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PublicProfileScreen(userId: post.userId, initialUser: author),
+                        ),
+                      );
+                    }
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        authorName,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '$roleLabel • $timeStr',
-                      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                      Text(
+                        '$roleLabel • $timeStr',
+                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (post.canDelete)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF94A3B8)),
+                  onSelected: (val) {
+                    if (val == 'delete') {
+                      context.read<FeedProvider>().deletePost(post.id);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete Post', style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
             ],
           ),
 
-          const SizedBox(height: 12),
+          if (post.content.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              post.content,
+              style: GoogleFonts.inter(fontSize: 14, height: 1.45, color: const Color(0xFF1E293B)),
+            ),
+          ],
 
-          // Post Content
-          Text(
-            post.content,
-            style: GoogleFonts.inter(fontSize: 14, height: 1.45, color: const Color(0xFF1E293B)),
-          ),
+          // Post Photos / Media Grid
+          if (post.mediaUrls.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildMediaGrid(post.mediaUrls),
+          ],
 
           const SizedBox(height: 14),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const SizedBox(height: 8),
 
-          // Interactions
+          // Interactions (Like, Comment, Repost)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -508,6 +777,63 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMediaGrid(List<String> mediaUrls) {
+    if (mediaUrls.length == 1) {
+      return InkWell(
+        onTap: () => _openImagePreview(mediaUrls.first),
+        borderRadius: BorderRadius.circular(14),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 280),
+            width: double.infinity,
+            color: const Color(0xFFF1F5F9),
+            child: Image.network(
+              mediaUrls.first,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Icon(Icons.broken_image_rounded, size: 36, color: Color(0xFFCBD5E1)),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: mediaUrls.length > 4 ? 4 : mediaUrls.length,
+      itemBuilder: (ctx, idx) {
+        final url = mediaUrls[idx];
+        return InkWell(
+          onTap: () => _openImagePreview(url),
+          borderRadius: BorderRadius.circular(12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              color: const Color(0xFFF1F5F9),
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image_rounded, size: 28, color: Color(0xFFCBD5E1)),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

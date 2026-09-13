@@ -7,6 +7,8 @@ import '../../models/application.dart';
 import '../../providers/application_provider.dart';
 import '../../widgets/status_badge.dart';
 import '../jobseeker/chat_detail_screen.dart';
+import '../jobseeker/public_profile_screen.dart';
+import 'candidate_rag_chat_dialog.dart';
 
 class ApplicantsPipelineScreen extends StatefulWidget {
   final int? filterJobId;
@@ -379,59 +381,82 @@ class _ApplicantsPipelineScreenState extends State<ApplicantsPipelineScreen> {
             // Top Row: Avatar + Candidate Info + Status
             Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFC7D2FE)),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    initial,
-                    style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primary),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              name,
-                              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                  child: InkWell(
+                    onTap: applicant.candidate != null
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PublicProfileScreen(
+                                  userId: applicant.candidate!.id,
+                                  initialUser: applicant.candidate,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFC7D2FE)),
                           ),
-                          if (isTopMatch) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECFDF5),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFA7F3D0)),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initial,
+                            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      name,
+                                      style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isTopMatch) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFECFDF5),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                                      ),
+                                      child: Text(
+                                        'AI Auto-Shortlisted',
+                                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF059669)),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              child: Text(
-                                'AI Auto-Shortlisted',
-                                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF059669)),
+                              Text(
+                                '$jobTitle • $dateStr',
+                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        '$jobTitle • $dateStr',
-                        style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
-                      ),
-                    ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 StatusBadge(status: applicant.status),
               ],
             ),
@@ -479,6 +504,21 @@ class _ApplicantsPipelineScreenState extends State<ApplicantsPipelineScreen> {
                   ),
                   const SizedBox(width: 4),
                 ],
+                // Ask AI Resume RAG Chat button
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6366F1),
+                    side: const BorderSide(color: Color(0xFFC7D2FE)),
+                    backgroundColor: const Color(0xFFEEF2FF),
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFF6366F1)),
+                  label: Text('Ask AI', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                  onPressed: () => CandidateRAGChatDialog.show(context, applicant),
+                ),
+                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 36),

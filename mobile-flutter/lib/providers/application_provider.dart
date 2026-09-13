@@ -139,11 +139,60 @@ class ApplicationProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> withdrawApplication(int applicationId) async {
+  Future<bool> withdrawApplication(int applicationId, [String? reason]) async {
     try {
-      await _applicationService.withdrawApplication(applicationId);
-      _myApplications.removeWhere((a) => a.id == applicationId);
+      await _applicationService.withdrawApplication(applicationId, reason);
+      final index = _myApplications.indexWhere((a) => a.id == applicationId);
+      if (index != -1) {
+        final current = _myApplications[index];
+        _myApplications[index] = Application(
+          id: current.id,
+          jobPostingId: current.jobPostingId,
+          jobSeekerId: current.jobSeekerId,
+          resumePath: current.resumePath,
+          resumeScore: current.resumeScore,
+          quizScore: current.quizScore,
+          totalScore: current.totalScore,
+          status: 'withdrawn',
+          createdAt: current.createdAt,
+          job: current.job,
+          candidate: current.candidate,
+          notes: current.notes,
+        );
+      }
       notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> askAI(int applicationId, String question) async {
+    try {
+      return await _applicationService.askAI(applicationId, question);
+    } catch (e) {
+      return {
+        'error': e.toString().replaceFirst('Exception: ', ''),
+      };
+    }
+  }
+
+  Future<bool> saveInterviewFeedback({
+    required int applicationId,
+    required String interviewStatus,
+    String? interviewFeedback,
+    int? interviewRating,
+  }) async {
+    try {
+      await _applicationService.saveInterviewFeedback(
+        applicationId: applicationId,
+        interviewStatus: interviewStatus,
+        interviewFeedback: interviewFeedback,
+        interviewRating: interviewRating,
+      );
+      await fetchCompanyApplicants();
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');

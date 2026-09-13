@@ -16,6 +16,15 @@ class Application {
   final String? notes;
   final String? rejectionReason;
   final String? interviewDate;
+  final DateTime? interviewScheduledAt;
+  final String? interviewTime;
+  final String? interviewType;
+  final String? interviewLocation;
+  final String? interviewNotes;
+  final String? interviewStatus;
+  final String? interviewFeedback;
+  final int? interviewRating;
+  final String? coverLetter;
 
   Application({
     required this.id,
@@ -32,6 +41,15 @@ class Application {
     this.notes,
     this.rejectionReason,
     this.interviewDate,
+    this.interviewScheduledAt,
+    this.interviewTime,
+    this.interviewType,
+    this.interviewLocation,
+    this.interviewNotes,
+    this.interviewStatus,
+    this.interviewFeedback,
+    this.interviewRating,
+    this.coverLetter,
   });
 
   bool get isShortlisted => status.toLowerCase() == 'shortlisted';
@@ -49,13 +67,39 @@ class Application {
     JobPosting? jobObj;
     if (json['job_posting'] != null && json['job_posting'] is Map<String, dynamic>) {
       jobObj = JobPosting.fromJson(json['job_posting']);
+    } else if (json['jobPosting'] != null && json['jobPosting'] is Map<String, dynamic>) {
+      jobObj = JobPosting.fromJson(json['jobPosting']);
     } else if (json['job'] != null && json['job'] is Map<String, dynamic>) {
       jobObj = JobPosting.fromJson(json['job']);
     }
 
     User? candidateObj;
     if (json['job_seeker'] != null && json['job_seeker'] is Map<String, dynamic>) {
-      candidateObj = User.fromJson(json['job_seeker']);
+      final js = json['job_seeker'] as Map<String, dynamic>;
+      if (js['user'] != null && js['user'] is Map<String, dynamic>) {
+        final u = js['user'] as Map<String, dynamic>;
+        List<String> skills = [];
+        if (js['skills'] is List) {
+          skills = (js['skills'] as List).map((e) => e.toString()).toList();
+        } else if (js['skills'] is String) {
+          skills = (js['skills'] as String).split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+        }
+        candidateObj = User(
+          id: u['id'] is int ? u['id'] : int.tryParse(u['id']?.toString() ?? '0') ?? (js['user_id'] is int ? js['user_id'] : int.tryParse(js['user_id']?.toString() ?? '0') ?? 0),
+          name: u['name']?.toString() ?? js['name']?.toString() ?? 'Candidate',
+          email: u['email']?.toString() ?? js['email']?.toString() ?? '',
+          role: u['role']?.toString() ?? 'jobseeker',
+          profilePicture: u['profile_picture']?.toString(),
+          location: js['location']?.toString() ?? u['location']?.toString(),
+          title: js['headline']?.toString() ?? u['title']?.toString(),
+          bio: js['about']?.toString() ?? u['bio']?.toString(),
+          skills: skills,
+        );
+      } else {
+        candidateObj = User.fromJson(js);
+      }
+    } else if (json['candidate'] != null && json['candidate'] is Map<String, dynamic>) {
+      candidateObj = User.fromJson(json['candidate']);
     } else if (json['user'] != null && json['user'] is Map<String, dynamic>) {
       candidateObj = User.fromJson(json['user']);
     }
@@ -65,25 +109,42 @@ class Application {
       created = DateTime.tryParse(json['created_at'].toString());
     }
 
+    DateTime? scheduledAt;
+    if (json['interview_scheduled_at'] != null) {
+      scheduledAt = DateTime.tryParse(json['interview_scheduled_at'].toString());
+    }
+
+    final rawJobId = json['job_id'] ?? json['job_posting_id'] ?? 0;
+    final rawJobSeekerId = json['job_seeker_id'] ?? json['jobSeekerId'] ?? 0;
+
+    final rawResumeScore = json['similarity_score'] ?? json['resume_score'];
+    final rawTotalScore = json['final_score'] ?? json['total_score'] ?? json['match_score'];
+    final rawQuizScore = json['quiz_score'] ?? json['skill_gap_score'];
+
     return Application(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
-      jobPostingId: json['job_posting_id'] is int
-          ? json['job_posting_id']
-          : int.tryParse(json['job_posting_id'].toString()) ?? 0,
-      jobSeekerId: json['job_seeker_id'] is int
-          ? json['job_seeker_id']
-          : int.tryParse(json['job_seeker_id'].toString()) ?? 0,
+      jobPostingId: rawJobId is int ? rawJobId : int.tryParse(rawJobId.toString()) ?? 0,
+      jobSeekerId: rawJobSeekerId is int ? rawJobSeekerId : int.tryParse(rawJobSeekerId.toString()) ?? 0,
       resumePath: json['resume_path'] ?? json['resume_url'],
-      resumeScore: json['resume_score'] != null ? num.tryParse(json['resume_score'].toString()) : null,
-      quizScore: json['quiz_score'] != null ? num.tryParse(json['quiz_score'].toString()) : null,
-      totalScore: json['total_score'] != null ? num.tryParse(json['total_score'].toString()) : null,
-      status: json['status'] ?? 'pending',
+      resumeScore: rawResumeScore != null ? num.tryParse(rawResumeScore.toString()) : null,
+      quizScore: rawQuizScore != null ? num.tryParse(rawQuizScore.toString()) : null,
+      totalScore: rawTotalScore != null ? num.tryParse(rawTotalScore.toString()) : null,
+      status: json['status']?.toString().toLowerCase() ?? 'pending',
       createdAt: created,
       job: jobObj,
       candidate: candidateObj,
-      notes: json['notes'],
-      rejectionReason: json['rejection_reason'],
-      interviewDate: json['interview_date'],
+      notes: json['company_notes']?.toString() ?? json['notes']?.toString(),
+      rejectionReason: json['rejection_reason']?.toString(),
+      interviewDate: json['interview_date']?.toString() ?? json['interview_scheduled_at']?.toString(),
+      interviewScheduledAt: scheduledAt,
+      interviewTime: json['interview_time']?.toString(),
+      interviewType: json['interview_type']?.toString(),
+      interviewLocation: json['interview_location']?.toString(),
+      interviewNotes: json['interview_notes']?.toString(),
+      interviewStatus: json['interview_status']?.toString(),
+      interviewFeedback: json['interview_feedback']?.toString(),
+      interviewRating: json['interview_rating'] != null ? int.tryParse(json['interview_rating'].toString()) : null,
+      coverLetter: json['cover_letter']?.toString(),
     );
   }
 
@@ -103,6 +164,15 @@ class Application {
       'notes': notes,
       'rejection_reason': rejectionReason,
       'interview_date': interviewDate,
+      'interview_scheduled_at': interviewScheduledAt?.toIso8601String(),
+      'interview_time': interviewTime,
+      'interview_type': interviewType,
+      'interview_location': interviewLocation,
+      'interview_notes': interviewNotes,
+      'interview_status': interviewStatus,
+      'interview_feedback': interviewFeedback,
+      'interview_rating': interviewRating,
+      'cover_letter': coverLetter,
     };
   }
 }

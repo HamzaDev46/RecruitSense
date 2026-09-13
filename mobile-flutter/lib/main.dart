@@ -9,6 +9,7 @@ import 'providers/job_provider.dart';
 import 'providers/message_provider.dart';
 import 'providers/network_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/profile_provider.dart';
 import 'providers/resume_coach_provider.dart';
 import 'screens/splash_screen.dart';
 import 'services/api_service.dart';
@@ -38,6 +39,7 @@ class RecruitSenseApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MessageProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ResumeCoachProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: MaterialApp(
         title: 'RecruitSense',
