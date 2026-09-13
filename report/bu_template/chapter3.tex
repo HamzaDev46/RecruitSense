@@ -14,16 +14,25 @@ Key limitations of existing systems include:
 \end{itemize}
 
 \section{Proposed System}
-\textbf{RecruitSense} is proposed as a comprehensive, decoupled web-based Applicant Tracking System and Intelligent Resume Screening Platform engineered to streamline recruitment workflows, automate candidate screening, and deliver bidirectional transparency. The platform is architected with a responsive Single Page Application (SPA) frontend built using React 18, Vite, and Tailwind CSS, communicating with a high-throughput RESTful API service engineered with Laravel 11 and a relational MySQL database. Computational intelligence is powered by a dedicated Python Flask microservice utilizing Natural Language Processing (NLP) for PDF document parsing, boundary-delimited skill matching, and TF-IDF cosine similarity scoring \cite{salton1988term, sivaram2022nlp}.
+\textbf{RecruitSense} is proposed as an intelligent, multi-channel recruitment ecosystem, Applicant Tracking System (ATS), and Candidate Intelligence Platform engineered to streamline recruitment workflows, automate candidate screening, deliver explainable feedback, and provide recruiters with conversational resume deep-dives. The platform is architected as a decoupled, multi-tier microservices ecosystem consisting of:
+\begin{enumerate}
+    \item A responsive Single Page Application (SPA) frontend built with React 18, Vite, and Tailwind CSS.
+    \item A cross-platform mobile application engineered with Flutter and Dart for Android and iOS.
+    \item A high-throughput RESTful API gateway engineered with Laravel 11 and MySQL 8.0.
+    \item An asynchronous AI inference microservice developed with Python FastAPI and Scikit-learn.
+    \item A Retrieval-Augmented Generation (RAG) candidate intelligence engine powered by the ChromaDB vector database and sentence transformer embeddings (\texttt{all-MiniLM-L6-v2}) \cite{lewis2020rag, malkov2018hnsw}.
+\end{enumerate}
 
 Major capabilities of the proposed system include:
 \begin{itemize}
     \item \textbf{Automated AI-Powered Resume Screening:} Converts unstructured PDF resumes into normalized text streams, extracts candidate competencies, and computes a multi-attribute ATS match score ($0\% - 100\%$) against job descriptions.
-    \item \textbf{Transparent Candidate Feedback and Skill Gap Diagnostics:} Automatically displays matched technical skills, missing required skills, and overall ATS compatibility directly to job seekers upon application.
-    \item \textbf{Multi-Tenant Role-Based Workspaces:} Provides dedicated, tailored web portals for Job Seekers (application tracking, job discovery), Corporate Recruiters (job posting, candidate shortlists, pipeline management), and Administrators (domain verification, platform auditing).
+    \item \textbf{Candidate Retrieval-Augmented Generation (RAG) Chat:} Enables recruiters to ask natural-language questions about candidates, retrieving semantically relevant text chunks from resumes with source citation evidence.
+    \item \textbf{Skill Gap Diagnostics and Automated Course Pathways:} Automatically categorizes competencies into matched, missing, and bonus skills, and provides rejected candidates with targeted online course recommendations to upskill.
+    \item \textbf{Dynamic AI Assessment Quiz Generation:} Automatically generates technical multiple-choice quizzes tailored to required job skills for candidate pre-screening.
+    \item \textbf{Multi-Channel Role-Based Workspaces:} Delivers synchronized, role-based dashboards on Web and Mobile for Job Seekers (profile, experience tracking, job alerts, recommended jobs, application tracking) and Corporate Recruiters (candidate discovery, Kanban pipeline, analytics, interview scheduling).
+    \item \textbf{Live Community Feed and Professional Networking:} Provides interactive social networking feeds for job seekers and employers to share professional updates, insights, and industry discussions.
     \item \textbf{Corporate Email Domain Verification:} Protects job seekers by enforcing custom domain validation rules (\texttt{TrustedEmailDomain}) to prevent fraudulent employer registrations.
     \item \textbf{Structured Hiring Pipeline Management:} Enables recruiters to manage candidate lifecycles across dynamic stages (\textit{Applied} $\rightarrow$ \textit{Screening} $\rightarrow$ \textit{Shortlisted} $\rightarrow$ \textit{Interview} $\rightarrow$ \textit{Offer/Rejected}).
-    \item \textbf{Real-Time In-App Messaging and Interview Scheduling:} Facilitates direct recruiter-candidate coordination and structured interview scheduling within the platform.
 \end{itemize}
 
 \section{Requirement Specifications}
@@ -39,13 +48,13 @@ Functional requirements define the specific behaviors, operations, and services 
 \begin{tabular}{|l|p{12cm}|}
 \hline
 \textbf{ID} & \textbf{Functional Requirement Description} \\ \hline
-\textbf{FR-01} & \textbf{User Registration and Authentication:} Allow users to register as Job Seekers, Recruiters, or Admins and authenticate securely via Laravel Sanctum bearer tokens. \\ \hline
-\textbf{FR-02} & \textbf{Profile Management:} Enable Job Seekers and Employers to maintain profiles, upload profile images, manage bios, and configure account settings. \\ \hline
+\textbf{FR-01} & \textbf{User Registration and Authentication:} Allow users to register as Job Seekers, Recruiters, or Admins and authenticate securely via Laravel Sanctum bearer tokens and Google OAuth. \\ \hline
+\textbf{FR-02} & \textbf{Profile and Experience Management:} Enable Job Seekers and Employers to maintain profiles, experience records, bios, and account settings. \\ \hline
 \textbf{FR-03} & \textbf{Corporate Domain Verification:} Validate recruiter registration emails against corporate domain whitelists, blocking public disposable email providers. \\ \hline
 \textbf{FR-04} & \textbf{Create and Publish Job Vacancies:} Allow recruiters to create job postings with structured criteria (title, department, salary, description, required skills, experience). \\ \hline
 \textbf{FR-05} & \textbf{Search and Multi-Filter Job Listings:} Provide job seekers with real-time job searching and multi-parameter filtering (keywords, location, employment type, salary). \\ \hline
 \textbf{FR-06} & \textbf{Submit Job Application:} Enable job seekers to apply to vacancies by uploading their resume in PDF format with optional cover notes. \\ \hline
-\textbf{FR-07} & \textbf{AI PDF Text Extraction:} Ingest uploaded resume documents and extract sanitized UTF-8 text streams page-by-page using the Flask AI microservice. \\ \hline
+\textbf{FR-07} & \textbf{AI PDF Text Extraction:} Ingest uploaded resume documents and extract sanitized UTF-8 text streams page-by-page using the FastAPI AI microservice. \\ \hline
 \textbf{FR-08} & \textbf{Skill Extraction and Boundary Matching:} Extract candidate skills using boundary-delimited regular expressions against a curated multi-domain technology taxonomy. \\ \hline
 \textbf{FR-09} & \textbf{TF-IDF Cosine Similarity Computation:} Calculate contextual similarity between normalized resume text vectors and job description text vectors. \\ \hline
 \textbf{FR-10} & \textbf{Composite ATS Score Formulation:} Compute a weighted ATS match percentage ($0\% - 100\%$) combining skill gap fulfillment and contextual TF-IDF similarity. \\ \hline
@@ -59,6 +68,11 @@ Functional requirements define the specific behaviors, operations, and services 
 \textbf{FR-18} & \textbf{Report Fraudulent Postings:} Allow job seekers to report suspicious or misleading job listings for administrative investigation. \\ \hline
 \textbf{FR-19} & \textbf{Admin Moderation Console:} Provide administrators with tools to moderate employers, review flagged listings, and suspend abusive user accounts. \\ \hline
 \textbf{FR-20} & \textbf{Platform Analytics Dashboard:} Provide administrators and recruiters with statistical dashboards showing applicant distributions and match metrics. \\ \hline
+\textbf{FR-21} & \textbf{Candidate RAG Conversational Chat:} Enable recruiters to query candidate qualifications through semantic dense vector search and grounded context generation using ChromaDB. \\ \hline
+\textbf{FR-22} & \textbf{Cross-Platform Flutter Mobile Workspaces:} Deliver synchronized native mobile applications for Android and iOS providing candidate discovery, job alerts, and pipeline tracking. \\ \hline
+\textbf{FR-23} & \textbf{Automated Skill Gap Course Recommendations:} Recommend curated online courses (Coursera, edX, Udemy) tailored to candidate missing competencies. \\ \hline
+\textbf{FR-24} & \textbf{Automated AI Assessment Quiz Generation:} Dynamically generate multiple-choice skill assessment tests based on required vacancy competencies. \\ \hline
+\textbf{FR-25} & \textbf{Community Feed and Professional Networking:} Provide a community discussion wall where users share professional posts, comments, and connection networks. \\ \hline
 \end{tabular}
 \end{table}
 
@@ -73,15 +87,15 @@ Non-functional requirements specify quality constraints, security parameters, an
 \begin{tabular}{|l|p{12cm}|}
 \hline
 \textbf{ID} & \textbf{Non-Functional Requirement Description} \\ \hline
-\textbf{NFR-01} & \textbf{Performance and Latency:} Ensure standard REST API responses occur within $300\text{ ms}$, with end-to-end AI resume parsing and ATS scoring executing under $2.5\text{ seconds}$. \\ \hline
+\textbf{NFR-01} & \textbf{Performance and Latency:} Ensure standard REST API responses occur within $300\text{ ms}$, RAG semantic queries respond in under $1.5\text{ seconds}$, and ATS scoring executes under $2.0\text{ seconds}$. \\ \hline
 \textbf{NFR-02} & \textbf{Authentication and Token Security:} Protect all authenticated API endpoints with Laravel Sanctum bearer tokens hashed with SHA-256 in database storage. \\ \hline
 \textbf{NFR-03} & \textbf{Data Protection and Hashing:} Hash all user passwords using Bcrypt with a minimum work factor of 12 rounds to protect against brute-force attacks. \\ \hline
 \textbf{NFR-04} & \textbf{Input Sanitization and SQLi Prevention:} Neutralize SQL injection vulnerabilities by executing all queries through Eloquent ORM parameterized statements. \\ \hline
-\textbf{NFR-05} & \textbf{High Usability and Responsive UI:} Provide an intuitive, modern responsive interface built with Tailwind CSS supporting desktop and laptop displays. \\ \hline
+\textbf{NFR-05} & \textbf{Multi-Platform Responsiveness and UI Fluidity:} Provide an intuitive web interface with Tailwind CSS and a mobile application running at consistent 60 frames-per-second. \\ \hline
 \textbf{NFR-06} & \textbf{System Reliability and Fault Tolerance:} Gracefully handle AI microservice timeouts and document extraction errors without corrupting core database state. \\ \hline
-\textbf{NFR-07} & \textbf{Horizontal Scalability:} Design the React frontend, Laravel API backend, and Flask AI service as decoupled tiers capable of independent scaling. \\ \hline
+\textbf{NFR-07} & \textbf{Horizontal Scalability and Async I/O:} Implement asynchronous non-blocking request processing via FastAPI and ChromaDB vector indexing. \\ \hline
 \textbf{NFR-08} & \textbf{Secure File Storage:} Validate uploaded file MIME types, enforce a 5MB size limit, and obfuscate file names with randomized UUID hashes outside public web roots. \\ \hline
-\textbf{NFR-09} & \textbf{Maintainability and Modular Code:} Adhere to standard MVC design patterns in Laravel and component-driven architecture in React. \\ \hline
+\textbf{NFR-09} & \textbf{Maintainability and Modular Architecture:} Adhere to standard MVC in Laravel, Provider pattern in Flutter, and service-oriented design in FastAPI. \\ \hline
 \textbf{NFR-10} & \textbf{CORS and Transport Encryption:} Enforce HTTPS across all network channels and configure strict Cross-Origin Resource Sharing (CORS) whitelists. \\ \hline
 \end{tabular}
 \end{table}

@@ -40,6 +40,7 @@ def generate_quiz_groq(category: str, count: int = 5, job_title: str = '', requi
     Generates professional multiple-choice questions using Groq Cloud API (LPU Inference).
     Speed: ~0.5 - 1.0s (Blazing fast, 100% Free).
     """
+    GROQ_API_KEY = None
     api_key = os.getenv("GROQ_API_KEY", "").strip() or GROQ_API_KEY
     if not api_key:
         return {"error": "GROQ_API_KEY is not configured."}

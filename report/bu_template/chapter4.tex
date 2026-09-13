@@ -1,11 +1,11 @@
 \chapter{System Design} \label{chap:design}
 
-System design is the process of defining the architecture, components, modules, interfaces, and data schemas for a software system to satisfy specified operational and academic requirements. This chapter presents the comprehensive architectural and detailed engineering design of \textbf{RecruitSense}, an intelligent, trust-oriented Applicant Tracking System (ATS) and Automated Resume Screening Platform.
+System design is the process of defining the architecture, components, modules, interfaces, and data schemas for a software system to satisfy specified operational and academic requirements. This chapter presents the comprehensive architectural and detailed engineering design of \textbf{RecruitSense}, an intelligent, multi-channel Applicant Tracking System (ATS), Intelligent Resume Screening Engine, and Candidate Intelligence Platform.
 
-The core design objective of RecruitSense is not merely to store candidate applications, but to actively eliminate operational ambiguity and recruitment bottlenecks by introducing decoupled microservices, controlled hiring pipeline state transitions, explainable AI-driven candidate screening, role-governed administration, and auditable data flows. Each architectural decision was guided by the principle that algorithmic transparency, data security, and sub-second operational responsiveness must be first-class system concerns.
+The core design objective of RecruitSense is not merely to store candidate applications, but to actively eliminate operational ambiguity and recruitment bottlenecks by introducing decoupled microservices, cross-platform mobile access, controlled hiring pipeline state transitions, explainable AI-driven candidate screening, conversational resume intelligence via Retrieval-Augmented Generation (RAG), role-governed administration, and auditable data flows.
 
 \section{System Architecture}
-RecruitSense follows a layered, decoupled service-oriented architecture comprising four primary tiers: the Presentation Tier (React SPA Client), the Business Application Tier (Laravel REST API), the Computational AI/ML Inference Tier (Python Flask Microservice), and the Persistence and Identity Tier (MySQL 8.0 Relational Database and Secure File Storage) \cite{fielding2000rest}. Each layer maintains strictly defined operational boundaries and communicates over standard RESTful HTTP protocols with JSON payloads.
+RecruitSense follows a layered, decoupled service-oriented architecture comprising five primary tiers: the Web Presentation Tier (React SPA Client), the Mobile Presentation Tier (Flutter Native App), the Business Application Tier (Laravel REST API), the Computational AI/ML & RAG Inference Tier (Python FastAPI Microservice with ChromaDB), and the Persistence and Identity Tier (MySQL 8.0 Relational Database and Secure File Storage) \cite{fielding2000rest, lewis2020rag, flutter2022google}. Each layer maintains strictly defined operational boundaries and communicates over standard RESTful HTTP protocols with JSON payloads.
 
 \begin{figure}[h!]
 \centering
@@ -14,56 +14,58 @@ RecruitSense follows a layered, decoupled service-oriented architecture comprisi
 \label{fig:sys_arch_detail}
 \end{figure}
 
-\subsection{Frontend Layer (Client SPA)}
-The presentation tier is implemented as a Single Page Application using React 18, Vite, and Tailwind CSS. The web client utilizes client-side routing via \texttt{react-router-dom} to deliver instant, fluid transitions without full-page browser refreshes. It serves three distinct user surfaces:
+\subsection{Web Presentation Layer (React SPA)}
+The web presentation tier is implemented as a Single Page Application using React 18, Vite, and Tailwind CSS. The web client utilizes client-side routing via \texttt{react-router-dom} to deliver instant, fluid transitions without full-page browser refreshes. It serves three distinct user surfaces:
 \begin{itemize}
     \item \textbf{Public Job Discovery Surface:} Accessible to all visitors for browsing active job openings, searching technical keywords, and filtering by location, department, or salary without requiring authentication.
-    \item \textbf{Authenticated Job Seeker Surface:} Enables candidates to manage profile information, upload PDF resumes, submit applications with real-time feedback, view granular ATS match scores with skill gap visualizers, bookmark jobs, and communicate with recruiters.
-    \item \textbf{Recruiter & Admin Surface:} Provides corporate employers with job vacancy creation tools, candidate ranking tables sorted by computed ATS score, stage-by-stage pipeline management, and interview scheduling. Platform administrators access domain verification queues, content moderation tools, and global platform analytics.
+    \item \textbf{Authenticated Job Seeker Surface:} Enables candidates to manage profile information, upload PDF resumes, submit applications with real-time feedback, view granular ATS match scores with skill gap visualizers, explore recommended upskilling courses, bookmark jobs, and communicate with recruiters.
+    \item \textbf{Recruiter \& Admin Surface:} Provides corporate employers with job vacancy creation tools, candidate ranking tables sorted by computed ATS score, stage-by-stage pipeline Kanban management, interactive Candidate RAG Q\&A modals, and interview scheduling. Platform administrators access domain verification queues, content moderation tools, and global platform analytics.
 \end{itemize}
 
-\subsection{Backend Application Layer}
+\subsection{Mobile Presentation Layer (Flutter App)}
+The mobile presentation tier is engineered with Flutter and Dart, compiling to high-performance native machine code for Android and iOS devices. The mobile client implements the Model-View-ViewModel (MVVM) architectural pattern powered by Provider-based reactive state management:
+\begin{itemize}
+    \item \textbf{Job Seeker Mobile Workspace:} Provides on-the-go job search, multi-parameter filtering, one-tap resume submission, real-time application tracking, job alerts, recommended vacancies, shareable public profiles, and career experience management.
+    \item \textbf{Recruiter Mobile Workspace:} Equips hiring managers with candidate discovery feeds, applicant pipeline status updating, interactive Candidate RAG Chat dialogs, interview calendar management, and corporate activity logs.
+    \item \textbf{Community \& Networking Feed:} Delivers a synchronized professional networking wall where job seekers and employers post career insights, comment, and connect.
+\end{itemize}
+
+\subsection{Backend Application Layer (Laravel REST API)}
 The backend service layer is developed on Laravel 11 (PHP 8.2+). It serves as the authoritative gateway for business logic, transactional integrity, and security policy enforcement. 
 
 Core responsibilities include:
 \begin{itemize}
-    \item Authentication and token issuance via Laravel Sanctum.
+    \item Authentication and token issuance via Laravel Sanctum bearer tokens and Google OAuth.
     \item Role-Based Access Control (RBAC) middleware enforcing least-privilege route access.
     \item Corporate domain validation (\texttt{TrustedEmailDomain}) preventing unverified employer registrations.
     \item Hiring pipeline lifecycle management (\textit{Applied} $\rightarrow$ \textit{Screening} $\rightarrow$ \textit{Shortlisted} $\rightarrow$ \textit{Interview} $\rightarrow$ \textit{Offer} $\rightarrow$ \textit{Rejected}).
-    \item Asynchronous file ingestion and orchestration with the Python Flask AI microservice.
+    \item Internal HTTP orchestration with the Python FastAPI AI microservice.
 \end{itemize}
 
-\subsection{AI/ML Screening Layer}
-The artificial intelligence inference layer operates as an independent Python Flask microservice. Separating the AI layer from the transactional API backend isolates CPU-intensive text parsing and matrix algebra from blocking user-facing web requests.
+\subsection{AI/ML and RAG Inference Layer (FastAPI + ChromaDB)}
+The artificial intelligence and conversational candidate intelligence layer operates as an independent, asynchronous Python FastAPI microservice \cite{ramirez2019fastapi}.
 
-AI capabilities implemented in RecruitSense include:
+Core capabilities include:
 \begin{itemize}
     \item \textbf{PDF Document Text Extraction:} Reads binary PDF streams page-by-page, strips binary encoding artifacts, and cleans raw text.
     \item \textbf{Boundary-Delimited Skill Extraction:} Matches candidate resume text against an extensive multi-domain technology taxonomy.
     \item \textbf{TF-IDF Cosine Similarity Matching:} Constructs joint vector space models between normalized resumes and job descriptions, computing mathematical similarity percentages.
-    \item \textbf{Skill Gap Identification:} Generates structured JSON arrays of matched skills, missing skill gaps, and bonus skills.
+    \item \textbf{Candidate RAG Vector Search Engine:} Indexes chunked candidate resumes into a persistent ChromaDB vector store using dense sentence transformer embeddings (\texttt{all-MiniLM-L6-v2}), enabling semantic recruiter querying with grounded text citations \cite{lewis2020rag}.
+    \item \textbf{Automated Course Recommender:} Analyzes missing candidate competencies and maps them to curated educational courses \cite{karimi2020course}.
+    \item \textbf{Dynamic Assessment Quiz Generator:} Automatically creates multi-choice technical assessment quizzes tailored to vacancy requirements.
 \end{itemize}
 
 \subsection{Data and Identity Layer}
-Persistent storage is managed through a normalized MySQL 8.0 relational database schema, with candidate resume documents stored securely on encrypted disk storage outside the public web root.
-
-Key data layer features include:
-\begin{itemize}
-    \item Strict third normal form (3NF) relational design with foreign key cascade constraints.
-    \item Eloquent ORM parameterized query binding neutralizing SQL injection risks.
-    \item Dedicated tables for users, companies, job seekers, vacancies, applications, skill gaps, messages, and admin settings.
-    \item Storage obfuscation renaming uploaded resumes using randomized SHA-256 UUIDs.
-\end{itemize}
+Persistent storage is managed through a normalized MySQL 8.0 relational database schema alongside persistent ChromaDB vector collections on disk, with candidate resume documents stored securely on encrypted disk storage outside the public web root.
 
 \subsection{Architectural Rationale}
 The architectural design of RecruitSense is justified by five fundamental rationales:
 \begin{enumerate}
     \item \textbf{Security-First State Control:} All candidate state transitions, role authorizations, and domain validations are strictly owned and executed on the backend server.
-    \item \textbf{Independent Scalability:} The React client, Laravel API, and Flask AI microservice can scale horizontally on distinct compute nodes according to traffic demand.
-    \item \textbf{Explainable Trust Design:} Unlike legacy black-box ATS engines, RecruitSense exposes transparent score formulations and color-coded skill gap badges.
+    \item \textbf{Independent Multi-Channel Scalability:} The React web client, Flutter mobile client, Laravel API, and FastAPI AI microservice can scale horizontally on distinct compute nodes according to traffic demand.
+    \item \textbf{Conversational Resume Intelligence without Hallucinations:} Integrating ChromaDB vector retrieval ensures that recruiter candidate inquiries are grounded strictly in authentic resume content.
+    \item \textbf{Explainable Trust Design:} Unlike legacy black-box ATS engines, RecruitSense exposes transparent score formulations, missing skill badges, and targeted learning paths.
     \item \textbf{High Operational Maintainability:} Modular boundaries ensure that changes to AI models or frontend components do not destabilize core database transactions.
-    \item \textbf{Lightweight Self-Contained Deployment:} By utilizing Scikit-learn and regex tokenization rather than heavy external paid LLM APIs, the system operates deterministically with zero marginal API cost.
 \end{enumerate}
 
 \section{Design Constraints and Assumptions}
@@ -71,17 +73,10 @@ The architecture and implementation of RecruitSense were shaped by specific tech
 
 \subsection{Technical Constraints}
 \begin{itemize}
-    \item \textbf{AI Inference Latency:} End-to-end PDF parsing and similarity scoring must complete within $2.5\text{ seconds}$ to maintain high responsiveness for applicants.
+    \item \textbf{AI Inference Latency:} End-to-end PDF parsing and similarity scoring must complete within $2.0\text{ seconds}$, with RAG semantic queries responding under $1.5\text{ seconds}$.
     \item \textbf{Document Upload Size Limits:} Resumes are capped at a maximum file size of $5\text{MB}$ to prevent server memory exhaustion.
+    \item \textbf{Mobile Frame Rate:} Mobile UI transitions and animations must maintain a consistent 60 frames per second on standard Android and iOS hardware.
     \item \textbf{CORS and Origin Isolation:} Frontend and backend services operate across different ports during development, requiring strict Cross-Origin Resource Sharing (CORS) origin validation.
-    \item \textbf{Deterministic State Transitions:} Application pipeline states are guarded to prevent illegal jumps (e.g., an application cannot transition directly from \textit{Applied} to \textit{Offer Extended} without passing through review).
-\end{itemize}
-
-\subsection{Data Constraints}
-\begin{itemize}
-    \item \textbf{Input Data Quality:} Automated ATS scoring depends on the presence of extractable digital text layers in candidate PDF resumes.
-    \item \textbf{Schema Normalization:} Foreign keys enforce referential integrity; deleting an employer profile cleanly cascades to associated job postings and application records.
-    \item \textbf{Search Term Normalization:} Query strings are sanitized and case-folded to enable flexible partial matching across job titles and skill tags.
 \end{itemize}
 
 \subsection{Security and Compliance Constraints}
@@ -92,25 +87,8 @@ The architecture and implementation of RecruitSense were shaped by specific tech
     \item \textbf{Audit Logging:} Privileged administrative actions (domain approvals, account suspensions) produce durable audit log entries.
 \end{itemize}
 
-\subsection{Assumptions}
-\begin{itemize}
-    \item Users possess basic digital literacy to navigate web forms and upload PDF documents.
-    \item Job seekers submit authentic curriculum vitae in standard digital formats (PDF/DOCX).
-    \item Corporate recruiters provide representative job descriptions and explicit required skill lists.
-\end{itemize}
-
 \section{Design Methodology}
-RecruitSense was designed using an **Agile Iterative Framework** combined with **Object-Oriented Analysis and Design (OOAD)** and **Finite State Machine (FSM)** modeling for critical workflows \cite{sommerville2016software}.
-
-\subsection{Incremental Domain Milestones}
-Development proceeded across five distinct functional milestones:
-\begin{enumerate}
-    \item Master relational schema modeling, database migrations, and Sanctum token authentication.
-    \item Job vacancy management, multi-role web dashboards, and corporate domain verification.
-    \item AI microservice development, PDF text extraction, and TF-IDF similarity algorithms.
-    \item Full-stack integration, ATS score visualization, and skill gap badge diagnostics.
-    \item System testing, performance benchmarking, and security evaluation.
-\end{enumerate}
+RecruitSense was designed using an \textbf{Agile Iterative Framework} combined with \textbf{Object-Oriented Analysis and Design (OOAD)} and \textbf{Finite State Machine (FSM)} modeling for critical workflows \cite{sommerville2016software}.
 
 \subsection{State-Machine Methodology for Hiring Pipelines}
 The candidate application lifecycle is modeled as a formal Finite State Machine (FSM) with validated transition rules, as illustrated in Figure \ref{fig:fsm_pipeline}.
@@ -125,10 +103,10 @@ The candidate application lifecycle is modeled as a formal Finite State Machine 
 \section{High-Level Block Diagram}
 RecruitSense is structured into four primary operational blocks coordinating across system boundaries:
 \begin{enumerate}
-    \item \textbf{Presentation Block (React 18 / Tailwind):} Renders responsive client interfaces for Job Seekers, Employers, and Admins.
+    \item \textbf{Presentation Block (React 18 Web \& Flutter Mobile):} Renders responsive client interfaces for Job Seekers, Employers, and Admins across web and mobile viewports.
     \item \textbf{Application Block (Laravel 11 REST API):} Enforces business logic, authentication guards, and database transactions.
-    \item \textbf{Intelligence Block (Python Flask AI):} Executes PDF stream text extraction, regex skill tokenization, and TF-IDF cosine similarity scoring.
-    \item \textbf{Data Block (MySQL 8.0 & File Storage):} Persists relational tables and access-controlled resume documents.
+    \item \textbf{Intelligence Block (FastAPI + ChromaDB RAG):} Executes PDF stream extraction, regex skill tokenization, TF-IDF scoring, vector search, quiz generation, and course recommendations.
+    \item \textbf{Data Block (MySQL 8.0, ChromaDB, \& File Storage):} Persists relational tables, dense vector embeddings, and access-controlled resume documents.
 \end{enumerate}
 
 \begin{figure}[h!]
@@ -142,7 +120,7 @@ RecruitSense is structured into four primary operational blocks coordinating acr
 This section details the System Sequence Diagrams (SSDs) for the core use cases of RecruitSense, mapping the precise order of message exchanges, payload transfers, and state transitions between actors and subsystems.
 
 \subsection{SSD-01: Browse and Filter Jobs}
-As illustrated in Figure \ref{fig:ssd01}, a visitor or registered job seeker searches and filters active job listings on the web portal.
+As illustrated in Figure \ref{fig:ssd01}, a visitor or registered job seeker searches and filters active job listings on the web or mobile app.
 
 \begin{figure}[h!]
 \centering
@@ -162,7 +140,7 @@ As shown in Figure \ref{fig:ssd02}, a new user registers with role selection and
 \end{figure}
 
 \subsection{SSD-03: User Login and Token Authentication}
-As shown in Figure \ref{fig:ssd03}, an existing user logs in with credentials and receives a Sanctum bearer token.
+As shown in Figure \ref{fig:ssd03}, an existing user logs in with credentials or Google OAuth and receives a Sanctum bearer token.
 
 \begin{figure}[h!]
 \centering
@@ -255,8 +233,8 @@ Figure \ref{fig:erd_diagram} illustrates the complete Entity-Relationship diagra
 \end{figure}
 
 \subsection{Complete Table Inventory}
-The RecruitSense relational database consists of the following 12 core tables:
-\texttt{users}, \texttt{companies}, \texttt{job\_seekers}, \texttt{job\_postings}, \texttt{resumes}, \texttt{applications}, \texttt{skill\_gaps}, \texttt{conversations}, \texttt{messages}, \texttt{notifications}, \texttt{saved\_jobs}, and \texttt{admin\_settings}.
+The RecruitSense relational database consists of the following core tables:
+\texttt{users}, \texttt{companies}, \texttt{job\_seekers}, \texttt{job\_postings}, \texttt{resumes}, \texttt{applications}, \texttt{skill\_gaps}, \texttt{conversations}, \texttt{messages}, \texttt{notifications}, \texttt{saved\_jobs}, \texttt{posts}, \texttt{job\_experiences}, and \texttt{admin\_settings}.
 
 \subsection{Core Database Schemas}
 
@@ -350,30 +328,27 @@ The RecruitSense relational database consists of the following 12 core tables:
 \texttt{matched\_skills} & JSON & NOT NULL & Array of matched skill strings \\ \hline
 \texttt{missing\_skills} & JSON & NOT NULL & Array of missing skill strings \\ \hline
 \texttt{bonus\_skills} & JSON & NULL & Array of extra recognized skills \\ \hline
+\texttt{course\_recommendations} & JSON & NULL & Array of curated course objects \\ \hline
 \end{tabular}
 \end{table}
 
 \section{Graphical User Interface (GUI) Design}
-The user interface of RecruitSense is engineered for operational speed, accessibility, and visual clarity using Tailwind CSS design tokens.
+The user interface of RecruitSense is engineered for operational speed, accessibility, and visual clarity using Tailwind CSS on the web and Flutter widgets on mobile.
 
 \subsection{Job Seeker GUI Direction}
 \begin{itemize}
     \item \textbf{Job Discovery Portal:} Live keyword search bar, category chips, salary range sliders, and dynamic job cards displaying verified employer badges.
     \item \textbf{Interactive Application Modal:} Single-click resume file uploader supporting drag-and-drop PDF ingestion with progress bars.
-    \item \textbf{ATS Score Visualizer:} Instant diagnostic modal rendering overall match percentage gauge, green badges for matched skills, and red badges for missing skill gaps.
+    \item \textbf{ATS Score Visualizer:} Instant diagnostic modal rendering overall match percentage gauge, green badges for matched skills, and red badges for missing skill gaps with direct links to recommended courses.
+    \item \textbf{Mobile Experience Manager:} Mobile dialogs to add/edit work history, degrees, and shareable public profile previews.
 \end{itemize}
 
 \subsection{Recruiter GUI Direction}
 \begin{itemize}
     \item \textbf{Job Posting Builder:} Structured form with auto-tokenizing skill input tags, salary bounds, and requirement validation.
     \item \textbf{Applicant Ranking Console:} Tabular view of all candidates sorted automatically by computed ATS score, complete with quick-action status dropdowns and resume viewers.
+    \item \textbf{Candidate RAG Chat Dialog:} Recruiter modal/dialog to ask natural-language questions about candidates with instant semantic evidence retrieval.
     \item \textbf{Hiring Pipeline Board:} Kanban-style or status-filtered interface to move candidates across review, interview, and offer stages.
-\end{itemize}
-
-\subsection{Admin GUI Direction}
-\begin{itemize}
-    \item \textbf{Company Verification Queue:} Review pending employer registrations and corporate domain authenticity.
-    \item \textbf{Analytics Dashboard:} Graphical visualizations of platform adoption, parsed resumes, and ATS score distributions.
 \end{itemize}
 
 \section{External Interfaces and Deployment Pipeline}
@@ -387,4 +362,4 @@ Figure \ref{fig:cicd_pipeline} illustrates the Continuous Integration and Deploy
 \end{figure}
 
 \section{Chapter Summary}
-This chapter presented the complete system design of \textbf{RecruitSense}. It articulated the 4-tier decoupled architecture, analyzed design constraints and assumptions, presented the state-machine methodology and high-level block models, detailed 10 System Sequence Diagrams (SSDs) covering core workflows, documented the 3NF MySQL relational database schema and data dictionaries, and established GUI directions and CI/CD deployment pipelines. This design provides the structural blueprint for the technical realization presented in Chapter \ref{chap:sysImplementation}.
+This chapter presented the complete system design of \textbf{RecruitSense}. It articulated the 5-tier decoupled architecture spanning React Web, Flutter Mobile, Laravel API, FastAPI AI, and ChromaDB vector persistence, analyzed design constraints and assumptions, presented the state-machine methodology, detailed 10 System Sequence Diagrams (SSDs) covering core workflows, documented the 3NF MySQL relational database schema and data dictionaries, and established GUI directions and CI/CD deployment pipelines. This design provides the structural blueprint for the technical realization presented in Chapter \ref{chap:sysImplementation}.

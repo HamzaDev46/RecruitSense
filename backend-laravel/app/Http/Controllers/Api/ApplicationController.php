@@ -12,7 +12,7 @@ use App\Mail\InterviewScheduledMail;
 use App\Mail\OfferDecisionMail;
 use App\Mail\RejectionMail;
 use App\Mail\ShortlistMail;
-use App\Services\FlaskAIService;
+use App\Services\AIService;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -22,11 +22,11 @@ use Illuminate\Validation\Rule;
 
 class ApplicationController extends Controller
 {
-    protected FlaskAIService $flaskService;
+    protected AIService $aiService;
 
-    public function __construct(FlaskAIService $flaskService)
+    public function __construct(AIService $aiService)
     {
-        $this->flaskService = $flaskService;
+        $this->aiService = $aiService;
     }
 
     /**
@@ -75,8 +75,8 @@ class ApplicationController extends Controller
             'cover_letter' => trim($validated['cover_letter'] ?? '') ?: null,
         ]);
 
-        // Call Flask AI Service
-        $aiResult = $this->flaskService->analyzeResume(
+        // Call AI Service (FastAPI)
+        $aiResult = $this->aiService->analyzeResume(
             $resume->file_path,
             $job->description,
             $job->required_skills
@@ -84,7 +84,7 @@ class ApplicationController extends Controller
 
         // Index resume into ChromaDB Vector Database for RAG Assistant
         try {
-            $this->flaskService->ingestResume($resume->file_path, (string)$application->id);
+            $this->aiService->ingestResume($resume->file_path, (string)$application->id);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning('RAG indexing on application failed: ' . $e->getMessage());
         }
@@ -691,13 +691,13 @@ class ApplicationController extends Controller
         }
 
         // Send query to FastAPI RAG endpoint
-        $result = $this->flaskService->askResume($validated['question'], (string) $application->id);
+        $result = $this->aiService->askResume($validated['question'], (string) $application->id);
 
         // If not indexed yet in ChromaDB or returned empty context, index it on the fly and retry
         if (isset($result['error']) || (isset($result['answer']) && str_contains(strtolower($result['answer']), 'could not find any relevant information'))) {
             try {
-                $this->flaskService->ingestResume($resume->file_path, (string) $application->id);
-                $result = $this->flaskService->askResume($validated['question'], (string) $application->id);
+                $this->aiService->ingestResume($resume->file_path, (string) $application->id);
+                $result = $this->aiService->askResume($validated['question'], (string) $application->id);
             } catch (\Exception $e) {
                 // Ignore secondary error and return whatever result we have
             }

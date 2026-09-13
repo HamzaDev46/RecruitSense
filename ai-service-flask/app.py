@@ -8,7 +8,9 @@ try:
 except ImportError:
     pass
 
+# pyrefly: ignore [missing-import]
 from routes.resume_routes import resume_bp
+# pyrefly: ignore [missing-import]
 from routes.quiz_routes import quiz_bp
 from routes.rag_routes import rag_bp
 

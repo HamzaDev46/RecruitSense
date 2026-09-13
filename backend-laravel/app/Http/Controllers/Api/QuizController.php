@@ -8,7 +8,7 @@ use App\Models\AppNotification;
 use App\Models\QuizQuestion;
 use App\Models\QuizResponse;
 use App\Models\Application;
-use App\Services\FlaskAIService;
+use App\Services\AIService;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Validator;
 
 class QuizController extends Controller
 {
-    public function __construct(private FlaskAIService $flaskAIService)
+    public function __construct(private AIService $aiService)
     {
     }
 
@@ -109,7 +109,7 @@ class QuizController extends Controller
         $count = (int) ($validator->validated()['count'] ?? 5);
 
         $source = 'fallback';
-        $aiResult = $this->flaskAIService->generateQuiz($category, $count);
+        $aiResult = $this->aiService->generateQuiz($category, $count);
 
         if (!isset($aiResult['error']) && !empty($aiResult['questions']) && is_array($aiResult['questions'])) {
             $bank = $this->normalizeGeneratedQuestions($aiResult['questions'], $category);
@@ -255,7 +255,7 @@ class QuizController extends Controller
     public function autoGenerateQuestionsForCompany(int $companyId, string $category = 'Communication', int $count = 5, ?string $jobTitle = null, ?string $requiredSkills = null): void
     {
         try {
-            $aiResult = $this->flaskAIService->generateQuiz($category, $count, $jobTitle, $requiredSkills);
+            $aiResult = $this->aiService->generateQuiz($category, $count, $jobTitle, $requiredSkills);
 
             if (!isset($aiResult['error']) && !empty($aiResult['questions']) && is_array($aiResult['questions'])) {
                 $bank = $this->normalizeGeneratedQuestions($aiResult['questions'], $category);

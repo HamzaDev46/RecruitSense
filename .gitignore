@@ -3,11 +3,7 @@ backend-laravel/vendor/
 backend-laravel/.env
 backend-laravel/storage/*.key
 
-# AI Services (Flask & FastAPI)
-ai-service-flask/.env
-ai-service-flask/venv/
-ai-service-flask/__pycache__/
-ai-service-flask/**/__pycache__/
+# AI Service (FastAPI)
 ai-service-fastapi/.env
 ai-service-fastapi/venv/
 ai-service-fastapi/chroma_db/

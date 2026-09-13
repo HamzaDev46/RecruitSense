@@ -4,6 +4,7 @@ from typing import List, Dict, Optional, Any
 import requests
 # pyrefly: ignore [missing-import]
 import chromadb
+# pyrefly: ignore [missing-import]
 from services.pdf_extractor import extract_text_from_pdf
 
 # =========================================================
