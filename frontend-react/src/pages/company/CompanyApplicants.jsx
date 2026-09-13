@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Award,
   Banknote,
+  BookOpen,
   Briefcase,
   Building2,
   Calendar,
@@ -19,6 +20,7 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  PlayCircle,
   Search,
   Save,
   SlidersHorizontal,
@@ -32,6 +34,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import CandidateRAGChatModal from '../../components/company/CandidateRAGChatModal'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
@@ -516,6 +519,7 @@ const CompanyApplicants = () => {
   const [reviewForm, setReviewForm] = useState(() => buildReviewForm())
   const [compareIds, setCompareIds] = useState([])
   const [showCompare, setShowCompare] = useState(false)
+  const [ragModalApplication, setRagModalApplication] = useState(null)
 
   useEffect(() => {
     const loadApplicants = async () => {
@@ -1476,21 +1480,35 @@ const CompanyApplicants = () => {
                             )}
                           </div>
                           <p className="text-xs text-gray-400 mt-3">Applied {formatDate(application.created_at)}</p>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              toggleCompare(application)
-                            }}
-                            className={`mt-3 h-9 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-2 ${
-                              isComparing
-                                ? 'bg-violet-600 text-white border-violet-600'
-                                : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50'
-                            }`}
-                          >
-                            <Users className="w-3.5 h-3.5" />
-                            {isComparing ? 'Selected to compare' : 'Add to compare'}
-                          </button>
+                          <div className="mt-3 flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setRagModalApplication(application)
+                              }}
+                              disabled={!hasResume}
+                              className="h-9 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold inline-flex items-center gap-1.5 transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                              Talk to Resume
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleCompare(application)
+                              }}
+                              className={`h-9 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-2 ${
+                                isComparing
+                                  ? 'bg-violet-600 text-white border-violet-600'
+                                  : 'bg-white text-violet-700 border-violet-200 hover:bg-violet-50'
+                              }`}
+                            >
+                              <Users className="w-3.5 h-3.5" />
+                              {isComparing ? 'Selected to compare' : 'Add to compare'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1557,6 +1575,15 @@ const CompanyApplicants = () => {
                         View profile
                       </button>
                     )}
+                    <button
+                      type="button"
+                      disabled={!selectedResume}
+                      onClick={() => setRagModalApplication(selectedApplication)}
+                      className="h-10 px-4 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 text-sm font-semibold hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs transition"
+                    >
+                      <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                      Talk to Resume (AI)
+                    </button>
                     <button
                       type="button"
                       disabled={!applicantProfileId || selectedApplication.status === 'withdrawn' || actionLoading !== null}
@@ -2203,13 +2230,65 @@ const CompanyApplicants = () => {
                           No major skill gaps found for this application.
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {missingSkills.map((gap) => (
-                            <div key={gap.id || gap.missing_skill} className="rounded-2xl border border-amber-100 bg-amber-50 p-3">
-                              <p className="text-sm font-bold text-amber-800">{gap.missing_skill}</p>
-                              <p className="text-xs text-amber-700 mt-1">{gap.recommendation || 'Review this skill before shortlisting.'}</p>
-                            </div>
-                          ))}
+                        <div className="space-y-2.5">
+                          {missingSkills.map((gap) => {
+                            const url = gap.course_url || ''
+                            const platform = (gap.course_platform || '').toLowerCase()
+                            const isYoutube = url.includes('youtube.com') || platform.includes('youtube')
+                            const isCoursera = url.includes('coursera.org') || platform.includes('coursera')
+                            const isFcc = url.includes('freecodecamp') || platform.includes('freecodecamp')
+
+                            let badgeText = gap.course_platform || 'Course'
+                            let badgeClass = 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                            let btnText = 'View Course'
+
+                            if (isYoutube) {
+                              badgeText = 'YouTube Video'
+                              badgeClass = 'text-red-700 bg-red-50 border-red-200'
+                              btnText = 'Watch on YouTube'
+                            } else if (isCoursera) {
+                              badgeText = 'Coursera'
+                              badgeClass = 'text-blue-700 bg-blue-50 border-blue-200'
+                              btnText = 'Coursera Course'
+                            } else if (isFcc) {
+                              badgeText = 'freeCodeCamp'
+                              badgeClass = 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                              btnText = 'freeCodeCamp Guide'
+                            }
+
+                            return (
+                              <div key={gap.id || gap.missing_skill} className="rounded-2xl border border-gray-100 bg-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200/80 text-xs font-bold">
+                                      {gap.missing_skill}
+                                    </span>
+                                    <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${badgeClass}`}>
+                                      {badgeText}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 mt-1">{gap.recommendation || 'Candidate may need training in this area.'}</p>
+                                  {gap.course_title && (
+                                    <p className="text-xs text-gray-900 font-semibold mt-1">
+                                      🎓 Suggested: {gap.course_title}
+                                    </p>
+                                  )}
+                                </div>
+                                {gap.course_url && (
+                                  <a
+                                    href={gap.course_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all shadow-2xs whitespace-nowrap self-start sm:self-center"
+                                  >
+                                    {isYoutube ? <PlayCircle className="w-3.5 h-3.5 text-red-600" /> : <BookOpen className="w-3.5 h-3.5 text-indigo-600" />}
+                                    <span>{btnText}</span>
+                                    <ExternalLink className="w-3 h-3 opacity-70" />
+                                  </a>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                       </section>
@@ -2671,6 +2750,13 @@ const CompanyApplicants = () => {
           </div>
         </div>
       )}
+
+      {/* Recruiter RAG AI Chat Modal — Talk to Candidate Resume */}
+      <CandidateRAGChatModal
+        isOpen={Boolean(ragModalApplication)}
+        onClose={() => setRagModalApplication(null)}
+        application={ragModalApplication}
+      />
     </CompanyLayout>
   )
 }

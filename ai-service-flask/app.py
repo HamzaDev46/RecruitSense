@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 try:
+    # pyrefly: ignore [missing-import]
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
@@ -9,6 +10,7 @@ except ImportError:
 
 from routes.resume_routes import resume_bp
 from routes.quiz_routes import quiz_bp
+from routes.rag_routes import rag_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -16,6 +18,7 @@ CORS(app)
 # Register blueprints (route groups)
 app.register_blueprint(resume_bp)
 app.register_blueprint(quiz_bp)
+app.register_blueprint(rag_bp, url_prefix='/rag')
 
 
 @app.route('/')

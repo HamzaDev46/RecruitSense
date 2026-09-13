@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Award,
   Banknote,
+  BookOpen,
   Brain,
   Briefcase,
   CalendarDays,
@@ -12,15 +13,19 @@ import {
   ChevronUp,
   ClipboardList,
   Clock,
+  ExternalLink,
   FileText,
+  GraduationCap,
   Loader2,
   MapPin,
+  PlayCircle,
   Search,
   Send,
   Sparkles,
   Timer,
   TrendingUp,
   Undo2,
+  Video,
   X,
   XCircle,
 } from 'lucide-react'
@@ -243,6 +248,41 @@ const MyApplications = () => {
     reason: '',
     loading: false,
   })
+  const [videoModal, setVideoModal] = useState({
+    open: false,
+    title: '',
+    skill: '',
+    videoId: '',
+    url: '',
+  })
+
+  const openVideoModal = (title, skill, url) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    const match = (url || '').match(regExp)
+    const videoId = match && match[2].length === 11 ? match[2] : null
+
+    if (videoId) {
+      setVideoModal({
+        open: true,
+        title: title || 'Course Tutorial',
+        skill: skill || '',
+        videoId,
+        url,
+      })
+    } else if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const closeVideoModal = () => {
+    setVideoModal({
+      open: false,
+      title: '',
+      skill: '',
+      videoId: '',
+      url: '',
+    })
+  }
 
   useEffect(() => {
     let active = true
@@ -871,38 +911,114 @@ const MyApplications = () => {
                         </div>
                       )}
 
-                      <div className="mt-5 pt-5 border-t border-gray-100 grid lg:grid-cols-[1fr_auto] gap-4 lg:items-end">
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-amber-500" />
-                            Skill Analysis
+                      <div className="mt-5 pt-5 border-t border-gray-100">
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-indigo-600" />
+                            Skill Gaps & Recommended Upskilling Courses
                           </h4>
-                          {skillGaps.length > 0 ? (
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap gap-2">
-                                {skillGaps.map((gap) => (
-                                  <span key={gap.id || gap.missing_skill} className="text-xs bg-red-50 text-red-600 border border-red-100 px-2.5 py-1 rounded-full font-semibold">
-                                    {gap.missing_skill}
-                                  </span>
-                                ))}
-                              </div>
-                              <p className="text-sm text-gray-500">
-                                Improve these skills to increase your match score for similar jobs.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-                              <p className="text-sm text-emerald-700 font-semibold flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                No skill gaps found for this application.
-                              </p>
-                            </div>
+                          {skillGaps.length > 0 && (
+                            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                              {skillGaps.length} skill {skillGaps.length === 1 ? 'gap' : 'gaps'} identified
+                            </span>
                           )}
                         </div>
 
-                        <div className="flex flex-wrap lg:flex-col gap-2 lg:items-stretch">
-                          {app.status === 'withdrawn' ? (
-                            <div className="px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 text-gray-600 text-sm font-semibold flex items-center justify-center gap-2">
+                        {skillGaps.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {skillGaps.map((gap) => {
+                                const url = gap.course_url || ''
+                                const platform = (gap.course_platform || '').toLowerCase()
+                                const isYoutube = url.includes('youtube.com') || platform.includes('youtube')
+                                const isCoursera = url.includes('coursera.org') || platform.includes('coursera')
+                                const isFcc = url.includes('freecodecamp') || platform.includes('freecodecamp')
+
+                                let badgeText = gap.course_platform || 'Course'
+                                let badgeClass = 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                                let btnText = 'Explore Course'
+                                let btnClass = 'text-indigo-600 bg-white border-indigo-200 hover:bg-indigo-600 hover:text-white'
+
+                                if (isYoutube) {
+                                  badgeText = 'YouTube Video'
+                                  badgeClass = 'text-red-700 bg-red-50 border-red-200'
+                                  btnText = 'Watch Free on YouTube'
+                                  btnClass = 'text-red-700 bg-white border-red-200 hover:bg-red-600 hover:text-white'
+                                } else if (isCoursera) {
+                                  badgeText = 'Coursera'
+                                  badgeClass = 'text-blue-700 bg-blue-50 border-blue-200'
+                                  btnText = 'Learn on Coursera'
+                                  btnClass = 'text-blue-700 bg-white border-blue-200 hover:bg-blue-600 hover:text-white'
+                                } else if (isFcc) {
+                                  badgeText = 'freeCodeCamp'
+                                  badgeClass = 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                                  btnText = 'Open on freeCodeCamp'
+                                  btnClass = 'text-emerald-800 bg-white border-emerald-200 hover:bg-emerald-600 hover:text-white'
+                                }
+
+                                return (
+                                  <div
+                                    key={gap.id || gap.missing_skill}
+                                    className="rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50/50 via-white to-gray-50/30 p-3.5 flex flex-col justify-between gap-3 shadow-sm hover:border-gray-300 transition-colors"
+                                  >
+                                    <div>
+                                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                                        <span className="text-xs bg-red-50 text-red-700 border border-red-200/80 px-2.5 py-0.5 rounded-full font-bold">
+                                          {gap.missing_skill}
+                                        </span>
+                                        <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${badgeClass}`}>
+                                          {badgeText}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs font-bold text-gray-900 line-clamp-2 mt-1">
+                                        {gap.course_title || `Mastering ${gap.missing_skill}`}
+                                      </p>
+                                      <p className="text-[11px] text-gray-500 mt-0.5">
+                                        {gap.recommendation || `Learn ${gap.missing_skill} to boost future match scores.`}
+                                      </p>
+                                    </div>
+
+                                    {gap.course_url && (
+                                      isYoutube ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => openVideoModal(gap.course_title, gap.missing_skill, gap.course_url)}
+                                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 text-red-700 bg-white hover:bg-red-600 hover:text-white transition-all shadow-2xs mt-1"
+                                        >
+                                          <PlayCircle className="w-3.5 h-3.5" />
+                                          <span>Watch Video (In-App)</span>
+                                        </button>
+                                      ) : (
+                                        <a
+                                          href={gap.course_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all shadow-2xs mt-1 ${btnClass}`}
+                                        >
+                                          <BookOpen className="w-3.5 h-3.5" />
+                                          {btnText}
+                                          <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
+                                        </a>
+                                      )
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                            <p className="text-sm text-emerald-700 font-semibold flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4" />
+                              No skill gaps found for this application. Great job!
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap lg:justify-end gap-2">
+                        {app.status === 'withdrawn' ? (
+                          <div className="px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 text-gray-600 text-sm font-semibold flex items-center justify-center gap-2">
                               <Undo2 className="w-4 h-4" />
                               Withdrawn
                             </div>
@@ -938,7 +1054,6 @@ const MyApplications = () => {
                             View job details
                           </button>
                         </div>
-                      </div>
                     </motion.div>
                   )}
                 </motion.div>
@@ -1143,6 +1258,61 @@ const MyApplications = () => {
                 )}
                 {withdrawModal.loading ? 'Withdrawing...' : 'Withdraw'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {videoModal.open && (
+        <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4 bg-gray-50/70">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                  <PlayCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 line-clamp-1">{videoModal.title}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {videoModal.skill && (
+                      <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">
+                        {videoModal.skill}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">In-App Tutorial Player</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={videoModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-100 flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Open in YouTube</span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                </a>
+                <button
+                  onClick={closeVideoModal}
+                  className="w-8 h-8 rounded-lg hover:bg-gray-200/70 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors"
+                  aria-label="Close video"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-black flex items-center justify-center">
+              <div className="w-full aspect-video rounded-xl overflow-hidden shadow-lg bg-gray-950">
+                <iframe
+                  src={`https://www.youtube.com/embed/${videoModal.videoId}?autoplay=1&rel=0`}
+                  title={videoModal.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              </div>
             </div>
           </div>
         </div>

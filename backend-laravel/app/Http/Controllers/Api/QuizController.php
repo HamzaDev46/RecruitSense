@@ -621,6 +621,10 @@ class QuizController extends Controller
             2
         );
 
+        $application->soft_skill_score = $softSkillScore;
+        $application->final_score = $finalScore;
+        $application->save();
+
         // Check if application was pending and updated final score qualifies for auto-shortlisting
         $previousStatus = $application->status;
         $isNewlyAutoShortlisted = ($previousStatus === Application::STATUS_PENDING && $finalScore >= 75);

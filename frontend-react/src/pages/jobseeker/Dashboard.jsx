@@ -12,6 +12,8 @@ import {
   Eye,
   FileText,
   Heart,
+  HelpCircle,
+  Lightbulb,
   MessageCircle,
   Newspaper,
   Sparkles,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import OnboardingGuideModal from '../../components/jobseeker/OnboardingGuideModal'
 import CompanyLogo from '../../components/CompanyLogo'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
@@ -58,6 +61,10 @@ const Dashboard = () => {
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   ))
   const [loading, setLoading] = useState(true)
+  const [showGuideModal, setShowGuideModal] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('recruitsense_jobseeker_guide_seen') !== 'true'
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -220,12 +227,22 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold mb-1">{user?.name}</h1>
               <p className="text-indigo-100 text-sm">Track your job search, profile reach, and network activity.</p>
             </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-full sm:w-auto px-4 py-2 rounded-full bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50"
-            >
-              Improve profile
-            </button>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(true)}
+                className="w-full sm:w-auto px-4 py-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-sm font-semibold border border-white/30 flex items-center justify-center gap-2 transition-colors shadow-2xs"
+              >
+                <Lightbulb className="w-4 h-4 text-amber-300" />
+                <span>Quick Guide</span>
+              </button>
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-full sm:w-auto px-4 py-2 rounded-full bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50 shadow-sm"
+              >
+                Improve profile
+              </button>
+            </div>
           </div>
         </motion.div>
 
@@ -656,6 +673,11 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      <OnboardingGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </DashboardLayout>
   )
 }

@@ -1,10 +1,15 @@
 import json
 import os
+import requests
 
 try:
+    # pyrefly: ignore [missing-import]
     from openai import OpenAI
 except ImportError:
     OpenAI = None
+
+OLLAMA_CHAT_URL = os.getenv("OLLAMA_CHAT_URL", "http://127.0.0.1:11434/api/chat")
+CHAT_MODEL = os.getenv("CHAT_MODEL", "llama3.2:3b")
 
 
 def _clean_question(raw_question, fallback_category):
@@ -27,16 +32,90 @@ def _clean_question(raw_question, fallback_category):
     }
 
 
-def generate_quiz_questions(category, count=5, job_title='', required_skills=''):
+def generate_quiz_ollama(category: str, count: int = 5, job_title: str = '', required_skills: str = '', timeout: int = 120) -> dict:
+    """
+    Generates professional multiple-choice questions using local Ollama (Llama 3.2 3B).
+    100% Free, Offline, and Zero API Cost.
+    """
+    prompt = f"""You are an expert recruiter and assessment creator for RecruitSense.
+Generate exactly {count} professional multiple-choice questions for candidate screening in category: {category}.
+Job Title: {job_title or 'General Role'}
+Required Skills: {required_skills or 'General Skills'}
+
+Rules:
+1. Each question must have EXACTLY 4 options.
+2. The correct_answer must exactly match one of the 4 options.
+3. Return ONLY valid JSON with this exact structure:
+
+{{
+  "questions": [
+    {{
+      "category": "{category}",
+      "question_text": "Question here?",
+      "options": [
+        "Option 1",
+        "Option 2",
+        "Option 3",
+        "Option 4"
+      ],
+      "correct_answer": "Option 1"
+    }}
+  ]
+}}
+"""
+
+    try:
+        response = requests.post(
+            OLLAMA_CHAT_URL,
+            json={
+                "model": CHAT_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "format": "json"
+            },
+            timeout=timeout
+        )
+        if response.status_code == 200:
+            content = response.json().get("message", {}).get("content", "")
+            payload = json.loads(content)
+            questions_raw = payload.get("questions", [])
+
+            seen = set()
+            cleaned_questions = []
+
+            for q in questions_raw:
+                cleaned = _clean_question(q, category)
+                if cleaned:
+                    key = cleaned["question_text"].lower()
+                    if key not in seen:
+                        seen.add(key)
+                        cleaned_questions.append(cleaned)
+
+            if cleaned_questions:
+                return {
+                    "questions": cleaned_questions[:count],
+                    "source": "ollama_local"
+                }
+
+    except Exception as e:
+        return {"error": f"Ollama quiz generation failed: {str(e)}"}
+
+    return {"error": "Ollama returned no valid quiz questions."}
+
+
+def generate_quiz_openai(category: str, count: int = 5, job_title: str = '', required_skills: str = '') -> dict:
+    """
+    Generates questions using OpenAI API.
+    """
     api_key = os.getenv('OPENAI_API_KEY')
 
     if OpenAI is None:
-        return {"error": "OpenAI SDK is not installed. Run pip install -r requirements.txt."}
+        return {"error": "OpenAI SDK is not installed."}
 
     if not api_key:
-        return {"error": "OPENAI_API_KEY is not configured in the AI service environment."}
+        return {"error": "OPENAI_API_KEY is not configured."}
 
-    model = os.getenv('OPENAI_QUIZ_MODEL', 'gpt-5-mini')
+    model = os.getenv('OPENAI_QUIZ_MODEL', 'gpt-4.1-mini')
     client = OpenAI(api_key=api_key)
 
     prompt = (
@@ -124,3 +203,40 @@ def generate_quiz_questions(category, count=5, job_title='', required_skills='')
 
     except Exception as exc:
         return {"error": str(exc)}
+
+
+def generate_quiz_questions(category: str, count: int = 5, job_title: str = '', required_skills: str = '') -> dict:
+    """
+    Main entry point:
+    1. First tries local Ollama (Free, zero API cost, offline capable).
+    2. If Ollama is offline or unavailable, automatically falls back to OpenAI API.
+    3. If OpenAI is also not configured, returns clean fallback error.
+    """
+    # 1. Try Ollama local first
+    ollama_res = generate_quiz_ollama(
+        category=category,
+        count=count,
+        job_title=job_title,
+        required_skills=required_skills
+    )
+
+    if not ollama_res.get("error") and ollama_res.get("questions"):
+        return ollama_res
+
+    # 2. Fallback to OpenAI API if Ollama fails
+    openai_res = generate_quiz_openai(
+        category=category,
+        count=count,
+        job_title=job_title,
+        required_skills=required_skills
+    )
+
+    if not openai_res.get("error") and openai_res.get("questions"):
+        return openai_res
+
+    # Return informative error if both fail
+    return {
+        "error": "Could not generate quiz from Ollama or OpenAI.",
+        "ollama_detail": ollama_res.get("error"),
+        "openai_detail": openai_res.get("error")
+    }

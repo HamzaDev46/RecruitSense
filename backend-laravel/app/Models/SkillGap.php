@@ -10,7 +10,14 @@ class SkillGap extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['application_id', 'missing_skill', 'recommendation'];
+    protected $fillable = [
+        'application_id',
+        'missing_skill',
+        'recommendation',
+        'course_title',
+        'course_platform',
+        'course_url',
+    ];
 
     public function application(): BelongsTo
     {

@@ -82,6 +82,13 @@ class ApplicationController extends Controller
             $job->required_skills
         );
 
+        // Index resume into ChromaDB Vector Database for RAG Assistant
+        try {
+            $this->flaskService->ingestResume($resume->file_path, (string)$application->id);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('RAG indexing on application failed: ' . $e->getMessage());
+        }
+
         // Save AI results if successful
         if (!isset($aiResult['error'])) {
             $similarityScore = $aiResult['similarity_score'] ?? 0;
@@ -110,13 +117,31 @@ class ApplicationController extends Controller
                 'company_notes'    => $companyNotes,
             ]);
 
-            // Save missing skills (skill gaps)
-            if (!empty($aiResult['missing_skills'])) {
-                foreach ($aiResult['missing_skills'] as $missingSkill) {
+            // Save missing skills with recommended courses (skill gaps)
+            if (!empty($aiResult['skill_gaps_detailed']) && is_array($aiResult['skill_gaps_detailed'])) {
+                foreach ($aiResult['skill_gaps_detailed'] as $gap) {
+                    $missingSkill = trim((string)($gap['skill'] ?? ''));
+                    if (!$missingSkill) continue;
                     SkillGap::create([
-                        'application_id' => $application->id,
-                        'missing_skill'  => $missingSkill,
-                        'recommendation' => 'Consider learning ' . $missingSkill . ' to improve your chances.',
+                        'application_id'  => $application->id,
+                        'missing_skill'   => $missingSkill,
+                        'recommendation'  => 'Consider learning ' . $missingSkill . ' to improve your chances.',
+                        'course_title'    => $gap['course_title'] ?? ('Mastering ' . ucfirst($missingSkill)),
+                        'course_platform' => $gap['course_platform'] ?? 'Coursera',
+                        'course_url'      => $gap['course_url'] ?? ('https://www.coursera.org/search?query=' . urlencode($missingSkill . ' course')),
+                    ]);
+                }
+            } elseif (!empty($aiResult['missing_skills'])) {
+                foreach ($aiResult['missing_skills'] as $missingSkill) {
+                    $missingSkill = trim((string)$missingSkill);
+                    if (!$missingSkill) continue;
+                    SkillGap::create([
+                        'application_id'  => $application->id,
+                        'missing_skill'   => $missingSkill,
+                        'recommendation'  => 'Consider learning ' . $missingSkill . ' to improve your chances.',
+                        'course_title'    => 'Mastering ' . ucfirst($missingSkill),
+                        'course_platform' => 'Coursera',
+                        'course_url'      => 'https://www.coursera.org/search?query=' . urlencode($missingSkill . ' course'),
                     ]);
                 }
             }
@@ -642,6 +667,43 @@ class ApplicationController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
+    }
+
+    /**
+     * Recruiter / Company asks an AI question about an applicant's resume via RAG.
+     */
+    public function askAI(Request $request, Application $application)
+    {
+        $user = $request->user();
+        $application->load('jobPosting.company', 'jobSeeker.resume');
+
+        if ($user->role !== 'company' || $application->jobPosting->company_id !== $user->company?->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'question' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $resume = $application->jobSeeker?->resume;
+        if (!$resume) {
+            return response()->json(['message' => 'Applicant resume not found'], 404);
+        }
+
+        // Send query to FastAPI RAG endpoint
+        $result = $this->flaskService->askResume($validated['question'], (string) $application->id);
+
+        // If not indexed yet in ChromaDB or returned empty context, index it on the fly and retry
+        if (isset($result['error']) || (isset($result['answer']) && str_contains(strtolower($result['answer']), 'could not find any relevant information'))) {
+            try {
+                $this->flaskService->ingestResume($resume->file_path, (string) $application->id);
+                $result = $this->flaskService->askResume($validated['question'], (string) $application->id);
+            } catch (\Exception $e) {
+                // Ignore secondary error and return whatever result we have
+            }
+        }
+
+        return response()->json($result);
     }
 
     /**

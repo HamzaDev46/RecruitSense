@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/applications/{application}/status', [ApplicationController::class, 'updateStatus']);
     Route::put('/applications/{application}/review', [ApplicationController::class, 'saveCompanyReview']);
     Route::put('/applications/{application}/interview-feedback', [ApplicationController::class, 'saveInterviewFeedback']);
+    Route::post('/applications/{application}/ask-ai', [ApplicationController::class, 'askAI']);
     Route::post('/applications/{applicationId}/shortlist', [ApplicationController::class, 'shortlist']);
     Route::post('/applications/{applicationId}/reject', [ApplicationController::class, 'reject']);
 

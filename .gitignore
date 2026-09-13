@@ -3,13 +3,43 @@ backend-laravel/vendor/
 backend-laravel/.env
 backend-laravel/storage/*.key
 
-# Flask
+# AI Services (Flask & FastAPI)
 ai-service-flask/.env
 ai-service-flask/venv/
 ai-service-flask/__pycache__/
 ai-service-flask/**/__pycache__/
+ai-service-fastapi/.env
+ai-service-fastapi/venv/
+ai-service-fastapi/chroma_db/
+ai-service-fastapi/__pycache__/
+ai-service-fastapi/**/__pycache__/
 *.pyc
+venv/
+.venv/
+__pycache__/
 
-# General
+# Frontend (React)
+frontend-react/node_modules/
+frontend-react/dist/
+frontend-react/.env
+frontend-react/.env.local
+
+# Mobile (Flutter)
+mobile-flutter/.dart_tool/
+mobile-flutter/build/
+mobile-flutter/.flutter-plugins
+mobile-flutter/.flutter-plugins-dependencies
+mobile-flutter/.packages
+mobile-flutter/.pub-cache/
+mobile-flutter/.pub/
+
+# Archives & Large PDFs
+*.zip
+*.tar.gz
+*.rar
+
+# General & IDE
 .DS_Store
 *.log
+.vscode/
+.idea/
