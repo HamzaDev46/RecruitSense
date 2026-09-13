@@ -1,0 +1,182 @@
+\chapter{User Manual and Deployment Guide} \label{ap:Appendix1}
+
+\section{User Manual}
+This section provides step-by-step user operational guides for the three primary roles supported by the \textbf{RecruitSense} platform: Job Seekers, Corporate Recruiters, and Platform Administrators.
+
+\subsection{A.1 User Registration and Authentication}
+\subsubsection{A.1.1 Creating a Candidate Account}
+\begin{enumerate}
+    \item Navigate to the RecruitSense portal at \texttt{http://localhost:5173}.
+    \item Click on the \textbf{Sign Up} button in the top navigation bar.
+    \item Select the \textbf{Job Seeker} tab.
+    \item Enter your Full Name, Email Address, and Password (minimum 8 characters).
+    \item Click \textbf{Create Account}. Upon successful registration, you will be automatically logged in and redirected to your Candidate Dashboard.
+\end{enumerate}
+
+\subsubsection{A.1.2 Creating an Employer / Recruiter Account}
+\begin{enumerate}
+    \item Click on \textbf{Sign Up} and select the \textbf{Employer / Recruiter} tab.
+    \item Enter your Corporate Email Address (e.g., \texttt{hr@company.com}). The system will automatically check domain validity.
+    \item Enter Company Name, Industry, and Office Location.
+    \item Submit the registration form. Recruiter accounts with verified corporate domains gain instant job posting privileges.
+\end{enumerate}
+
+\subsubsection{A.1.3 Logging In}
+\begin{enumerate}
+    \item Click \textbf{Log In} on the top navigation bar.
+    \item Enter your registered Email and Password.
+    \item Click \textbf{Sign In}. The system authenticates credentials, issues a secure 64-character Bearer token, and routes you to your role-specific dashboard.
+\end{enumerate}
+
+\subsection{A.2 Job Seeker Operations}
+\subsubsection{A.2.1 Profile Setup and Resume Management}
+\begin{enumerate}
+    \item Navigate to \textbf{My Profile} from the user dropdown.
+    \item Enter your professional summary, primary skillset, educational background, and GitHub/LinkedIn portfolio URLs.
+    \item Upload your default PDF resume (maximum 5MB).
+    \item Click \textbf{Save Changes}.
+\end{enumerate}
+
+\subsubsection{A.2.2 Job Discovery and Live Filtering}
+\begin{enumerate}
+    \item Click on the \textbf{Explore Jobs} tab in the navigation bar.
+    \item Use the search bar to enter desired job titles or technology keywords (e.g., ``Full Stack Developer'', ``Python'').
+    \item Refine results using sidebar filters: \textit{Job Type} (Full-time, Part-time, Remote, Contract), \textit{Experience Level}, and \textit{Minimum Salary}.
+    \item Click on any job card to inspect the comprehensive job description, company information, and required competencies.
+\end{enumerate}
+
+\subsubsection{A.2.3 Applying for a Job and Interpreting the ATS Score Modal}
+\begin{enumerate}
+    \item On the Job Detail page, click the \textbf{Apply Now} button.
+    \item Drag and drop your PDF resume into the upload zone or select your pre-uploaded profile resume.
+    \item Click \textbf{Submit Application}.
+    \item Within seconds, the \textbf{Instant ATS Match Score Modal} will appear:
+    \begin{itemize}
+        \item \textbf{Overall Match Percentage:} Displays your composite compatibility score (0--100\%) on a circular color-coded gauge.
+        \item \textbf{Matched Skills:} Rendered as green badges with checkmarks, indicating competencies successfully extracted from your resume that match the job criteria.
+        \item \textbf{Missing Skills (Skill Gap):} Rendered as red warning badges, highlighting required competencies missing from your resume to guide your career upskilling.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{A.2.4 Tracking Application Progress}
+\begin{enumerate}
+    \item Navigate to \textbf{My Applications} from the top menu.
+    \item Review all submitted applications along with their active pipeline status badge (\textit{Applied}, \textit{Screening}, \textit{Shortlisted}, \textit{Interview Scheduled}, \textit{Offer Extended}, \textit{Rejected}).
+    \item For applications with status \textit{Interview Scheduled}, click \textbf{View Details} to inspect the scheduled date, time, and video meeting link.
+\end{enumerate}
+
+\subsection{A.3 Corporate Recruiter Operations}
+\subsubsection{A.3.1 Creating and Publishing a Job Vacancy}
+\begin{enumerate}
+    \item From the Recruiter Portal, click \textbf{+ Post a Job}.
+    \item Enter Job Title, Department, Workplace Type (On-site, Remote, Hybrid), and Location.
+    \item Provide a detailed Job Description and outline primary responsibilities.
+    \item In the \textbf{Required Skills} field, enter essential technology tags separated by commas (e.g., \texttt{React, Laravel, MySQL, Docker}).
+    \item Set compensation parameters and click \textbf{Publish Vacancy}. The job immediately becomes searchable to candidates across the platform.
+\end{enumerate}
+
+\subsubsection{A.3.2 Inspecting Ranked Candidate Shortlists}
+\begin{enumerate}
+    \item Navigate to \textbf{Manage Jobs} and select an active vacancy.
+    \item Click \textbf{View Applicants}. The candidate table is automatically rendered in descending order of AI-computed ATS Match Score.
+    \item Adjust the \textbf{Minimum ATS Score Filter} slider (e.g., $\ge 80\%$) to automatically filter out under-qualified applicants.
+    \item Click on any applicant row to expand the \textbf{Candidate Drawer}, showing extracted resume text, verified matched competencies, and missing skill gaps.
+\end{enumerate}
+
+\subsubsection{A.3.3 Managing Pipeline Stages and Scheduling Interviews}
+\begin{enumerate}
+    \item In the Candidate Drawer or Pipeline Kanban board, select the status dropdown to advance the candidate (e.g., from \textit{Screening} to \textit{Shortlisted}).
+    \item When selecting \textit{Schedule Interview}, the \textbf{Interview Drawer} opens:
+    \begin{itemize}
+        \item Select the Interview Date and Time.
+        \item Provide the Video Conference URL (e.g., Google Meet / Microsoft Teams).
+        \item Enter special instructions for the candidate.
+    \end{itemize}
+    \item Click \textbf{Confirm Schedule}. The system automatically updates the application record and dispatches an automated interview invitation to the candidate.
+\end{enumerate}
+
+\subsection{A.4 Platform Administrator Operations}
+\subsubsection{A.4.1 Corporate Domain Verification Queue}
+\begin{enumerate}
+    \item Log in to the Admin Governance Console at \texttt{/admin}.
+    \item Navigate to \textbf{Employer Verification Queue}.
+    \item Review pending company registrations, inspect company website domains and corporate email records.
+    \item Click \textbf{Approve} to grant verified employer status or \textbf{Reject} with feedback notes.
+\end{enumerate}
+
+\subsubsection{A.4.2 Job Moderation and User Account Management}
+\begin{enumerate}
+    \item Navigate to \textbf{Job Moderation} to review active or flagged job postings.
+    \item Flag, unflag, or permanently delete fraudulent job postings.
+    \item Under \textbf{User Management}, search users by email, review activity logs, or suspend abusive accounts with immediate session revocation.
+\end{enumerate}
+
+\section{System Deployment and Environment Setup}
+To deploy and execute the \textbf{RecruitSense} web platform and AI microservice locally or in a cloud hosting environment, follow the step-by-step instructions below.
+
+\subsection{System Prerequisites}
+\begin{itemize}
+    \item \textbf{PHP Runtime:} PHP 8.2 or higher with extensions: \texttt{bcmath}, \texttt{curl}, \texttt{mbstring}, \texttt{openssl}, \texttt{pdo\_mysql}, \texttt{xml}.
+    \item \textbf{Dependency Manager (PHP):} Composer 2.7+.
+    \item \textbf{JavaScript Runtime \& Package Manager:} Node.js 18.x or 20.x LTS and NPM 9.x+.
+    \item \textbf{Python Runtime:} Python 3.10 or 3.11 with \texttt{pip} and \texttt{virtualenv}.
+    \item \textbf{Database Server:} MySQL Community Server 8.0+.
+\end{itemize}
+
+\subsection{Step-by-Step Installation}
+\subsubsection{1. Backend Setup (Laravel REST API)}
+\begin{verbatim}
+cd backend-laravel
+composer install
+cp .env.example .env
+php artisan key:generate
+# Configure DB_DATABASE, DB_USERNAME, DB_PASSWORD in .env
+php artisan migrate --seed
+php artisan storage:link
+php artisan serve --port=8000
+\end{verbatim}
+
+\subsubsection{2. AI Microservice Setup (Python FastAPI)}
+\begin{verbatim}
+cd ai-service-fastapi
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On Linux / macOS:
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 5000
+# Listening on http://127.0.0.1:5000 (Swagger docs at /docs)
+\end{verbatim}
+
+\subsubsection{3. Frontend Setup (React 18 / Vite SPA)}
+\begin{verbatim}
+cd frontend-react
+npm install
+# Configure VITE_API_BASE_URL=http://localhost:8000/api in .env
+npm run dev
+# Accessible at http://localhost:5173
+\end{verbatim}
+
+\section{Sample API Contracts}
+\noindent \textbf{Analyze Resume Endpoint:} \texttt{POST http://127.0.0.1:5000/analyze-resume}
+\begin{verbatim}
+Content-Type: multipart/form-data
+Form Data:
+  resume: [Binary PDF Stream]
+  required_skills: "React, Laravel, MySQL, REST API, Tailwind CSS"
+  job_description: "Full-Stack Engineer with React and Laravel experience..."
+
+Response (HTTP 200 OK):
+{
+  "message": "Resume analyzed successfully",
+  "similarity_score": 88.45,
+  "skill_gap_score": 80.00,
+  "matched_skills": ["react", "laravel", "mysql", "rest api"],
+  "missing_skills": ["tailwind css"],
+  "bonus_skills": ["python", "docker", "git"],
+  "total_required_skills": 5,
+  "matched_count": 4,
+  "character_count": 3420
+}
+\end{verbatim}

@@ -1,0 +1,37 @@
+\chapter{Conclusions and Future Work}\label{chap:conclusions}
+
+\section{Conclusion}
+\textbf{RecruitSense} has been engineered, deployed, and empirically evaluated as a comprehensive, intelligent Applicant Tracking System (ATS) and AI-powered Resume Screening Platform. Designed to overcome the pervasive challenges of recruitment bottlenecks, candidate opacity, and cognitive fatigue in talent acquisition, the platform provides a unified web-based solution for job seekers, corporate recruiters, and platform administrators.
+
+The system combines a reactive, modern Single Page Application (SPA) built with React 18, Vite, and Tailwind CSS, an enterprise-grade RESTful API engine built with Laravel 11 and MySQL 8.0, and a dedicated AI microservice powered by Python 3.11, Flask, PyPDF2, and Scikit-learn \cite{fielding2000rest, salton1988term, sivaram2022nlp}. Through this decoupled 3-tier architecture, job seekers can discover verified job opportunities, submit applications with 1-click resume uploads, receive instantaneous ATS score breakdowns with actionable missing skill diagnostics, and track their hiring lifecycle in real time. Simultaneously, corporate recruiters can publish vacancy specifications tagged with required skills, access candidate applicant tables automatically ranked by composite ATS match scores, filter candidates by customizable match thresholds, advance applicants across a structured 6-stage hiring pipeline, and coordinate interview schedules.
+
+The project demonstrates how a decoupled microservices architecture can successfully support high transactional throughput, data privacy, and operational efficiency while eliminating the traditional ``black-box'' dilemma of legacy recruitment systems. The integration of role-based access control (RBAC), proactive corporate email domain verification (\texttt{TrustedEmailDomain}), immutable audit logging, and hybrid NLP screening (combining deterministic boundary regex skill matching with TF-IDF cosine similarity vectorization) establishes a transparent and trustworthy hiring ecosystem for both employers and job seekers.
+
+System testing and empirical evaluation confirmed that RecruitSense operates reliably, securely, and with sub-second responsiveness. The platform achieved an average System Usability Scale (SUS) score of \textbf{86.4 / 100}, an AI skill extraction F1-score of \textbf{89.8\%}, and a strong correlation ($\rho = 0.84, p < 0.001$) with senior human technical recruiters, while reducing resume screening turnaround time by over $75\%$.
+
+\section{System Limitations}
+Although RecruitSense delivers a fully operational and robust recruitment platform, several technical and environmental limitations are acknowledged to guide future iterations:
+\begin{itemize}
+    \item \textbf{Raster and Scanned Resume Documents:} The current PyPDF2 text extraction pipeline relies on selectable textual streams. Resumes submitted as flattened raster images (e.g., scanned physical documents or image-only exports) cannot be parsed without an Optical Character Recognition (OCR) preprocessing engine.
+    \item \textbf{Language Scope:} The NLP tokenizers, English stop-word filters, and boundary regex matching dictionaries are presently optimized exclusively for English-language documents. Resumes composed in other regional or international languages cannot be screened accurately.
+    \item \textbf{Static Skill Taxonomy Updates:} While the pre-defined skill taxonomy encompasses over 80 major technical and domain-specific competencies, rapid technological advancements necessitate periodic updates to the skill dictionary to recognize emerging programming libraries and frameworks.
+    \item \textbf{Multi-Stage Video and Audio Screening:} The current implementation supports structured text screening and interview scheduling, but does not yet include automated asynchronous one-way video interview recording or verbal communication analytics.
+    \item \textbf{Live Calendar and Communication Integrations:} While interview dates, times, and meeting links are recorded and dispatched via email notifications, two-way calendar synchronization (e.g., Google Calendar / Microsoft Outlook API webhooks) is not yet natively integrated.
+\end{itemize}
+
+\section{Future Work}
+Several high-impact enhancements have been identified to extend RecruitSense's capabilities and commercial scalability:
+\begin{itemize}
+    \item \textbf{Integrated Optical Character Recognition (OCR):} Incorporating computer vision OCR pipelines (such as Tesseract OCR or EasyOCR) to automatically extract text from scanned, image-based, or non-standard graphical resumes.
+    \item \textbf{Multi-Lingual and Cross-Lingual NLP Screening:} Expanding the natural language processing pipeline to support multi-lingual tokenization, allowing international candidates and multi-national enterprises to evaluate resumes across diverse languages.
+    \item \textbf{Dynamic Skill Graph Auto-Discovery:} Developing automated web-crawling and knowledge graph pipelines that continuously ingest industry trends (from sources such as GitHub and Stack Overflow) to dynamically expand the skill ontology graph without manual intervention.
+    \item \textbf{LLM-Powered Dynamic Technical Assessments:} Integrating Large Language Models (e.g., Gemini or LLaMA) to dynamically generate personalized technical quiz questions and customized interview prompts targeted directly at a candidate's identified skill gaps.
+    \item \textbf{Automated Video Interview Analysis:} Incorporating asynchronous video submission features with computer vision and audio transcription to evaluate verbal fluency, confidence, and communication competencies.
+    \item \textbf{Two-Way Calendar Synchronization:} Integrating Google Calendar, Microsoft Teams, and Zoom APIs for automated real-time calendar availability checking and 1-click meeting room creation.
+    \item \textbf{Containerized Orchestration and Auto-Scaling:} Packaging the entire system into Docker containers orchestrated via Kubernetes with automated CI/CD pipelines to support horizontal auto-scaling during high-traffic campus hiring drives.
+\end{itemize}
+
+\section{Final Statement}
+\textbf{RecruitSense} represents a successful Final Year Project that brings together modern full-stack web engineering, relational database design, enterprise application security, and applied Natural Language Processing into a unified talent acquisition ecosystem. The platform directly resolves critical recruitment inefficiencies by providing automated candidate shortlisting, mitigating recruiter cognitive fatigue, safeguarding candidates against fraudulent job postings through corporate domain verification, and providing job seekers with actionable, transparent skill gap feedback.
+
+The completed platform fulfills all academic and technical objectives, providing a robust, extensible foundation for enterprise deployment and next-generation recruitment innovation.

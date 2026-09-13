@@ -1,0 +1,58 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Laravel API Gateway" as Backend <<System>>
+actor "Flask AI Microservice" as AIService <<System>>
+
+rectangle "RecruitSense AI Engine (UC-06: AI Resume Screening)" {
+    usecase "Execute Resume Screening Request" as UC1
+    usecase "Extract Raw Text Stream\nvia PyPDF2 Parser" as UC2
+    usecase "Tokenize & Match\nRequired Skills" as UC3
+    usecase "Identify Missing\nSkill Gaps" as UC4
+    usecase "Compute TF-IDF Cosine\nSimilarity Vector" as UC5
+    usecase "Extract Bonus\nCompetencies" as UC6
+    usecase "Return Structured\nJSON Evaluation" as UC7
+}
+
+Backend --> UC1
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+UC1 ..> UC7 : <<include>>
+UC1 ..> UC6 : <<extend>>
+
+UC1 --> AIService
+@enduml

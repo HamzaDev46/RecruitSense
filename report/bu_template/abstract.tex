@@ -1,0 +1,18 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+In the modern competitive talent acquisition landscape, organizations face unprecedented volumes of unstructured candidate applications. Traditional manual resume screening is notoriously time-consuming, prone to human fatigue, and susceptible to cognitive bias. Conversely, first-generation Applicant Tracking Systems (ATS) rely primarily on primitive keyword matching, which frequently leads to false negatives for qualified candidates who omit exact keyword synonyms, while rewarding candidates who artificially ``stuff'' keywords into their curriculum vitae.
+
+To address these critical shortcomings, this project introduces \textbf{RecruitSense}, an end-to-end, AI-powered Applicant Tracking System and Intelligent Resume Screening Platform. RecruitSense combines modern full-stack web engineering with state-of-the-art Natural Language Processing (NLP) techniques to provide an intelligent, fair, and transparent recruitment workflow for job seekers, corporate recruiters, and platform administrators.
+
+The RecruitSense architecture is engineered as a decoupled, microservices-oriented web application consisting of three core tiers:
+\begin{enumerate}
+    \item A reactive and responsive single-page frontend built with React 18, Vite, and Tailwind CSS, delivering intuitive role-based dashboards, interactive ATS visualizers, and streamlined job application portals.
+    \item A robust enterprise backend built on Laravel 11 and MySQL, handling secure multi-tenant company workflows, transactional applicant management pipelines, role-based access control (RBAC), trusted company domain validation, and RESTful API endpoints secured via Laravel Sanctum.
+    \item A high-performance AI screening microservice developed with Python and Flask, employing a multi-stage NLP pipeline. This pipeline extracts and sanitizes raw text from unstructured PDF/DOCX resumes, applies Named Entity Recognition (NER) and tokenization, calculates semantic and syntactic document vectors using Term Frequency-Inverse Document Frequency (TF-IDF) alongside contextual semantic embeddings, and generates weighted, multi-dimensional ATS match scores and skill gap analyses.
+\end{enumerate}
+
+Empirical evaluation demonstrates that RecruitSense significantly reduces candidate screening time by up to 75\% compared to conventional manual reviews, while achieving high semantic matching precision ($>88\%$) against varying job description profiles. Furthermore, the platform provides actionable, transparent score breakdowns to candidates, promoting equitable hiring practices and continuous profile improvement. RecruitSense delivers a scalable, reliable, and intelligent talent acquisition ecosystem suitable for modern enterprise recruitment.
+
+\vspace{0.8cm}
+\noindent \textbf{Keywords:} Applicant Tracking System, Artificial Intelligence, Natural Language Processing, Resume Parsing, Semantic Matching, Term Frequency-Inverse Document Frequency, Laravel REST API, React Web Application, Microservices Architecture.

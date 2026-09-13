@@ -1,0 +1,51 @@
+@startuml
+autonumber
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam sequence {
+    ArrowColor #0284C7
+    ActorBorderColor #0284C7
+    ActorBackgroundColor #38BDF8
+    ActorFontColor #0F172A
+    
+    ParticipantBorderColor #0284C7
+    ParticipantBackgroundColor #BAE6FD
+    ParticipantFontColor #0F172A
+    ParticipantFontStyle bold
+    
+    LifeLineBorderColor #0284C7
+    LifeLineBackgroundColor #E0F2FE
+    
+    BoxBorderColor #0284C7
+    BoxBackgroundColor #F0F9FF
+    BoxFontColor #0284C7
+}
+' =================================
+
+actor "Job Seeker / Guest" as User
+participant "React Web Client\n(SPA)" as Client
+participant "Laravel API Gateway\n(JobPostingController)" as API
+database "MySQL Database\n(job_postings)" as DB
+
+User -> Client: 1. Input search keywords & select filter facets (Location, Salary, Type)
+activate Client
+
+Client -> API: 2. GET /api/jobs?keyword=...&department=...&workplace=...
+activate API
+
+API -> DB: 3. Query active job listings (WHERE status='active' AND criteria MATCH)
+activate DB
+DB --> API: 4. Return matching records & company relationship data
+deactivate DB
+
+API --> Client: 5. HTTP 200 OK (JSON array of job vacancy cards & total count)
+deactivate API
+
+Client --> User: 6. Dynamically render job vacancy cards & company badges
+deactivate Client
+@enduml

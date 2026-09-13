@@ -1,0 +1,84 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+
+' === EXACT DARK & CYAN THEME FROM YOUR SCREENSHOT ===
+skinparam backgroundColor #18181B
+
+skinparam rectangle {
+    BackgroundColor transparent
+    BorderColor #38BDF8
+    BorderThickness 1.5
+    FontColor #FFFFFF
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #38BDF8
+    BorderThickness 1.5
+    FontColor #000000
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #00E5FF
+    BorderColor #38BDF8
+    FontColor #38BDF8
+}
+
+skinparam arrow {
+    Color #38BDF8
+    FontColor #38BDF8
+}
+' ====================================================
+
+actor "Job Seeker" as Candidate
+actor "Corporate Recruiter" as Recruiter
+actor "Platform Administrator" as Admin
+actor "Flask AI Service" as AI <<System>>
+
+rectangle "RecruitSense Web Platform" {
+    usecase "Register & Login" as UC_Auth
+    usecase "Browse & Search Jobs" as UC_Search
+    usecase "Upload Resume & Apply" as UC_Apply
+    usecase "View Instant ATS Score & Skill Gaps" as UC_Score
+    usecase "Track Application Status" as UC_Track
+    
+    usecase "Publish Job Vacancy" as UC_Post
+    usecase "Review Ranked Shortlist" as UC_Rank
+    usecase "Manage Pipeline Stages" as UC_Pipeline
+    usecase "Schedule Interviews" as UC_Interview
+    
+    usecase "Verify Corporate Domains" as UC_Domain
+    usecase "Moderate Jobs & Users" as UC_Mod
+    usecase "View System Analytics" as UC_Analytics
+    
+    usecase "Execute NLP Text Extraction & TF-IDF Cosine Scoring" as UC_AI
+}
+
+' Candidate Connections
+Candidate --> UC_Auth
+Candidate --> UC_Search
+Candidate --> UC_Apply
+Candidate --> UC_Score
+Candidate --> UC_Track
+
+' Recruiter Connections
+Recruiter --> UC_Auth
+Recruiter --> UC_Post
+Recruiter --> UC_Rank
+Recruiter --> UC_Pipeline
+Recruiter --> UC_Interview
+
+' Admin Connections
+Admin --> UC_Auth
+Admin --> UC_Domain
+Admin --> UC_Mod
+Admin --> UC_Analytics
+
+' Include & AI Service Connection
+UC_Apply ..> UC_AI : <<include>>
+UC_AI --> AI
+@enduml

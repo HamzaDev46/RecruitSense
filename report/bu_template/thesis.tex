@@ -1,0 +1,139 @@
+%% BUICS THESIS STYLE for LaTeX2e
+%% RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform
+
+\documentclass[11pt,a4paper,oneside,openright]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage{rotating}
+\usepackage{soul}
+\usepackage{amssymb}
+\usepackage{lscape}
+\usepackage{longtable}
+\usepackage{makeidx}
+\usepackage{amsmath}
+\usepackage{makecell}
+\usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+%% Options for buics style
+\usepackage[numericrefs]{buics}
+
+% PDF properties 
+\hypersetup{
+    pdftitle = {RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform},
+    pdfauthor = {RecruitSense Development Team},
+    pdfsubject = {Bachelor of Science in Computer Science Final Year Project Report},
+    pdfkeywords = {Applicant Tracking System, Natural Language Processing, Resume Parsing, Semantic Matching, Machine Learning, Laravel, React, Flask},
+    pdfinfo = {
+        AuthorNameEnrollment1 = {Student Name (Enrollment)},
+        Supervisor = {Supervisor Name (Designation)},
+        Session = {Spring 2026},
+        InternalExaminer = {Internal Examiner Name},
+        ExternalExaminer = {External Examiner Name},
+        ProjectCoordinator = {Project Coordinator Name},
+        HOD = {Head of Department},
+        DefenseDate = {\today},
+    }
+}
+
+\version{v1.0.2026}
+\makeindex 
+
+%% Path to the figures directory
+\graphicspath{{figures/}}
+
+%% Macro inclusions
+\include{mymacros}
+
+%%========================================
+%% Start of Document
+%%========================================
+\begin{document}
+
+%%----------------------------------------
+%% Information about the work
+%%----------------------------------------
+\title{RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform}
+
+\author{
+    {\sc Student Name}\\Enrollment ID\\
+}
+
+\degree{\textbf{\Large{Bachelor of Science in Computer Science}}}
+
+\department{Department of Computer Science\\Bahria University, Islamabad}
+\thesisdate{Spring 2026}
+
+\supervisor{Supervisor}{Supervisor Name}{Designation}
+
+\certificatetext{We accept the work contained in the report titled ``RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform'', written by the candidate(s) as a confirmation to the required standard for the partial fulfillment of the degree of Bachelor of Science in Computer Science.}
+
+\committeetext{Approved by \ldots:}
+
+\committeemember{Supervisor}{}{}
+\signature
+\committeemember{Internal Examiner}{}{}
+\signature
+\committeemember{External Examiner}{}{}
+\signature
+\committeemember{Project Coordinator}{}{}
+\signature
+\committeemember{Head of the Department}{}{}
+\signature
+
+%% Specify cover logo
+\logo{BUI-Logo}
+
+%%----------------------------------------
+%% Cover page(s)
+%%----------------------------------------
+\maketitle
+\committeepage
+
+%% Preliminary materials
+\StartPrelim
+\begin{singlespace}
+  \include{abstract} 
+  \include{acknows}  
+  \cleardoublepage
+  \pdfbookmark[0]{Table of Contents}{contents}
+  \tableofcontents
+  \cleardoublepage
+  \pdfbookmark[0]{List of Figures}{figures}
+  \listoffigures
+  \cleardoublepage
+  \pdfbookmark[0]{List of Tables}{tables}
+  \listoftables
+  \include{abbrevs}  
+\end{singlespace}
+
+%%----------------------------------------
+%% Body
+%%----------------------------------------
+\StartBody
+
+\include{chapter1} 
+\include{chapter2}
+\include{chapter3}
+\include{chapter4}
+\include{chapter5}
+\include{chapter6}
+\include{chapter7}
+
+\appendix
+\include{appendix1}
+\include{appendix2}
+
+%%----------------------------------------
+%% Final materials
+%%----------------------------------------
+\begin{singlespace}
+  \PrintBib{references}
+  \PrintIndex
+\end{singlespace}
+
+\end{document}

@@ -1,0 +1,54 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Platform Administrator" as Admin
+
+rectangle "RecruitSense Platform (UC-17: System Analytics & Logs)" {
+    usecase "View Global Platform Analytics" as UC1
+    usecase "Aggregate Platform Metrics\n& ATS Score Distributions" as UC2
+    usecase "Render Real-Time\nGraphical Charts" as UC3
+    usecase "Filter Analytics by\nTemporal Date Ranges" as UC4
+    usecase "Inspect Security &\nSystem Audit Logs" as UC5
+    usecase "Export Platform Report\n(CSV / JSON Format)" as UC6
+}
+
+Admin --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+UC1 ..> UC6 : <<extend>>
+@enduml

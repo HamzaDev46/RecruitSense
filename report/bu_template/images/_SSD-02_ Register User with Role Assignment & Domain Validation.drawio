@@ -1,0 +1,217 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="XxUjWZDm1uxX5RpnXeM6">
+    <mxGraphModel dx="1717" dy="878" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="light-dark(#FFFFFF,#FFFFFF)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <UserObject label="" plantUmlData="{&#xa;  &quot;data&quot;: &quot;@startuml\nautonumber\nskinparam defaultFontName \&quot;Arial\&quot;\nskinparam shadowing false\nskinparam monochrome false\n\n&#39; === STANDARD LIGHT BLUE THEME ===\nskinparam backgroundColor #FFFFFF\n\nskinparam sequence {\n    ArrowColor #0284C7\n    ActorBorderColor #0284C7\n    ActorBackgroundColor #38BDF8\n    ActorFontColor #0F172A\n    \n    ParticipantBorderColor #0284C7\n    ParticipantBackgroundColor #BAE6FD\n    ParticipantFontColor #0F172A\n    ParticipantFontStyle bold\n    \n    LifeLineBorderColor #0284C7\n    LifeLineBackgroundColor #E0F2FE\n    \n    BoxBorderColor #0284C7\n    BoxBackgroundColor #F0F9FF\n    BoxFontColor #0284C7\n}\n&#39; =================================\n\nactor \&quot;New User\&quot; as User\nparticipant \&quot;React Web Client\\n(SPA)\&quot; as Client\nparticipant \&quot;Laravel Auth Engine\\n(AuthController)\&quot; as Auth\nparticipant \&quot;Domain Validator\\n(TrustedEmailDomain)\&quot; as Validator\ndatabase \&quot;MySQL Database\\n(users / roles)\&quot; as DB\n\nUser -&gt; Client: 1. Enter name, email, password, and select role (&#39;job_seeker&#39; / &#39;company&#39;)\nactivate Client\n\nClient -&gt; Auth: 2. POST /api/auth/register {name, email, password, role}\nactivate Auth\n\nalt Corporate Recruiter Registration\n    Auth -&gt; Validator: 3. Validate corporate email domain\n    activate Validator\n    Validator --&gt; Auth: 4. Domain verification passed (Non-disposable business domain)\n    deactivate Validator\nend\n\nAuth -&gt; DB: 5. Hash password (Bcrypt) &amp; INSERT into users &amp; profile tables\nactivate DB\nDB --&gt; Auth: 6. User record &amp; ID created\ndeactivate DB\n\nAuth -&gt; Auth: 7. Generate cryptographically signed Sanctum Bearer Token\n\nAuth --&gt; Client: 8. HTTP 201 Created {token, user: {id, name, role, status}}\ndeactivate Auth\n\nClient -&gt; Client: 9. Store Bearer token in secure client state\n\nClient --&gt; User: 10. Redirect user to role-specific dashboard\ndeactivate Client\n@enduml\n&quot;,&#xa;  &quot;config&quot;: null&#xa;}" id="XBolDtDRK_nQilbLI28T-1">
+          <mxCell connectable="0" parent="1" style="group;transparentBounds=1;editIcon=1;lockedGroup=0;groupPadding=10;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="pl_4" plantUmlBaseStyle="shape=umlLifeline;perimeter=lifelinePerimeter;participant=none;size=57;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;fillColor=none;strokeColor=#0284C7;strokeWidth=0.5;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-2">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=none;size=57;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;fillColor=none;strokeColor=#788AA3;strokeWidth=0.5;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="527.5" width="63.72460000000001" x="30" y="45" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="New User" plantUmlId="p_28" plantUmlBaseStyle="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#38BDF8;strokeColor=#0284C7;fontColor=#0F172A;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;" plantUmlBaseValue="New User" id="XBolDtDRK_nQilbLI28T-3">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-2" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#B2C9AB;strokeColor=#788AA3;fontColor=#46495D;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="38" width="24" x="19.862300000000005" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="New User" plantUmlId="pf_29" plantUmlBaseStyle="shape=umlActor;verticalLabelPosition=top;verticalAlign=bottom;fillColor=#38BDF8;strokeColor=#0284C7;fontColor=#0F172A;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;" plantUmlBaseValue="New User" id="XBolDtDRK_nQilbLI28T-4">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-2" style="shape=umlActor;verticalLabelPosition=top;verticalAlign=bottom;fillColor=#B2C9AB;strokeColor=#788AA3;fontColor=#46495D;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="38" width="24" x="19.862300000000005" y="489.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="React Web Client&#xa;(SPA)" plantUmlId="p_5" plantUmlBaseStyle="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=0.5;fontColor=#0F172A;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;" plantUmlBaseValue="React Web Client&#xa;(SPA)" id="XBolDtDRK_nQilbLI28T-5">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=0.5;fontColor=#46495D;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="509.5" width="127.74309999999998" x="503.6898142857146" y="54" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Laravel Auth Engine&#xa;(AuthController)" plantUmlId="p_6" plantUmlBaseStyle="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=0.5;fontColor=#0F172A;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;" plantUmlBaseValue="Laravel Auth Engine&#xa;(AuthController)" id="XBolDtDRK_nQilbLI28T-6">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=0.5;fontColor=#46495D;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="509.5" width="148.42190000000002" x="906.4861500000005" y="54" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Domain Validator&#xa;(TrustedEmailDomain)" plantUmlId="p_7" plantUmlBaseStyle="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=0.5;fontColor=#0F172A;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;" plantUmlBaseValue="Domain Validator&#xa;(TrustedEmailDomain)" id="XBolDtDRK_nQilbLI28T-7">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="shape=umlLifeline;perimeter=lifelinePerimeter;size=48;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=0.5;fontColor=#46495D;fontSize=14;whiteSpace=wrap;html=1;shadow=0;fontFamily=Arial;fontStyle=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="509.5" width="164.46559999999997" x="1357.6778857142865" y="54" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="pl_8" plantUmlBaseStyle="shape=umlLifeline;perimeter=lifelinePerimeter;participant=none;size=72;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;fillColor=none;strokeColor=#0284C7;strokeWidth=0.5;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-8">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="shape=umlLifeline;perimeter=lifelinePerimeter;participant=none;size=72;lifelineMirror=1;dashPattern=5 5;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;fillColor=none;strokeColor=#788AA3;strokeWidth=0.5;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="557.5" width="112.34829999999998" x="1532.1434857142865" y="30" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="MySQL Database&#xa;(users / roles)" plantUmlId="p_30" plantUmlBaseStyle="shape=cylinder3;size=6;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#E2E2F0;strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;" plantUmlBaseValue="MySQL Database&#xa;(users / roles)" id="XBolDtDRK_nQilbLI28T-9">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-8" style="shape=cylinder3;size=6;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#B2C9AB;strokeColor=#788AA3;fontColor=#46495D;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="34" width="36" x="38.174150000000054" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="MySQL Database&#xa;(users / roles)" plantUmlId="pf_31" plantUmlBaseStyle="shape=cylinder3;size=6;verticalLabelPosition=top;verticalAlign=bottom;fillColor=#E2E2F0;strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;" plantUmlBaseValue="MySQL Database&#xa;(users / roles)" id="XBolDtDRK_nQilbLI28T-10">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-8" style="shape=cylinder3;size=6;verticalLabelPosition=top;verticalAlign=bottom;fillColor=#B2C9AB;strokeColor=#788AA3;fontColor=#46495D;fontSize=14;html=1;shadow=0;fontFamily=Arial;part=1;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="34" width="36" x="38.174150000000054" y="523.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="grpframe_9" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;shadow=0;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-11">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=none;strokeColor=#788AA3;strokeWidth=1.5;shadow=0;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="83.5" width="635.657335714286" x="896.4861500000005" y="184" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="alt" plantUmlId="grptab_10" plantUmlBaseStyle="rounded=0;fillColor=#EEEEEE;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=13;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;html=1;shadow=0;fontFamily=Arial;" plantUmlBaseValue="alt" id="XBolDtDRK_nQilbLI28T-12">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=1.5;fontColor=#46495D;fontSize=13;fontStyle=1;align=left;spacingLeft=10;verticalAlign=middle;html=1;shadow=0;fontFamily=Arial;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="19.7" width="62.138642857142855" x="896.4861500000005" y="184" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="[Corporate Recruiter Registration]" plantUmlId="grpcond_11" plantUmlBaseStyle="text;html=1;fontColor=#000000;fontSize=11;fontStyle=1;align=left;verticalAlign=middle;" plantUmlBaseValue="[Corporate Recruiter Registration]" id="XBolDtDRK_nQilbLI28T-13">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="text;html=1;fontColor=#46495D;fontSize=11;fontStyle=1;align=left;verticalAlign=middle;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="15" width="200.84382857142853" x="968.6247928571433" y="187" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;1&lt;/b&gt; 1. Enter name, email, password, and select role (&#39;job_seeker&#39; / &#39;company&#39;)" plantUmlId="msg_12" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;1&lt;/b&gt; 1. Enter name, email, password, and select role (&#39;job_seeker&#39; / &#39;company&#39;)" id="XBolDtDRK_nQilbLI28T-14">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-2" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-26">
+            <mxGeometry relative="1" x="-0.022" as="geometry">
+              <Array as="points">
+                <mxPoint x="312" y="137" />
+              </Array>
+              <mxPoint x="61.862300000000005" y="137" as="sourcePoint" />
+              <mxPoint x="562.5613642857146" y="137" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;2&lt;/b&gt; 2. POST /api/auth/register {name, email, password, role}" plantUmlId="msg_13" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;2&lt;/b&gt; 2. POST /api/auth/register {name, email, password, role}" id="XBolDtDRK_nQilbLI28T-15">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-26" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-27">
+            <mxGeometry relative="1" x="-0.043" as="geometry">
+              <Array as="points">
+                <mxPoint x="774" y="169" />
+              </Array>
+              <mxPoint x="572.5613642857146" y="169" as="sourcePoint" />
+              <mxPoint x="975.6971000000005" y="169" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;3&lt;/b&gt; 3. Validate corporate email domain" plantUmlId="msg_14" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;3&lt;/b&gt; 3. Validate corporate email domain" id="XBolDtDRK_nQilbLI28T-16">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-27" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-28">
+            <mxGeometry relative="1" x="-0.448" as="geometry">
+              <Array as="points">
+                <mxPoint x="1210" y="227.5" />
+              </Array>
+              <mxPoint x="985.6971000000005" y="227.5" as="sourcePoint" />
+              <mxPoint x="1434.9106857142865" y="227.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;4&lt;/b&gt; 4. Domain verification passed (Non-disposable business domain)" plantUmlId="msg_15" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;4&lt;/b&gt; 4. Domain verification passed (Non-disposable business domain)" id="XBolDtDRK_nQilbLI28T-17">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-28" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-27">
+            <mxGeometry relative="1" x="-0.02" as="geometry">
+              <Array as="points">
+                <mxPoint x="1210" y="259.5" />
+              </Array>
+              <mxPoint x="1434.9106857142865" y="259.5" as="sourcePoint" />
+              <mxPoint x="985.6971000000005" y="259.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;5&lt;/b&gt; 5. Hash password (Bcrypt) &amp;amp; INSERT into users &amp;amp; profile tables" plantUmlId="msg_16" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;5&lt;/b&gt; 5. Hash password (Bcrypt) &amp;amp; INSERT into users &amp;amp; profile tables" id="XBolDtDRK_nQilbLI28T-18">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-27" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-29">
+            <mxGeometry relative="1" x="-0.3" as="geometry">
+              <Array as="points">
+                <mxPoint x="1285" y="298.5" />
+              </Array>
+              <mxPoint x="985.6971000000005" y="298.5" as="sourcePoint" />
+              <mxPoint x="1583.3176357142866" y="298.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;6&lt;/b&gt; 6. User record &amp;amp; ID created" plantUmlId="msg_17" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;6&lt;/b&gt; 6. User record &amp;amp; ID created" id="XBolDtDRK_nQilbLI28T-19">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-29" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-27">
+            <mxGeometry relative="1" x="0.636" as="geometry">
+              <Array as="points">
+                <mxPoint x="1285" y="330.5" />
+              </Array>
+              <mxPoint x="1583.3176357142866" y="330.5" as="sourcePoint" />
+              <mxPoint x="985.6971000000005" y="330.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="msg_18" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;strokeColor=#0284C7;strokeWidth=1;fontFamily=Arial;exitX=1;exitY=0.788;exitDx=0;exitDy=0;curved=0;rounded=0;fontSize=11;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-20">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-27" style="endArrow=classic;endFill=1;endSize=9;html=1;strokeColor=#788AA3;strokeWidth=1;fontFamily=Arial;exitX=1;exitY=0.788;exitDx=0;exitDy=0;curved=0;rounded=0;fontSize=11;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;labelBackgroundColor=none;fontColor=default;">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="1023.6971000000005" y="362.5" />
+                <mxPoint x="1023.6971000000005" y="382.5" />
+              </Array>
+              <mxPoint x="985.6971000000005" y="362.5" as="sourcePoint" />
+              <mxPoint x="988.6971000000005" y="382.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;7&lt;/b&gt; 7. Generate cryptographically signed Sanctum Bearer Token" plantUmlId="msglbl_21" plantUmlBaseStyle="text;html=1;fontColor=#000000;fontSize=13;align=left;verticalAlign=middle;" plantUmlBaseValue="&lt;b&gt;7&lt;/b&gt; 7. Generate cryptographically signed Sanctum Bearer Token" id="XBolDtDRK_nQilbLI28T-21">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="text;html=1;fontColor=#46495D;fontSize=13;align=left;verticalAlign=middle;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="18" width="395.3076571428572" x="987.6971000000005" y="342.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;8&lt;/b&gt; 8. HTTP 201 Created {token, user: {id, name, role, status}}" plantUmlId="msg_22" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;8&lt;/b&gt; 8. HTTP 201 Created {token, user: {id, name, role, status}}" id="XBolDtDRK_nQilbLI28T-22">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-27" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-26">
+            <mxGeometry relative="1" x="-0.022" as="geometry">
+              <Array as="points">
+                <mxPoint x="774" y="414.5" />
+              </Array>
+              <mxPoint x="975.6971000000005" y="414.5" as="sourcePoint" />
+              <mxPoint x="572.5613642857146" y="414.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="msg_23" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;strokeColor=#0284C7;strokeWidth=1;fontFamily=Arial;exitX=1;exitY=0.856;exitDx=0;exitDy=0;curved=0;rounded=0;fontSize=11;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-23">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-26" style="endArrow=classic;endFill=1;endSize=9;html=1;strokeColor=#788AA3;strokeWidth=1;fontFamily=Arial;exitX=1;exitY=0.856;exitDx=0;exitDy=0;curved=0;rounded=0;fontSize=11;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;labelBackgroundColor=none;fontColor=default;">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="610.5613642857146" y="446.5" />
+                <mxPoint x="610.5613642857146" y="466.5" />
+              </Array>
+              <mxPoint x="572.5613642857146" y="446.5" as="sourcePoint" />
+              <mxPoint x="575.5613642857146" y="466.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;9&lt;/b&gt; 9. Store Bearer token in secure client state" plantUmlId="msglbl_26" plantUmlBaseStyle="text;html=1;fontColor=#000000;fontSize=13;align=left;verticalAlign=middle;" plantUmlBaseValue="&lt;b&gt;9&lt;/b&gt; 9. Store Bearer token in secure client state" id="XBolDtDRK_nQilbLI28T-24">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="text;html=1;fontColor=#46495D;fontSize=13;align=left;verticalAlign=middle;labelBackgroundColor=none;" vertex="1">
+            <mxGeometry height="18" width="285.5124428571429" x="574.5613642857146" y="426.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;10&lt;/b&gt; 10. Redirect user to role-specific dashboard" plantUmlId="msg_27" plantUmlBaseStyle="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#0284C7;strokeWidth=1;fontColor=#000000;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="&lt;b&gt;10&lt;/b&gt; 10. Redirect user to role-specific dashboard" id="XBolDtDRK_nQilbLI28T-25">
+          <mxCell edge="1" parent="XBolDtDRK_nQilbLI28T-1" source="XBolDtDRK_nQilbLI28T-26" style="endArrow=classic;endFill=1;endSize=9;html=1;rounded=0;edgeStyle=none;curved=0;strokeColor=#788AA3;strokeWidth=1;fontColor=default;fontSize=13;verticalAlign=bottom;labelBackgroundColor=none;dashed=1;dashPattern=2 2;fontFamily=Arial;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="XBolDtDRK_nQilbLI28T-2">
+            <mxGeometry relative="1" x="0.334" as="geometry">
+              <Array as="points">
+                <mxPoint x="312" y="498.5" />
+              </Array>
+              <mxPoint x="562.5613642857146" y="498.5" as="sourcePoint" />
+              <mxPoint x="61.862300000000005" y="498.5" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="act_0" plantUmlBaseStyle="rounded=0;fillColor=#E0F2FE;strokeColor=#181818;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-26">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="361.5" width="10" x="562.5613642857146" y="137" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="act_1" plantUmlBaseStyle="rounded=0;fillColor=#E0F2FE;strokeColor=#181818;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-27">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="245.5" width="10" x="975.6971000000005" y="169" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="act_2" plantUmlBaseStyle="rounded=0;fillColor=#E0F2FE;strokeColor=#181818;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-28">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="32" width="10" x="1434.9106857142865" y="227.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="act_3" plantUmlBaseStyle="rounded=0;fillColor=#E0F2FE;strokeColor=#181818;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;" plantUmlBaseValue="" id="XBolDtDRK_nQilbLI28T-29">
+          <mxCell parent="XBolDtDRK_nQilbLI28T-1" style="rounded=0;fillColor=#B2C9AB;strokeColor=#788AA3;strokeWidth=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;portConstraint=eastwest;shadow=0;fontFamily=Arial;labelBackgroundColor=none;fontColor=#46495D;" vertex="1">
+            <mxGeometry height="32" width="10" x="1583.3176357142866" y="298.5" as="geometry" />
+          </mxCell>
+        </UserObject>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,63 @@
+@startuml
+autonumber
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam sequence {
+    ArrowColor #0284C7
+    ActorBorderColor #0284C7
+    ActorBackgroundColor #38BDF8
+    ActorFontColor #0F172A
+    
+    ParticipantBorderColor #0284C7
+    ParticipantBackgroundColor #BAE6FD
+    ParticipantFontColor #0F172A
+    ParticipantFontStyle bold
+    
+    LifeLineBorderColor #0284C7
+    LifeLineBackgroundColor #E0F2FE
+    
+    BoxBorderColor #0284C7
+    BoxBackgroundColor #F0F9FF
+    BoxFontColor #0284C7
+}
+' =================================
+
+actor "New User" as User
+participant "React Web Client\n(SPA)" as Client
+participant "Laravel Auth Engine\n(AuthController)" as Auth
+participant "Domain Validator\n(TrustedEmailDomain)" as Validator
+database "MySQL Database\n(users / roles)" as DB
+
+User -> Client: 1. Enter name, email, password, and select role ('job_seeker' / 'company')
+activate Client
+
+Client -> Auth: 2. POST /api/auth/register {name, email, password, role}
+activate Auth
+
+alt Corporate Recruiter Registration
+    Auth -> Validator: 3. Validate corporate email domain
+    activate Validator
+    Validator --> Auth: 4. Domain verification passed (Non-disposable business domain)
+    deactivate Validator
+end
+
+Auth -> DB: 5. Hash password (Bcrypt) & INSERT into users & profile tables
+activate DB
+DB --> Auth: 6. User record & ID created
+deactivate DB
+
+Auth -> Auth: 7. Generate cryptographically signed Sanctum Bearer Token
+
+Auth --> Client: 8. HTTP 201 Created {token, user: {id, name, role, status}}
+deactivate Auth
+
+Client -> Client: 9. Store Bearer token in secure client state
+
+Client --> User: 10. Redirect user to role-specific dashboard
+deactivate Client
+@enduml

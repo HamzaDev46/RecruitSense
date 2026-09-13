@@ -1,0 +1,57 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Platform Administrator" as Admin
+actor "Job Seeker" as Candidate
+
+rectangle "RecruitSense Platform (UC-20: Review Reports)" {
+    usecase "Review Reported Content & Claims" as UC1
+    usecase "Inspect Violation Evidence\n& Employer History" as UC2
+    usecase "Execute Moderation Action\n(Remove, Suspend, or Dismiss)" as UC3
+    usecase "Persist Resolution Outcome\nin Database" as UC4
+    usecase "Dispatch Resolution Alert\nto Reporting User" as UC5
+    usecase "Issue Revision Warning\nto Employer" as UC6
+}
+
+Admin --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+UC1 ..> UC6 : <<extend>>
+
+UC5 --> Candidate
+@enduml

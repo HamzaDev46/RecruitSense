@@ -1,0 +1,52 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Job Seeker" as Candidate
+
+rectangle "RecruitSense Platform (UC-11: Save Job to Bookmarks)" {
+    usecase "Bookmark Job Vacancy" as UC1
+    usecase "Verify User Authentication\nToken State" as UC2
+    usecase "Insert Record into\nsaved_jobs Table" as UC3
+    usecase "Toggle Visual Bookmark\nState in Client UI" as UC4
+    usecase "Remove Job from\nSaved Bookmarks" as UC5
+}
+
+Candidate --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<extend>>
+@enduml
