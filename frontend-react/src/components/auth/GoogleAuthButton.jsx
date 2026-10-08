@@ -18,7 +18,7 @@ const GoogleAuthButton = ({ mode = 'signin', role, onSuccess }) => {
   const buttonRef = useRef(null)
   const [scriptReady, setScriptReady] = useState(false)
   const [loading, setLoading] = useState(false)
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '658382350534-sk01tco3qjc09ra742futf45afck1b62.apps.googleusercontent.com'
 
   useEffect(() => {
     if (!clientId) return undefined
