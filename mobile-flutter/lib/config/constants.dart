@@ -7,19 +7,13 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Base URLs
-  // 192.168.100.108 is your PC's current Wi-Fi LAN IP (reachable from phone on same Wi-Fi)
+  // Production Render 24/7 Cloud Backend
   static String get defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
-    }
-    return 'http://192.168.100.108:8000/api';
+    return 'https://recruitsense-gdox.onrender.com/api';
   }
 
   static String get defaultStorageBaseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/storage';
-    }
-    return 'http://192.168.100.108:8000/storage';
+    return 'https://recruitsense-gdox.onrender.com/storage';
   }
 
   // Storage Keys
