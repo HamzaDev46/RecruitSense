@@ -58,9 +58,10 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(AppConstants.keyCustomBaseUrl);
     if (saved != null && saved.isNotEmpty) {
-      if (!kIsWeb && saved.contains('127.0.0.1')) {
-        // Reset old 127.0.0.1 on physical mobile devices to Wi-Fi IP
+      if (saved.contains('127.0.0.1') || saved.contains('192.168.') || saved.contains('10.0.2.2') || saved.contains('localhost')) {
+        // Automatically migrate old cached local/LAN IP to 24/7 Render Cloud URL
         _baseUrl = AppConstants.defaultBaseUrl;
+        await prefs.setString(AppConstants.keyCustomBaseUrl, _baseUrl);
       } else {
         _baseUrl = saved;
       }
