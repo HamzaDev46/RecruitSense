@@ -21,7 +21,7 @@ COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy Laravel files from backend-laravel directory
+# Copy Laravel files
 COPY backend-laravel/ .
 
 # Configure PHP settings
@@ -33,11 +33,11 @@ RUN echo "upload_max_filesize = 64M" > /usr/local/etc/php/conf.d/uploads.ini \
 RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
-# Install composer dependencies safely without runtime env dependencies
+# Install composer dependencies safely
 RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
 
 ENV PORT=8000
 EXPOSE 8000
 
-# Run package discovery, storage linking, migrations, and start server
-CMD php artisan package:discover --ansi && php artisan storage:link --force && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# Resilient startup command
+CMD ["/bin/sh", "-c", "php artisan package:discover --ansi || true && php artisan storage:link --force || true && (php artisan migrate --force || true) && exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
