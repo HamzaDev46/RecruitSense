@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Brain, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, Mail } from 'lucide-react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
 
@@ -33,7 +33,7 @@ const VerifyEmailPage = () => {
 
     const verify = async () => {
       try {
-        const res = await axios.post('http://127.0.0.1:8000/api/verify-email', {
+        const res = await api.post('/verify-email', {
           id: parseInt(id, 10),
           email,
           token,
@@ -70,7 +70,7 @@ const VerifyEmailPage = () => {
 
     setResending(true)
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/resend-verification', { email })
+      const res = await api.post('/resend-verification', { email })
       setResendSent(true)
       toast.success(res.data.message || 'Verification link re-sent!')
     } catch (err) {

@@ -6,7 +6,7 @@ import {
   Briefcase, UserCheck, CheckCircle2, AlertCircle, ShieldAlert,
   Send, RefreshCw, Building2, MapPin, Globe, Users
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
 import GoogleAuthButton from '../../components/auth/GoogleAuthButton'
@@ -93,7 +93,7 @@ const RegisterPage = () => {
         ...form,
         company_name: form.role === 'company' ? form.name : undefined,
       }
-      const res = await axios.post('http://127.0.0.1:8000/api/register', payload)
+      const res = await api.post('/register', payload)
       if (res.data.requires_verification) {
         setRegisteredEmail(res.data.email || form.email)
         setVerificationSent(true)
@@ -119,7 +119,7 @@ const RegisterPage = () => {
     if (cooldown > 0 || !registeredEmail) return
     setResending(true)
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/resend-verification', { email: registeredEmail })
+      const res = await api.post('/resend-verification', { email: registeredEmail })
       toast.success(res.data.message || 'Fresh verification link sent!')
       setCooldown(60)
     } catch (err) {

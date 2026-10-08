@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, RefreshCw } from 'lucide-react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
 import GoogleAuthButton from '../../components/auth/GoogleAuthButton'
@@ -37,7 +37,7 @@ const LoginPage = () => {
     setLoading(true)
     setUnverifiedEmail(null)
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/login', form)
+      const res = await api.post('/login', form)
       const { token, user } = res.data
       finishLogin(user, token)
     } catch (err) {
@@ -59,7 +59,7 @@ const LoginPage = () => {
     if (!unverifiedEmail) return
     setResending(true)
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/resend-verification', { email: unverifiedEmail })
+      const res = await api.post('/resend-verification', { email: unverifiedEmail })
       toast.success(res.data.message || 'Activation link re-sent!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not resend email.')
