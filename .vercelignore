@@ -1,0 +1,9 @@
+backend-laravel/
+mobile-flutter/
+ai-service-fastapi/
+report/
+fyp.zip
+*.zip
+*.tar.gz
+*.pdf
+.vscode/
