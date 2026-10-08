@@ -21,8 +21,9 @@ class ApiService {
     _dio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 25),
-        receiveTimeout: const Duration(seconds: 25),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -76,12 +77,6 @@ class ApiService {
       if (error.response != null) {
         final data = error.response?.data;
         if (data is Map<String, dynamic>) {
-          if (data['message'] != null) {
-            return data['message'].toString();
-          }
-          if (data['error'] != null) {
-            return data['error'].toString();
-          }
           if (data['errors'] != null && data['errors'] is Map) {
             final firstError = (data['errors'] as Map).values.first;
             if (firstError is List && firstError.isNotEmpty) {
@@ -89,13 +84,19 @@ class ApiService {
             }
             return firstError.toString();
           }
+          if (data['message'] != null) {
+            return data['message'].toString();
+          }
+          if (data['error'] != null) {
+            return data['error'].toString();
+          }
         }
         return 'Server responded with error (${error.response?.statusCode})';
       } else if (error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout) {
-        return 'Connection timed out. Please verify your backend server is running.';
+        return 'Server is waking up in cloud. Please try once more.';
       } else if (error.type == DioExceptionType.connectionError) {
-        return 'Cannot connect to server at $_baseUrl. Ensure the backend is running.';
+        return 'Cannot connect to server at $_baseUrl. Check your internet connection.';
       }
     }
     return error?.toString() ?? 'An unexpected error occurred';
