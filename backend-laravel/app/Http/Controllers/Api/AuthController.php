@@ -28,7 +28,11 @@ class AuthController extends Controller
     public static function generateVerificationUrl(User $user): string
     {
         $hash = hash_hmac('sha256', $user->id . '|' . $user->email . '|' . ($user->created_at?->timestamp ?? 0), config('app.key'));
-        $frontendUrl = rtrim(config('services.frontend.url', 'http://localhost:5173'), '/');
+        $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+
+        if (empty($frontendUrl) || str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1')) {
+            $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
+        }
 
         return "{$frontendUrl}/verify-email?id={$user->id}&email=" . urlencode($user->email) . "&token={$hash}";
     }
@@ -211,7 +215,10 @@ class AuthController extends Controller
 
         if ($user) {
             $token = Password::broker()->createToken($user);
-            $frontendUrl = rtrim((string) config('services.frontend.url', 'http://localhost:5173'), '/');
+            $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+            if (empty($frontendUrl) || str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1')) {
+                $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
+            }
             $resetUrl = $frontendUrl . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 
             try {
