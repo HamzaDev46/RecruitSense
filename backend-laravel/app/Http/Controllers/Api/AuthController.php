@@ -267,9 +267,10 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $clientId = config('services.google.client_id');
+        $clientId = config('services.google.client_id', '658382350534-sk01tco3qjc09ra742futf45afck1b62.apps.googleusercontent.com');
+        $allowedClientIds = config('services.google.allowed_client_ids', array_filter([$clientId]));
 
-        if (!$clientId) {
+        if (empty($allowedClientIds) && !$clientId) {
             return response()->json(['message' => 'Google sign-in is not configured.'], 503);
         }
 
@@ -294,8 +295,14 @@ class AuthController extends Controller
         }
 
         $payload = $googleResponse->json();
+        $tokenAud = $payload['aud'] ?? null;
+        $tokenAzp = $payload['azp'] ?? null;
 
-        if (($payload['aud'] ?? null) !== $clientId) {
+        $isValidAud = in_array($tokenAud, $allowedClientIds, true)
+                   || in_array($tokenAzp, $allowedClientIds, true)
+                   || $tokenAud === $clientId;
+
+        if (!$isValidAud) {
             return response()->json(['message' => 'Google client mismatch.'], 422);
         }
 

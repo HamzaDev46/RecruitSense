@@ -48,6 +48,11 @@ return [
     ],
 
     'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_id' => env('GOOGLE_CLIENT_ID', '658382350534-sk01tco3qjc09ra742futf45afck1b62.apps.googleusercontent.com'),
+        'android_client_id' => env('GOOGLE_ANDROID_CLIENT_ID', '658382350534-p4d5bqi4t6ll5eot0adkcvau66sih206.apps.googleusercontent.com'),
+        'allowed_client_ids' => array_values(array_filter([
+            env('GOOGLE_CLIENT_ID', '658382350534-sk01tco3qjc09ra742futf45afck1b62.apps.googleusercontent.com'),
+            env('GOOGLE_ANDROID_CLIENT_ID', '658382350534-p4d5bqi4t6ll5eot0adkcvau66sih206.apps.googleusercontent.com'),
+        ])),
     ],
 ];
