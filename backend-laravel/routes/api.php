@@ -25,6 +25,39 @@ use App\Http\Controllers\Api\CompanyProfileController;
 use App\Http\Controllers\Api\CandidateDiscoveryController;
 use App\Http\Controllers\Api\AdminController;
 
+Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $tables = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+        return response()->json([
+            'status' => 'healthy',
+            'database' => 'connected',
+            'tables_count' => count($tables),
+            'app_key' => !empty(config('app.key')),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'database_error',
+            'error' => $e->getMessage(),
+            'app_key' => !empty(config('app.key')),
+        ], 500);
+    }
+});
+
+Route::get('/migrate-run', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate --force');
+        return response()->json([
+            'status' => 'migrated',
+            'output' => \Illuminate\Support\Facades\Artisan::output(),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
