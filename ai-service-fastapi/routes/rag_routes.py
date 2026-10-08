@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -10,7 +10,7 @@ rag_router = APIRouter(prefix="/rag", tags=["RAG Vector Assistant"])
 
 class RagAskRequest(BaseModel):
     question: str = Field(..., description="Query about the candidate or resume")
-    resume_id: Optional[str] = Field(default=None, description="Candidate ID or resume reference ID")
+    resume_id: Optional[Union[str, int]] = Field(default=None, description="Candidate ID or resume reference ID")
     top_k: Optional[int] = Field(default=3, description="Number of context chunks to retrieve (1 to 10)")
 
 
@@ -62,6 +62,7 @@ def ingest_resume(
         )
 
 
+@rag_router.post("/query")
 @rag_router.post("/ask")
 def ask_rag(payload: RagAskRequest):
     """

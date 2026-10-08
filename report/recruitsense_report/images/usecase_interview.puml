@@ -1,0 +1,57 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Corporate Recruiter" as Recruiter
+actor "Job Seeker" as Candidate
+
+rectangle "RecruitSense Platform (UC-13: Schedule Interview)" {
+    usecase "Configure Interview Schedule" as UC1
+    usecase "Validate Future Timestamp\nConstraints" as UC2
+    usecase "Specify Meeting URL or\nPhysical Location" as UC3
+    usecase "Advance Application Status\nto 'Interview Scheduled'" as UC4
+    usecase "Dispatch Calendar Invite\n& Email Notification" as UC5
+    usecase "Reschedule Existing\nInterview Session" as UC6
+}
+
+Recruiter --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+UC1 ..> UC6 : <<extend>>
+
+UC5 --> Candidate
+@enduml

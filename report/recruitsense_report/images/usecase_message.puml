@@ -1,0 +1,54 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Job Seeker" as Candidate
+actor "Corporate Recruiter" as Recruiter
+
+rectangle "RecruitSense Platform (UC-12: In-App Messaging)" {
+    usecase "Exchange Direct Messages" as UC1
+    usecase "Sanitize Content &\nEnforce Length Constraints" as UC2
+    usecase "Persist Message to Database\n& Update Timestamp" as UC3
+    usecase "Dispatch Real-Time\nNotification Alert" as UC4
+    usecase "Attach Interview Meeting\nLinks or Guidelines" as UC5
+}
+
+Candidate --> UC1
+Recruiter --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<extend>>
+@enduml

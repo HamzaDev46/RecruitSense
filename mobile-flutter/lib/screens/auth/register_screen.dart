@@ -162,7 +162,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextField(
                         controller: controller,
                         decoration: InputDecoration(
-                          hintText: 'http://192.168.100.9:8000/api',
+                          hintText: 'http://192.168.100.108:8000/api',
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),

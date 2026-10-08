@@ -7,19 +7,19 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Base URLs
-  // 192.168.100.9 is your PC's Wi-Fi LAN IP (reachable from phone on same Wi-Fi)
+  // 192.168.100.108 is your PC's current Wi-Fi LAN IP (reachable from phone on same Wi-Fi)
   static String get defaultBaseUrl {
     if (kIsWeb) {
       return 'http://127.0.0.1:8000/api';
     }
-    return 'http://192.168.100.9:8000/api';
+    return 'http://192.168.100.108:8000/api';
   }
 
   static String get defaultStorageBaseUrl {
     if (kIsWeb) {
       return 'http://127.0.0.1:8000/storage';
     }
-    return 'http://192.168.100.9:8000/storage';
+    return 'http://192.168.100.108:8000/storage';
   }
 
   // Storage Keys

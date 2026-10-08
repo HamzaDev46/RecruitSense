@@ -50,6 +50,7 @@ async def root():
                 "/extract-text",
                 "/generate-quiz",
                 "/rag/ingest",
+                "/rag/query",
                 "/rag/ask",
                 "/rag/health"
             ]

@@ -1,0 +1,36 @@
+@startuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam roundCorner 10
+skinparam shadowing false
+skinparam dpi 300
+
+skinparam rectangle {
+    BorderThickness 1.2
+    FontColor #111111
+    FontStyle bold
+}
+
+skinparam arrow {
+    Thickness 1.3
+}
+
+rectangle "   Applied   " as Applied #DDE9FA;line:4A72AE
+rectangle "  Screening  " as Screening #DDE9FA;line:4A72AE
+rectangle " Shortlisted " as Shortlisted #DDE9FA;line:4A72AE
+rectangle "  Interview  " as Interview #DDE9FA;line:4A72AE
+rectangle "    Offer    " as Offer #D6F3E0;line:3C985A
+rectangle "  Rejected   " as Rejected #FCE0E0;line:D9534F
+
+' Top pipeline flow
+Applied -[#555555]-> Screening
+Screening -[#555555]-> Shortlisted
+Shortlisted -[#555555]-> Interview
+
+' Success outcome
+Interview -[#2E8B57]-> Offer
+
+' Rejection flows
+Screening -[#D9534F]-> Rejected
+Shortlisted -[#D9534F]-> Rejected
+@enduml

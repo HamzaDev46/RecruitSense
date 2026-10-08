@@ -1,0 +1,29 @@
+@startuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 10
+skinparam shadowing false
+skinparam dpi 300
+
+skinparam rectangle {
+    BorderThickness 1.2
+    FontColor #111111
+}
+
+skinparam arrow {
+    Color #444444
+    Thickness 1.2
+    FontColor #333333
+    FontSize 10
+}
+
+rectangle "**1. Presentation Block**\nReact 18 / Vite SPA Client\nFlutter Mobile / Tailwind CSS" as pres #DDE9FA;line:4A72AE
+rectangle "**2. Application Block**\nLaravel 11 REST API Service\nSanctum Auth & RBAC" as app #D6F3E0;line:3C985A
+rectangle "**4. Data Block**\nMySQL 8.0 Relational DB\nEncrypted File Storage" as data #EFE6FD;line:8A60D0
+rectangle "**3. Intelligence Block**\nPython FastAPI Microservice\nRAG / ChromaDB / LLaMA 3.2" as ai #FFF2CE;line:D4A232
+
+pres <-> app : "  HTTPS / JSON  "
+pres <--> data : "Storage Reference"
+app <-> ai : "  Internal REST  "
+app <--> data : "  Eloquent ORM  "
+@enduml

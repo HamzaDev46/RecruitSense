@@ -1,0 +1,28 @@
+@startuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 10
+skinparam shadowing false
+skinparam dpi 300
+
+skinparam rectangle {
+    BorderThickness 1.2
+    FontColor #111111
+}
+
+skinparam arrow {
+    Color #444444
+    Thickness 1.2
+}
+
+rectangle "**Git Repository**\n(GitHub)" as git #DDE9FA;line:4A72AE
+rectangle "**CI Pipeline**\n(Build & Test)" as ci #FFF2CE;line:D4A232
+rectangle "**Vite / NGINX**\n(Frontend SPA)" as web #D6F3E0;line:3C985A
+rectangle "**Laravel API**\n(PHP-FPM)" as api #D6F3E0;line:3C985A
+rectangle "**FastAPI AI Service**\n(NLP & RAG Engine)" as ai #FFE8D1;line:DE8A36
+
+git -> ci
+ci -> web
+ci -> api
+api -> ai
+@enduml

@@ -1,0 +1,145 @@
+%% BUICS THESIS STYLE for LaTeX2e
+%% RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform
+
+\documentclass[11pt,a4paper,twoside,openright]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage{rotating}
+\usepackage{soul}
+\usepackage{amssymb}
+\usepackage{lscape}
+\usepackage{longtable}
+\usepackage{makeidx}
+\usepackage{amsmath}
+\usepackage{makecell}
+\usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{float}
+
+%% Options for buics style
+\usepackage[numericrefs]{buics}
+
+% PDF properties 
+\hypersetup{
+    pdftitle = {RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform},
+    pdfauthor = {Hamza Zahoor (01-135231-030), Haseeb Ahmed (01-135231-033)},
+    pdfsubject = {Bachelor of Science in Computer Science Final Year Project Report},
+    pdfkeywords = {Applicant Tracking System, Retrieval-Augmented Generation, Vector Database, Natural Language Processing, Resume Parsing, Semantic Matching, Laravel, React, FastAPI, Flutter, Mobile Application},
+    pdfinfo = {
+        AuthorNameEnrollment1 = {Hamza Zahoor (01-135231-030)},
+        AuthorNameEnrollment2 = {Haseeb Ahmed (01-135231-033)},
+        Supervisor = {Mr. Adnan Jelani},
+        Session = {Spring 2026},
+        InternalExaminer = {Internal Examiner Name},
+        ExternalExaminer = {External Examiner Name},
+        ProjectCoordinator = {Project Coordinator Name},
+        HOD = {Head of Department},
+        DefenseDate = {\\today},
+    }
+}
+
+\version{v1.0.2026}
+\makeindex 
+
+%% Path to the figures and images directories
+\graphicspath{{figures/}{images/}}
+
+%% Macro inclusions
+\include{mymacros}
+
+%%========================================
+%% Start of Document
+%%========================================
+\begin{document}
+
+%%----------------------------------------
+%% Information about the work
+%%----------------------------------------
+\title{RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform}
+
+\author{
+    {\sc Hamza Zahoor} \quad 01-135231-030\\
+    {\sc Haseeb Ahmed} \quad 01-135231-033\\
+}
+
+\degree{\textbf{\Large{Bachelor of Science in Computer Science}}}
+
+\department{Department of Computer Science\\Bahria University, Islamabad}
+\thesisdate{Spring 2026}
+
+\supervisor{Supervisor}{Mr. Adnan Jelani}{Lecturer}
+
+\certificatetext{We accept the work contained in the report titled `RecruitSense: AI-Powered Applicant Tracking and Intelligent Resume Screening Platform'', written by the candidate(s) as a confirmation to the required standard for the partial fulfillment of the degree of Bachelor of Science in Computer Science.}
+
+\committeetext{Approved by \ldots:}
+
+\committeemember{Supervisor}{Mr. Adnan Jelani}{Department of Computer Science}
+\signature
+\committeemember{Internal Examiner}{Internal Examiner Name}{Department of Computer Science}
+\signature
+\committeemember{External Examiner}{External Examiner Name}{Department of Computer Science}
+\signature
+\committeemember{Project Coordinator}{Project Coordinator Name}{Department of Computer Science}
+\signature
+\committeemember{Head of the Department}{Head of Department}{Department of Computer Science}
+\signature
+
+%% Specify cover logo
+\logo{BUI-Logo}
+
+%%----------------------------------------
+%% Cover page(s)
+%%----------------------------------------
+\maketitle
+\committeepage
+
+%% Preliminary materials
+\StartPrelim
+\begin{singlespace}
+  \include{abstract} 
+  \include{acknows}  
+  \cleardoublepage
+  \pdfbookmark[0]{Table of Contents}{contents}
+  \markboth{CONTENTS}{CONTENTS}
+  \tableofcontents
+  \cleardoublepage
+  \pdfbookmark[0]{List of Figures}{figures}
+  \markboth{LIST OF FIGURES}{LIST OF FIGURES}
+  \listoffigures
+  \cleardoublepage
+  \pdfbookmark[0]{List of Tables}{tables}
+  \markboth{LIST OF TABLES}{LIST OF TABLES}
+  \listoftables
+  \include{abbrevs}  
+\end{singlespace}
+
+%%----------------------------------------
+%% Body
+%%----------------------------------------
+\StartBody
+
+\include{chapter1} 
+\include{chapter2}
+\include{chapter3}
+\include{chapter4}
+\include{chapter5}
+\include{chapter6}
+\include{chapter7}
+
+\appendix
+\include{appendix1}
+\include{appendix2}
+
+%%----------------------------------------
+%% Final materials
+%%----------------------------------------
+\begin{singlespace}
+  \PrintBib{references}
+  \PrintIndex
+\end{singlespace}
+
+\end{document}

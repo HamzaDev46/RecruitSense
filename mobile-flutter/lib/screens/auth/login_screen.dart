@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: 'http://10.0.2.2:8000/api',
+                hintText: 'http://192.168.100.108:8000/api',
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),

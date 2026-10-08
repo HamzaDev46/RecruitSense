@@ -1,0 +1,51 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "User" as User
+
+rectangle "RecruitSense Platform (UC-03: User Login)" {
+    usecase "Enter Email & Password" as UC1
+    usecase "Verify Password Hash\n(Bcrypt)" as UC2
+    usecase "Check Account\nSuspension Status" as UC3
+    usecase "Issue 64-character\nSanctum Bearer Token" as UC4
+    usecase "Redirect to\nRole Dashboard" as UC5
+}
+
+User --> UC1
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+@enduml

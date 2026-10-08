@@ -1,0 +1,90 @@
+\chapter{Introduction} \label{chap:intro}
+
+\section{Project Background and Overview}
+\textbf{RecruitSense} is a modern, intelligent recruitment ecosystem, Applicant Tracking System (ATS), and Candidate Intelligence Platform engineered to streamline talent acquisition, automate resume screening, empower candidates with explainable feedback, and foster trust in the hiring process. The platform is architected as a decoupled, multi-tier microservices ecosystem consisting of:
+\begin{enumerate}
+    \item A responsive Single Page Application (SPA) frontend built with React 18, Vite, and Tailwind CSS \cite{fielding2000rest}.
+    \item A cross-platform mobile application engineered with Flutter and Dart, supporting both Android and iOS devices \cite{flutter2022google}.
+    \item A high-throughput RESTful API gateway engineered with Laravel 11 and a relational MySQL database.
+    \item An asynchronous AI inference microservice built with FastAPI, integrating Natural Language Processing (NLP), dense vector embeddings, and dynamic technical assessment generators \cite{ramirez2019fastapi, roy2020resume}.
+    \item A Retrieval-Augmented Generation (RAG) candidate intelligence engine utilizing the ChromaDB vector database, dense sentence transformer embeddings (\texttt{all-MiniLM-L6-v2} / \texttt{nomic-embed-text}), and local Large Language Model (LLaMA 3.2 via Ollama) inference \cite{lewis2020rag, reimers2019sentence, malkov2018hnsw}.
+\end{enumerate}
+
+The purpose of the system is to resolve persistent operational and algorithmic bottlenecks in modern recruitment, where human resource teams are overwhelmed by massive volumes of unstructured resumes, and qualified job seekers are frequently disqualified by rigid, black-box legacy applicant tracking systems. RecruitSense introduces an end-to-end recruitment workflow that combines synchronized multi-channel portals (Job Seeker, Corporate Recruiter, and System Administrator), automated applicant hiring pipelines (\textit{Applied} $\rightarrow$ \textit{Screening} $\rightarrow$ \textit{Shortlisted} $\rightarrow$ \textit{Interview} $\rightarrow$ \textit{Offer/Rejected}), corporate domain verification, and advanced AI screening tools. 
+
+Beyond standard parsing, the AI engine performs automated PDF text extraction, boundary-delimited skill matching against comprehensive domain taxonomies, multi-dimensional ATS scoring using Dense Semantic Vector Embeddings and ChromaDB vector indexing \cite{reimers2019sentence, malkov2018hnsw}, automated course recommendations for identified skill gaps \cite{karimi2020course}, dynamic technical quiz synthesis, and interactive Candidate RAG querying allowing recruiters to ask natural-language questions about candidates directly grounded in their resumes \cite{lewis2020rag}.
+
+\section{Problem Description}
+Contemporary recruitment pipelines suffer from severe inefficiencies that negatively impact both hiring organizations and prospective candidates. The widespread adoption of one-click online application portals has dramatically increased application volumes, resulting in human resource departments receiving hundreds or thousands of resumes for a single job opening. As a consequence, recruiters face extreme cognitive overload, spending an average of only six to eight seconds reviewing an initial resume \cite{parasuraman2021ats}. This manual evaluation process is unscalable, inconsistent, and highly prone to human fatigue and subjective bias \cite{kessler2021hiring}.
+
+To automate candidate screening, enterprise organizations have historically relied on first-generation Applicant Tracking Systems. However, existing legacy systems suffer from severe limitations:
+\begin{itemize}
+    \item \textbf{Syntactic Brittleness \& Keyword Stuffing:} Naive keyword-matching algorithms systematically reject qualified candidates who express competencies using synonyms or transferable experience, while artificially promoting candidates who manipulate filters through keyword stuffing.
+    \item \textbf{Information Retrieval Bottlenecks:} Once a candidate is in the pipeline, recruiters must manually read 2-to-5-page resumes to find specific answers (e.g., ``Has this candidate deployed Kubernetes in production?'' or ``What is their experience with microservices architecture?''). No conversational or semantic retrieval mechanism exists in conventional tools.
+    \item \textbf{Complete Candidate Feedback Void:} Applicants receive no visibility into their computed ATS compatibility score, missing skill requirements, or personalized learning pathways.
+    \item \textbf{Unverified Employer Postings:} Open job boards allow unverified accounts to post fraudulent listings, exposing candidates to data privacy risks.
+    \item \textbf{Lack of Unified Mobile-First Workspaces:} Most ATS platforms offer clunky desktop-only interfaces, preventing on-the-go candidate review, instant interview coordination, and mobile profile management.
+\end{itemize}
+
+\section{Motivation and Research Gap}
+Efficient talent acquisition is vital for organizational growth and career advancement. For employers, rapid and accurate candidate shortlisting minimizes time-to-hire, reduces recruitment expenditures, and ensures top-tier talent acquisition. For job seekers, a fair, transparent, and mobile-accessible application process provides constructive feedback, upskilling guidance, and equal opportunity regardless of arbitrary resume formatting variations.
+
+However, existing commercial ATS solutions (such as Workday, Taleo, and Greenhouse) are predominantly employer-centric, closed-source, and financially prohibitive for small-to-medium enterprises (SMEs). More importantly, the integration of modern Dense Vector Retrieval, Retrieval-Augmented Generation (RAG), and personalized learning path recommendations remains largely absent in accessible recruitment platforms.
+
+The research and engineering gap lies in integrating a complete multi-channel (Web and Mobile) recruitment workflow with an explainable, multi-attribute AI screening engine and a grounded RAG conversational assistant within a unified, decoupled microservices architecture. RecruitSense directly addresses this gap by developing a production-ready software system that demonstrates how hybrid NLP, vector embeddings, and cross-platform mobile engineering transform talent acquisition.
+
+\section{Project Objectives}
+The core objectives guiding the research, architectural design, and software development of \textbf{RecruitSense} are:
+
+\begin{enumerate}
+    \item \textbf{Design and Develop a Multi-Channel Client Presentation Tier:} Implement a responsive Single Page Application using React 18, Vite, and Tailwind CSS, alongside a cross-platform mobile application engineered with Flutter and Dart, supporting synchronized Job Seeker and Corporate Recruiter workflows.
+    \item \textbf{Build an Enterprise REST API Gateway:} Engineer a high-throughput, secure RESTful API backend using Laravel 11 and MySQL 8.0, enforcing Role-Based Access Control (RBAC), multi-tenant data isolation, and Laravel Sanctum bearer token authentication.
+    \item \textbf{Develop an Asynchronous AI Inference Microservice:} Implement a high-performance Python FastAPI service providing PDF text extraction, domain taxonomy skill tokenization, dense vector embeddings, and dynamic assessment quiz generation.
+    \item \textbf{Implement a Retrieval-Augmented Generation (RAG) Candidate Intelligence Engine:} Integrate the ChromaDB vector database, dense sentence transformer embeddings (\texttt{all-MiniLM-L6-v2} / \texttt{nomic-embed-text}), and local LLaMA-3.2 LLM inference to chunk, embed, index, and semantically query candidate resumes, providing recruiters with interactive, citation-grounded candidate Q\&A dialogs.
+    \item \textbf{Provide Automated Skill Gap Analysis and Course Recommendations:} Automatically extract missing candidate competencies relative to target job specifications and recommend curated educational courses to empower job seekers.
+    \item \textbf{Formulate an Explainable Multi-Dimensional ATS Scoring Algorithm:} Combine boundary-delimited skill fulfillment with dense semantic vector similarity to compute an explainable composite match percentage ($0\% - 100\%$).
+    \item \textbf{Establish a Live Community Feed and Professional Networking Module:} Enable job seekers and employers to publish professional updates, share job insights, and interact through comments and connection networks.
+    \item \textbf{Enhance Platform Security, Integrity, and Trust:} Enforce corporate email domain verification (\texttt{TrustedEmailDomain}) to prevent fraudulent employer registrations, implement strict input sanitization, and secure resume document storage with randomized UUID obfuscation.
+\end{enumerate}
+
+\section{Project Scope}
+The scope of \textbf{RecruitSense} encompasses the design, development, and empirical evaluation of a complete, production-ready recruitment, screening, and candidate intelligence platform. The system consists of four primary software components:
+
+\begin{itemize}
+    \item \textbf{Web Presentation Tier (React 18 SPA):} A responsive web client delivering job discovery, real-time multi-parameter filtering, drag-and-drop resume uploading, transparent ATS score breakdown modals, recruiter applicant Kanban pipelines, candidate RAG chat modals, and administrative verification dashboards.
+    \item \textbf{Mobile Presentation Tier (Flutter App):} A native-performing cross-platform mobile application supporting Android and iOS. It delivers mobile authentication (including Google Sign-In), job alerts, recommended jobs, shareable public profiles, experience dialogs, recruiter candidate discovery, candidate RAG chat dialogs, interview schedules, and a live community feed.
+    \item \textbf{Backend REST API Service Layer (Laravel 11):} An enterprise API gateway managing relational schemas, migrations, authentication tokens, hiring pipeline stage state machines, corporate domain whitelist verification, and internal HTTP orchestration with the AI microservice.
+    \item \textbf{AI Inference \& RAG Microservice (FastAPI + ChromaDB):} A dedicated Python microservice providing document parsing, dense vector similarity calculation, skill gap diagnostics, technical quiz generation, ChromaDB vector embeddings, and semantic RAG querying powered by LLaMA 3.2.
+\end{itemize}
+
+\subsection*{Out-of-Scope Boundaries}
+To maintain focus on core software engineering and AI evaluation objectives, the following items are designated as out of scope:
+\begin{itemize}
+    \item Live automated video proctoring and candidate facial emotion analysis during interviews.
+    \item Multi-lingual resume extraction beyond the English language standard.
+    \item Integration with commercial third-party payment gateways for paid recruitment advertisements.
+\end{itemize}
+
+\section{Significance of the Study}
+RecruitSense demonstrates how the integration of modern full-stack web architectures, cross-platform mobile engineering, and applied Natural Language Processing can dramatically enhance operational efficiency, fairness, and trust in talent acquisition. The project delivers a concrete, real-world software system that replaces cumbersome manual resume reviews and brittle keyword filters with an explainable, data-driven screening and conversational intelligence pipeline.
+
+From a practical perspective, the platform reduces recruiter screening time by over 75\%, mitigates human evaluation fatigue, provides conversational resume deep-dives via RAG, and transforms candidate rejection into actionable learning paths through automated course recommendations.
+
+From an academic and software engineering perspective, this work showcases:
+\begin{enumerate}
+    \item The architectural design of a decoupled 5-tier system coordinating React Web, Flutter Mobile, Laravel Backend, FastAPI AI inference, and ChromaDB vector persistence over stateless REST protocols.
+    \item The practical application of Dense Vector Embeddings and Retrieval-Augmented Generation (RAG) in unstructured recruitment document understanding.
+    \item The establishment of multi-tenant security, role-based authorization guards, and corporate domain verification mechanisms in enterprise recruitment software.
+\end{enumerate}
+
+\section{Thesis Organization}
+This thesis is structured into the following chapters:
+\begin{itemize}
+    \item \textbf{Chapter \ref{chap:literatureReview} (Literature Review):} Explores the evolution of recruitment technologies, provides a critical review of existing commercial platforms (LinkedIn, Indeed, Workday, Taleo), details the theoretical foundations of Natural Language Processing, Vector Databases, and RAG architectures in automated resume screening, and establishes a comparative matrix identifying existing research gaps.
+    \item \textbf{Chapter \ref{chap:reqs} (Requirement Specifications):} Analyzes existing system limitations, presents the functional and non-functional requirements governing RecruitSense across web, mobile, and AI tiers, and specifies detailed tabular use cases across all system actors.
+    \item \textbf{Chapter \ref{chap:design} (Design):} Presents the high-level and low-level system architecture, UML modeling artifacts (Component, Deployment, Class, Sequence, and Activity diagrams), database Entity-Relationship models, and RAG vector search pipelines.
+    \item \textbf{Chapter \ref{chap:sysImplementation} (System Implementation):} Details the technical realization of the platform across React 18, Flutter, Laravel 11, FastAPI, and ChromaDB, elaborating the RAG candidate chat pipeline, algorithmic scoring formulas, and platform security measures.
+    \item \textbf{Chapter \ref{chap:testingEvaluation} (System Testing and Evaluation):} Documents the testing methodologies, functional test cases, usability evaluation via the System Usability Scale (SUS), performance latency benchmarks, and quantitative evaluation of the AI screening and RAG retrieval algorithms.
+    \item \textbf{Chapter \ref{chap:conclusions} (Conclusions and Future Work):} Summarizes the major research contributions, discusses lessons learned and project limitations, and outlines prospective future enhancements.
+    \item \textbf{Appendices:} Provide supplementary resources including the step-by-step system installation and deployment guide, environment configuration instructions, and sample REST API payloads.
+\end{itemize}

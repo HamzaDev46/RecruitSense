@@ -1,0 +1,63 @@
+<mxfile host="app.diagrams.net" modified="2026-10-02T10:50:00.000Z" agent="RecruitSense" version="24.0.0" type="device">
+  <diagram id="hiring-fsm" name="Candidate Hiring Pipeline">
+    <mxGraphModel dx="1000" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <mxCell id="s_applied" value="Applied" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#DDE9FA;strokeColor=#4A72AE;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_screening" value="Screening" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#DDE9FA;strokeColor=#4A72AE;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="230" y="100" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_shortlisted" value="Shortlisted" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#DDE9FA;strokeColor=#4A72AE;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_interview" value="Interview" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#DDE9FA;strokeColor=#4A72AE;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="570" y="100" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_offer" value="Offer" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#D6F3E0;strokeColor=#3C985A;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="570" y="210" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_rejected" value="Rejected" style="rounded=1;whiteSpace=wrap;html=1;arcSize=15;fillColor=#FCE0E0;strokeColor=#D9534F;strokeWidth=1.5;fontStyle=1;fontSize=13;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="230" y="210" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;" edge="1" parent="1" source="s_applied" target="s_screening">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;" edge="1" parent="1" source="s_screening" target="s_shortlisted">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;" edge="1" parent="1" source="s_shortlisted" target="s_interview">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2E8B57;strokeWidth=1.5;" edge="1" parent="1" source="s_interview" target="s_offer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D9534F;strokeWidth=1.5;" edge="1" parent="1" source="s_screening" target="s_rejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D9534F;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s_shortlisted" target="s_rejected">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="235" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

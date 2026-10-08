@@ -1,0 +1,55 @@
+@startuml
+left to right direction
+skinparam defaultFontName "Arial"
+skinparam shadowing false
+skinparam monochrome false
+
+' === STANDARD LIGHT BLUE THEME ===
+skinparam backgroundColor #FFFFFF
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #0284C7
+    FontColor #0284C7
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #BAE6FD
+    BorderColor #0284C7
+    FontColor #0F172A
+    FontSize 12
+}
+
+skinparam actor {
+    BackgroundColor #38BDF8
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam arrow {
+    Color #0284C7
+    FontColor #0284C7
+}
+' =================================
+
+actor "Corporate Recruiter" as Recruiter
+actor "Job Seeker" as Candidate
+
+rectangle "RecruitSense Platform (UC-09: Manage Hiring Pipeline)" {
+    usecase "Update Application Pipeline Stage" as UC1
+    usecase "Validate Stage Transition Rules\n(FSM State Machine)" as UC2
+    usecase "Persist Status in Database\n& Log Audit History" as UC3
+    usecase "Dispatch Real-Time\nStatus Notification" as UC4
+    usecase "Record Private Internal\nHiring Remarks" as UC5
+}
+
+Recruiter --> UC1
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<extend>>
+
+UC4 --> Candidate
+@enduml

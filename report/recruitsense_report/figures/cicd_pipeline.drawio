@@ -1,0 +1,47 @@
+<mxfile host="app.diagrams.net" modified="2026-10-02T10:50:00.000Z" agent="RecruitSense" version="24.0.0" type="device">
+  <diagram id="cicd-pipeline" name="CI/CD Deployment Pipeline">
+    <mxGraphModel dx="1000" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="c_git" value="&lt;b&gt;Git Repository&lt;/b&gt;&lt;br&gt;(GitHub)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#DDE9FA;strokeColor=#4A72AE;strokeWidth=1.5;fontSize=12;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_ci" value="&lt;b&gt;CI Pipeline&lt;/b&gt;&lt;br&gt;(Build &amp; Test)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFF2CE;strokeColor=#D4A232;strokeWidth=1.5;fontSize=12;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="250" y="130" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_web" value="&lt;b&gt;Vite / NGINX&lt;/b&gt;&lt;br&gt;(Frontend SPA)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#D6F3E0;strokeColor=#3C985A;strokeWidth=1.5;fontSize=12;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="440" y="70" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_api" value="&lt;b&gt;Laravel API&lt;/b&gt;&lt;br&gt;(PHP-FPM)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#D6F3E0;strokeColor=#3C985A;strokeWidth=1.5;fontSize=12;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="440" y="190" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_ai" value="&lt;b&gt;FastAPI AI Service&lt;/b&gt;&lt;br&gt;(NLP &amp; RAG Engine)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFE8D1;strokeColor=#DE8A36;strokeWidth=1.5;fontSize=12;fontFamily=Helvetica;fontColor=#111111;" vertex="1" parent="1">
+          <mxGeometry x="630" y="190" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_git_ci" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#444444;strokeWidth=1.5;" edge="1" parent="1" source="c_git" target="c_ci">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_ci_web" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#444444;strokeWidth=1.5;" edge="1" parent="1" source="c_ci" target="c_web">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_ci_api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#444444;strokeWidth=1.5;" edge="1" parent="1" source="c_ci" target="c_api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_api_ai" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#444444;strokeWidth=1.5;" edge="1" parent="1" source="c_api" target="c_ai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

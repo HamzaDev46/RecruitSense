@@ -1,0 +1,20 @@
+\chapter*{Abstract}
+\markboth{ABSTRACT}{ABSTRACT}
+\addcontentsline{toc}{chapter}{Abstract}
+
+In the modern competitive talent acquisition landscape, organizations face unprecedented volumes of unstructured candidate applications. Traditional manual resume screening is notoriously time-consuming, prone to human fatigue, and susceptible to cognitive bias. Conversely, first-generation Applicant Tracking Systems (ATS) rely primarily on primitive keyword matching, which frequently leads to false negatives for qualified candidates who omit exact keyword synonyms, while rewarding candidates who artificially ``stuff'' keywords into their curriculum vitae.
+
+To address these critical shortcomings, this project introduces \textbf{RecruitSense}, an end-to-end, AI-powered Applicant Tracking System, Intelligent Resume Screening, and Candidate Intelligence Platform. RecruitSense combines modern full-stack web and mobile engineering with state-of-the-art Natural Language Processing (NLP) and Retrieval-Augmented Generation (RAG) to provide an intelligent, transparent, and multi-channel recruitment ecosystem for job seekers, corporate recruiters, and platform administrators.
+
+The RecruitSense architecture is engineered as a decoupled, multi-tier microservices platform comprising four core pillars:
+\begin{enumerate}
+    \item \textbf{Presentation Layer (Web \& Mobile):} A reactive single-page frontend built with React 18, Vite, and Tailwind CSS alongside a cross-platform mobile application engineered with Flutter and Dart, delivering synchronized, role-based workspaces, candidate discovery interfaces, live community networking feeds, and real-time application trackers across desktop, tablet, and mobile devices.
+    \item \textbf{Enterprise Backend Service Layer:} A high-throughput API gateway built on Laravel 11 and MySQL 8.0, managing secure multi-tenant company workflows, transactional applicant pipelines, role-based access control (RBAC), trusted corporate email domain validation, and RESTful API endpoints secured via Laravel Sanctum bearer tokens.
+    \item \textbf{Asynchronous AI Inference Microservice:} A high-performance AI screening service developed with FastAPI, executing automated PDF text extraction, boundary-delimited skill taxonomy matching, automated skill gap diagnostics, and dynamic AI assessment quiz generation.
+    \item \textbf{Retrieval-Augmented Generation (RAG) \& Vector Search Engine:} A semantic candidate intelligence engine integrating persistent ChromaDB vector storage, dense sentence-transformer embeddings (\texttt{all-MiniLM-L6-v2} / \texttt{nomic-embed-text}), and local Large Language Model (LLaMA 3.2 via Ollama) inference, enabling recruiters to perform conversational candidate querying with grounded text citations.
+\end{enumerate}
+
+Furthermore, RecruitSense empowers applicants by automatically recommending curated learning courses for missing technical competencies and offering pre-screening quiz assessments. Empirical evaluation demonstrates that RecruitSense reduces recruiter candidate screening time by up to 75\% compared to manual methods, achieves high semantic retrieval precision ($>88\%$), and delivers sub-second operational response times across web and mobile surfaces. RecruitSense delivers a scalable, reliable, and intelligent talent acquisition ecosystem suitable for modern enterprise recruitment.
+
+\vspace{0.8cm}
+\noindent \textbf{Keywords:} Applicant Tracking System, Retrieval-Augmented Generation (RAG), Vector Database, ChromaDB, Natural Language Processing, Resume Parsing, Semantic Matching, FastAPI, Laravel REST API, Flutter Mobile Application, React Single Page Application.

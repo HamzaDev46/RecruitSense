@@ -198,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: 'http://192.168.100.9:8000/api',
+                hintText: 'http://192.168.100.108:8000/api',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
               style: GoogleFonts.inter(fontSize: 13),

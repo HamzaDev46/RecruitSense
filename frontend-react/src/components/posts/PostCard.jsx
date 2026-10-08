@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Check, Eye, Flag, Globe2, Heart, MessageCircle, Pencil, Repeat2, Send, Trash2, Users, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, ChevronLeft, ChevronRight, Download, ExternalLink, Eye, Flag, Globe2, Heart, MessageCircle, Pencil, Repeat2, Send, Trash2, Users, X, ZoomIn } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import ReportContentModal from '../ReportContentModal'
@@ -42,7 +42,139 @@ const Avatar = ({ user, size = 'w-11 h-11' }) => {
   )
 }
 
-const OriginalPostPreview = ({ post, onOpenProfile }) => {
+const ImageLightboxModal = ({ isOpen, onClose, mediaList, initialIndex = 0, authorName }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+
+  useEffect(() => {
+    setCurrentIndex(initialIndex)
+  }, [initialIndex, isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft') {
+        setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mediaList.length - 1))
+      }
+      if (e.key === 'ArrowRight') {
+        setCurrentIndex((prev) => (prev < mediaList.length - 1 ? prev + 1 : 0))
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isOpen, mediaList.length, onClose])
+
+  if (!isOpen || !mediaList || mediaList.length === 0) return null
+
+  const currentMedia = mediaList[currentIndex] || mediaList[0]
+
+  const handlePrev = (e) => {
+    e?.stopPropagation()
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mediaList.length - 1))
+  }
+
+  const handleNext = (e) => {
+    e?.stopPropagation()
+    setCurrentIndex((prev) => (prev < mediaList.length - 1 ? prev + 1 : 0))
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fadeIn transition-opacity duration-200"
+      onClick={onClose}
+    >
+      {/* Top Bar Header */}
+      <div
+        className="absolute top-0 inset-x-0 p-4 sm:p-5 flex items-center justify-between text-white bg-gradient-to-b from-black/80 via-black/40 to-transparent z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <p className="font-bold text-sm sm:text-base text-gray-100">{authorName || 'Post Photo'}</p>
+          {mediaList.length > 1 && (
+            <span className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white font-semibold">
+              {currentIndex + 1} / {mediaList.length}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {currentMedia.url && (
+            <a
+              href={currentMedia.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition flex items-center justify-center"
+              title="Open full image in new tab"
+            >
+              <ExternalLink className="w-5 h-5" />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition flex items-center justify-center"
+            title="Close (Esc)"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation Arrows */}
+      {mediaList.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-black/90 text-white transition border border-white/20 z-10 shadow-lg"
+            title="Previous (Left Arrow)"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-black/90 text-white transition border border-white/20 z-10 shadow-lg"
+            title="Next (Right Arrow)"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
+
+      {/* Media Center Container */}
+      <div
+        className="relative max-w-[94vw] max-h-[85vh] flex items-center justify-center p-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {currentMedia.file_type === 'video' ? (
+          <video
+            src={currentMedia.url}
+            className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain"
+            controls
+            autoPlay
+          />
+        ) : (
+          <img
+            src={currentMedia.url}
+            alt="Full size preview"
+            className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain select-none transition-transform duration-200 cursor-default"
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+const OriginalPostPreview = ({ post, onOpenProfile, onOpenLightbox }) => {
   if (!post) return null
 
   return (
@@ -63,13 +195,28 @@ const OriginalPostPreview = ({ post, onOpenProfile }) => {
       </div>
 
       {post.media?.length > 0 && (
-        <div className={`grid gap-1 bg-gray-100 ${post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {post.media.map((media) => (
-            <div key={media.id} className="bg-gray-100">
+        <div className={`grid gap-1 bg-gray-900/5 ${post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {post.media.map((media, idx) => (
+            <div
+              key={media.id || idx}
+              className="bg-gray-900/5 relative group cursor-pointer overflow-hidden flex items-center justify-center"
+              onClick={() => onOpenLightbox?.(post.media, idx, post.author?.name)}
+            >
               {media.file_type === 'video' ? (
-                <video src={media.url} className="w-full max-h-72 object-cover bg-black" controls />
+                <video src={media.url} className="w-full max-h-[500px] object-contain bg-black" controls />
               ) : (
-                <img src={media.url} alt="Original post media" className="w-full max-h-72 object-cover" />
+                <img
+                  src={media.url}
+                  alt="Original post media"
+                  className={`w-full ${post.media.length === 1 ? 'max-h-[520px] object-contain bg-slate-950/5' : 'h-60 object-cover'} transition-transform duration-300 group-hover:scale-[1.01]`}
+                />
+              )}
+              {media.file_type !== 'video' && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 bg-black/60 backdrop-blur-xs text-white p-2 rounded-full transition transform scale-90 group-hover:scale-100">
+                    <ZoomIn className="w-5 h-5" />
+                  </span>
+                </div>
               )}
             </div>
           ))}
@@ -89,6 +236,7 @@ const PostCard = ({ post, onPostUpdated, onPostDeleted, onPostCreated }) => {
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentBody, setEditingCommentBody] = useState('')
   const [reportTarget, setReportTarget] = useState(null)
+  const [lightboxData, setLightboxData] = useState(null)
 
   if (!post) return null
 
@@ -396,18 +544,37 @@ const PostCard = ({ post, onPostUpdated, onPostDeleted, onPostCreated }) => {
         )}
 
         {localPost.original_post && (
-          <OriginalPostPreview post={localPost.original_post} onOpenProfile={openAuthorProfile} />
+          <OriginalPostPreview
+            post={localPost.original_post}
+            onOpenProfile={openAuthorProfile}
+            onOpenLightbox={(mediaList, index, authorName) => setLightboxData({ mediaList, index, authorName })}
+          />
         )}
       </div>
 
       {mediaCount > 0 && (
-        <div className={`grid gap-1 bg-gray-100 ${mediaCount === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {localPost.media.map((media) => (
-            <div key={media.id} className="bg-gray-100">
+        <div className={`grid gap-1 bg-gray-900/5 ${mediaCount === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {localPost.media.map((media, idx) => (
+            <div
+              key={media.id || idx}
+              className="bg-gray-900/5 relative group cursor-pointer overflow-hidden flex items-center justify-center"
+              onClick={() => setLightboxData({ mediaList: localPost.media, index: idx, authorName: localPost.author?.name })}
+            >
               {media.file_type === 'video' ? (
-                <video src={media.url} className="w-full max-h-[460px] object-cover bg-black" controls />
+                <video src={media.url} className="w-full max-h-[520px] object-contain bg-black" controls />
               ) : (
-                <img src={media.url} alt="Post media" className="w-full max-h-[460px] object-cover" />
+                <img
+                  src={media.url}
+                  alt="Post media"
+                  className={`w-full ${mediaCount === 1 ? 'max-h-[540px] object-contain bg-slate-950/5' : 'h-64 object-cover'} transition-transform duration-300 group-hover:scale-[1.01]`}
+                />
+              )}
+              {media.file_type !== 'video' && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+                  <span className="opacity-0 group-hover:opacity-100 bg-black/60 backdrop-blur-xs text-white p-2.5 rounded-full transition transform scale-90 group-hover:scale-100 shadow-md">
+                    <ZoomIn className="w-5 h-5" />
+                  </span>
+                </div>
               )}
             </div>
           ))}
@@ -588,6 +755,15 @@ const PostCard = ({ post, onPostUpdated, onPostDeleted, onPostCreated }) => {
         reportableId={reportTarget?.reportableId}
         title={reportTarget?.title}
         onClose={() => setReportTarget(null)}
+      />
+
+      {/* High-Resolution Fullscreen Image Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxData)}
+        onClose={() => setLightboxData(null)}
+        mediaList={lightboxData?.mediaList || []}
+        initialIndex={lightboxData?.index || 0}
+        authorName={lightboxData?.authorName}
       />
     </article>
   )
