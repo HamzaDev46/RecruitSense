@@ -44,7 +44,7 @@ return [
     ],
 
     'frontend' => [
-        'url' => env('FRONTEND_URL', 'http://127.0.0.1:5173'),
+        'url' => env('FRONTEND_URL', 'https://recruit-sense-oyqm.vercel.app'),
     ],
 
     'google' => [
