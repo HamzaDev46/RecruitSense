@@ -17,6 +17,7 @@ const VerifyEmailPage = () => {
 
   const [status, setStatus] = useState('verifying') // 'verifying' | 'success' | 'error'
   const [message, setMessage] = useState('Verifying your email address...')
+  const [customEmail, setCustomEmail] = useState('')
   const [resending, setResending] = useState(false)
   const [resendSent, setResendSent] = useState(false)
   const hasCalled = useRef(false)
@@ -24,7 +25,7 @@ const VerifyEmailPage = () => {
   useEffect(() => {
     if (!id || !email || !token) {
       setStatus('error')
-      setMessage('Invalid or missing activation parameters in link.')
+      setMessage('The activation link was opened without full security parameters or tokens.')
       return
     }
 
@@ -62,17 +63,20 @@ const VerifyEmailPage = () => {
     verify()
   }, [email, id, login, navigate, token])
 
-  const handleResend = async () => {
-    if (!email) {
-      toast.error('Email address not found. Please register or log in.')
+  const effectiveEmail = email || customEmail
+
+  const handleResend = async (e) => {
+    if (e) e.preventDefault()
+    if (!effectiveEmail || !effectiveEmail.trim()) {
+      toast.error('Please enter your registered email address.')
       return
     }
 
     setResending(true)
     try {
-      const res = await api.post('/resend-verification', { email })
+      const res = await api.post('/resend-verification', { email: effectiveEmail.trim() })
       setResendSent(true)
-      toast.success(res.data.message || 'Verification link re-sent!')
+      toast.success(res.data.message || 'Verification link sent!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not resend verification email.')
     } finally {
@@ -136,41 +140,71 @@ const VerifyEmailPage = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="py-4 space-y-4"
+            className="py-4 space-y-4 text-center"
           >
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-2">
               <AlertTriangle className="w-10 h-10" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Activation Failed</h2>
-            <p className="text-sm text-gray-600 px-2">{message}</p>
+            <h2 className="text-2xl font-bold text-gray-900">Account Activation</h2>
+            <p className="text-sm text-gray-600 px-2 leading-relaxed">{message}</p>
 
-            {email && (
-              <div className="pt-2">
-                {resendSent ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 font-medium flex items-center justify-center gap-2">
-                    <Mail className="w-4 h-4" /> Fresh activation link sent to {email}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resending}
-                    className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    {resending ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    {resending ? 'Sending...' : 'Resend Activation Email'}
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="pt-2 space-y-3">
+              {!email && (
+                <form onSubmit={handleResend} className="space-y-2">
+                  <input
+                    type="email"
+                    placeholder="Enter your registered email"
+                    value={customEmail}
+                    onChange={(e) => setCustomEmail(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-800"
+                  />
+                  {resendSent ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 font-medium flex items-center justify-center gap-2">
+                      <Mail className="w-4 h-4" /> Fresh activation link sent to {effectiveEmail}
+                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={resending || !customEmail.trim()}
+                      className="w-full bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 text-indigo-600 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      {resending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      {resending ? 'Sending...' : 'Resend Activation Email'}
+                    </button>
+                  )}
+                </form>
+              )}
 
-            <div className="pt-3 border-t border-gray-100">
-              <Link to="/login" className="text-sm text-indigo-600 font-semibold hover:text-indigo-700">
-                Back to Sign in
+              {email && (
+                <div>
+                  {resendSent ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 font-medium flex items-center justify-center gap-2">
+                      <Mail className="w-4 h-4" /> Fresh activation link sent to {email}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending}
+                      className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      {resending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      {resending ? 'Sending...' : 'Resend Activation Email'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+              <Link
+                to="/login"
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:opacity-95 shadow-md shadow-indigo-500/20"
+              >
+                Sign In to Your Account
+              </Link>
+              <Link to="/register" className="text-xs text-gray-500 hover:text-indigo-600 font-medium">
+                Create a new account
               </Link>
             </div>
           </motion.div>
