@@ -98,19 +98,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('Account Created', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.mark_email_read_rounded, color: Color(0xFF6366F1), size: 26),
+                const SizedBox(width: 10),
+                Text('Account Created', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
+              ],
+            ),
             content: Text(
               result['message'] ?? 'Registration successful! Please verify your email or sign in.',
-              style: GoogleFonts.inter(fontSize: 14),
+              style: GoogleFonts.inter(fontSize: 13.5, color: const Color(0xFF475569), height: 1.4),
             ),
             actions: [
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                ),
                 onPressed: () {
                   Navigator.pop(ctx);
                   Navigator.pop(context);
                 },
-                child: const Text('Proceed to Sign In'),
+                child: Text('Proceed to Sign In', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ],
           ),

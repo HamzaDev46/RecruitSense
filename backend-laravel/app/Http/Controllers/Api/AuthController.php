@@ -90,18 +90,14 @@ class AuthController extends Controller
 
         $this->ensureRoleProfile($user, $request->all());
 
-        // Send Email Verification Link
-        try {
-            $verifyUrl = self::generateVerificationUrl($user);
-            Mail::to($user->email)->send(new EmailVerificationMail($user, $verifyUrl));
-        } catch (\Throwable $e) {
-            // Log mail exception if mailer is offline in dev
-        }
+        $verifyUrl = self::generateVerificationUrl($user);
+        \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
 
         return response()->json([
             'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox and verify your email to activate your account.',
             'requires_verification' => true,
             'email' => $user->email,
+            'verification_url' => $verifyUrl,
             'user' => $user,
         ], 201);
     }
@@ -189,15 +185,14 @@ class AuthController extends Controller
             ], 200);
         }
 
-        try {
-            $verifyUrl = self::generateVerificationUrl($user);
-            Mail::to($user->email)->send(new EmailVerificationMail($user, $verifyUrl));
-        } catch (\Throwable $e) {
-            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
-        }
+        $verifyUrl = self::generateVerificationUrl($user);
+        \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
 
         return response()->json([
             'message' => 'A fresh verification link has been sent to ' . $user->email . '. Please check your inbox.',
+            'requires_verification' => true,
+            'email' => $user->email,
+            'verification_url' => $verifyUrl,
         ], 200);
     }
 
@@ -221,10 +216,7 @@ class AuthController extends Controller
             }
             $resetUrl = $frontendUrl . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 
-            try {
-                Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
-            } catch (\Throwable) {
-            }
+            \App\Services\CloudEmailService::sendPasswordReset($user, $resetUrl);
         }
 
         return response()->json([

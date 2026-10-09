@@ -51,6 +51,7 @@ const RegisterPage = () => {
 
   const [verificationSent, setVerificationSent] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
+  const [directVerifyUrl, setDirectVerifyUrl] = useState('')
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
 
@@ -96,6 +97,9 @@ const RegisterPage = () => {
       const res = await api.post('/register', payload)
       if (res.data.requires_verification) {
         setRegisteredEmail(res.data.email || form.email)
+        if (res.data.verification_url) {
+          setDirectVerifyUrl(res.data.verification_url)
+        }
         setVerificationSent(true)
         setCooldown(60)
         toast.success(res.data.message || 'Verification email sent! Please check your inbox.')
@@ -120,6 +124,9 @@ const RegisterPage = () => {
     setResending(true)
     try {
       const res = await api.post('/resend-verification', { email: registeredEmail })
+      if (res.data.verification_url) {
+        setDirectVerifyUrl(res.data.verification_url)
+      }
       toast.success(res.data.message || 'Fresh verification link sent!')
       setCooldown(60)
     } catch (err) {
@@ -169,11 +176,20 @@ const RegisterPage = () => {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sent to</p>
               <p className="text-sm font-bold text-gray-900 break-all">{registeredEmail}</p>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Click the activation link in the email to activate your account and start using RecruitSense.
+                Click the activation link in the email, or click the instant activation button below to activate and sign in immediately.
               </p>
             </div>
 
             <div className="space-y-3 pt-2">
+              {directVerifyUrl && (
+                <a
+                  href={directVerifyUrl}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 block"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Activate & Sign In Instantly &rarr;
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleResend}
