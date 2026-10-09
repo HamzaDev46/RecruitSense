@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\QuizQuestion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CompanyDashboardController extends Controller
 {
@@ -24,9 +25,11 @@ class CompanyDashboardController extends Controller
             return response()->json(['message' => 'Company profile not found'], 404);
         }
 
-        $applicationsQuery = Application::whereHas('jobPosting', function ($query) use ($company) {
-            $query->where('company_id', $company->id);
-        });
+        $companyId = $company->id;
+        $data = Cache::remember("company_summary_{$companyId}", 15, function () use ($company) {
+            $applicationsQuery = Application::whereHas('jobPosting', function ($query) use ($company) {
+                $query->where('company_id', $company->id);
+            });
 
         $statusCounts = (clone $applicationsQuery)
             ->selectRaw('status, count(*) as total')
@@ -80,7 +83,7 @@ class CompanyDashboardController extends Controller
             ->avg('final_score');
         $companyJobsQuery = JobPosting::where('company_id', $company->id);
 
-        return response()->json([
+        return [
             'company' => $company,
             'stats' => [
                 'total_jobs' => (clone $companyJobsQuery)->count(),
@@ -121,7 +124,10 @@ class CompanyDashboardController extends Controller
             'recent_applicants' => $recentApplicants,
             'upcoming_interviews' => $upcomingInterviews,
             'recent_activity' => $recentActivity,
-        ]);
+        ];
+        });
+
+        return response()->json($data);
     }
 
     public function activityLog(Request $request)

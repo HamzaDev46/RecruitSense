@@ -34,8 +34,10 @@ class PostController extends Controller
 
         $this->recordImpressions($posts, $viewer);
 
+        $context = $this->buildPostContext($posts, $viewer);
+
         return response()->json(
-            $posts->map(fn ($post) => $this->postPayload($this->postForResponse($post), $request))
+            $posts->map(fn ($post) => $this->postPayload($post, $request, $context))
         );
     }
 
@@ -67,8 +69,10 @@ class PostController extends Controller
 
         $this->recordImpressions($posts, $viewer);
 
+        $context = $this->buildPostContext($posts, $viewer);
+
         return response()->json(
-            $posts->map(fn ($post) => $this->postPayload($this->postForResponse($post), $request))
+            $posts->map(fn ($post) => $this->postPayload($post, $request, $context))
         );
     }
 
@@ -432,21 +436,71 @@ class PostController extends Controller
             ->all();
     }
 
+    private function buildPostContext(Collection $posts, User $viewer): array
+    {
+        $viewerId = $viewer->id;
+        $blockedIds = UserBlock::blockedUserIdsFor($viewerId);
+
+        $sourcePostIds = $posts->map(fn ($p) => ($p->repost_of_id && $p->originalPost) ? $p->originalPost->id : $p->id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $repostedPostIds = empty($sourcePostIds) ? [] : Post::where('user_id', $viewerId)
+            ->whereIn('repost_of_id', $sourcePostIds)
+            ->pluck('repost_of_id')
+            ->all();
+
+        return [
+            'viewerId' => $viewerId,
+            'blockedIds' => $blockedIds,
+            'repostedPostIds' => $repostedPostIds,
+        ];
+    }
+
     private function recordImpressions(Collection $posts, User $viewer): void
     {
-        foreach ($posts as $post) {
-            if ($post->user_id === $viewer->id) {
-                continue;
+        $otherPosts = $posts->where('user_id', '!=', $viewer->id);
+        if ($otherPosts->isEmpty()) {
+            return;
+        }
+
+        $today = now()->toDateString();
+        $postIds = $otherPosts->pluck('id')->all();
+
+        $existingPostIds = PostImpression::where('viewer_user_id', $viewer->id)
+            ->where('viewed_on', $today)
+            ->whereIn('post_id', $postIds)
+            ->pluck('post_id')
+            ->all();
+
+        $newPostIds = array_diff($postIds, $existingPostIds);
+        if (empty($newPostIds)) {
+            return;
+        }
+
+        $now = now();
+        $insertData = [];
+        $ownerIdsToBust = [];
+
+        foreach ($otherPosts as $post) {
+            if (in_array($post->id, $newPostIds, true)) {
+                $insertData[] = [
+                    'post_id' => $post->id,
+                    'viewer_user_id' => $viewer->id,
+                    'viewed_on' => $today,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                $ownerIdsToBust[$post->user_id] = true;
             }
+        }
 
-            $impression = PostImpression::firstOrCreate([
-                'post_id' => $post->id,
-                'viewer_user_id' => $viewer->id,
-                'viewed_on' => now()->toDateString(),
-            ]);
-
-            if ($impression->wasRecentlyCreated) {
-                UserCache::forgetProfile($post->user_id);
+        if (!empty($insertData)) {
+            PostImpression::insert($insertData);
+            foreach (array_keys($ownerIdsToBust) as $ownerId) {
+                UserCache::forgetProfile($ownerId);
             }
         }
     }
@@ -478,18 +532,21 @@ class PostController extends Controller
         ];
     }
 
-    private function postPayload(Post $post, Request $request): array
+    private function postPayload(Post $post, Request $request, ?array $context = null): array
     {
+        $viewerId = $context['viewerId'] ?? $request->user()->id;
+        $blockedIds = $context['blockedIds'] ?? UserBlock::blockedUserIdsFor($viewerId);
         $sourcePost = $post->repost_of_id && $post->originalPost ? $post->originalPost : $post;
         $sourcePostId = $sourcePost->id;
-        $blockedIds = UserBlock::blockedUserIdsFor($request->user()->id);
+
         $visibleComments = $post->comments
             ->filter(fn ($comment) => !in_array($comment->user_id, $blockedIds, true))
             ->values();
-        $repostsCount = Post::where('repost_of_id', $sourcePostId)->whereHas('user')->count();
-        $isReposted = Post::where('user_id', $request->user()->id)
-            ->where('repost_of_id', $sourcePostId)
-            ->exists();
+
+        $repostsCount = $sourcePost->reposts_count ?? $post->reposts_count ?? 0;
+        $isReposted = isset($context['repostedPostIds'])
+            ? in_array($sourcePostId, $context['repostedPostIds'], true)
+            : Post::where('user_id', $viewerId)->where('repost_of_id', $sourcePostId)->exists();
 
         return [
             'id' => $post->id,
@@ -508,24 +565,24 @@ class PostController extends Controller
                 'file_type' => $media->file_type,
                 'url' => $request->getSchemeAndHttpHost() . '/storage/' . $media->file_path,
             ]),
-            'likes_count' => $post->likes_count,
+            'likes_count' => (int) ($post->likes_count ?? $post->likes->count()),
             'comments_count' => $visibleComments->count(),
-            'impressions_count' => $post->impressions_count,
-            'reposts_count' => $repostsCount,
+            'impressions_count' => (int) ($post->impressions_count ?? 0),
+            'reposts_count' => (int) $repostsCount,
             'is_reposted' => $isReposted,
-            'is_liked' => $post->likes->contains('user_id', $request->user()->id),
-            'can_edit' => $post->user_id === $request->user()->id,
-            'can_delete' => $post->user_id === $request->user()->id,
-            'can_report' => $post->user_id !== $request->user()->id,
+            'is_liked' => $post->likes->contains('user_id', $viewerId),
+            'can_edit' => $post->user_id === $viewerId,
+            'can_delete' => $post->user_id === $viewerId,
+            'can_report' => $post->user_id !== $viewerId,
             'comments' => $visibleComments->map(fn ($comment) => [
                 'id' => $comment->id,
                 'body' => $comment->body,
                 'created_at' => $comment->created_at?->toISOString(),
                 'updated_at' => $comment->updated_at?->toISOString(),
                 'author' => $this->userPayload($comment->user, $request),
-                'can_edit' => $comment->user_id === $request->user()->id,
-                'can_delete' => $comment->user_id === $request->user()->id || $post->user_id === $request->user()->id,
-                'can_report' => $comment->user_id !== $request->user()->id,
+                'can_edit' => $comment->user_id === $viewerId,
+                'can_delete' => $comment->user_id === $viewerId || $post->user_id === $viewerId,
+                'can_report' => $comment->user_id !== $viewerId,
             ]),
         ];
     }

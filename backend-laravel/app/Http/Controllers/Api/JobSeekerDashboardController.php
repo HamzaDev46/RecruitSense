@@ -14,6 +14,7 @@ use App\Models\SearchAppearance;
 use App\Models\UserBlock;
 use App\Support\ProfileCompletion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class JobSeekerDashboardController extends Controller
 {
@@ -25,59 +26,65 @@ class JobSeekerDashboardController extends Controller
             return response()->json(['message' => 'Only job seekers can access this dashboard'], 403);
         }
 
+        $userId = $user->id;
         $jobSeeker = $user->jobSeeker;
-        $statusCounts = Application::where('job_seeker_id', $jobSeeker->id)
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
 
-        $recentJobs = JobPosting::with('company')
-            ->acceptingApplications()
-            ->latest()
-            ->limit(5)
-            ->get();
+        $data = Cache::remember("jobseeker_summary_{$userId}", 15, function () use ($user, $jobSeeker) {
+            $statusCounts = Application::where('job_seeker_id', $jobSeeker->id)
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        $recentApplications = Application::with('jobPosting.company')
-            ->where('job_seeker_id', $jobSeeker->id)
-            ->latest()
-            ->limit(4)
-            ->get();
+            $recentJobs = JobPosting::with('company')
+                ->acceptingApplications()
+                ->latest()
+                ->limit(5)
+                ->get();
 
-        $averageScore = Application::where('job_seeker_id', $jobSeeker->id)
-            ->where('final_score', '>', 0)
-            ->avg('final_score');
+            $recentApplications = Application::with('jobPosting.company')
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->latest()
+                ->limit(4)
+                ->get();
 
-        return response()->json([
-            'stats' => [
-                'totalJobs' => JobPosting::acceptingApplications()->count(),
-                'myApplications' => Application::where('job_seeker_id', $jobSeeker->id)->count(),
-                'savedJobs' => SavedJob::where('job_seeker_id', $jobSeeker->id)->count(),
-                'shortlisted' => (int) ($statusCounts['shortlisted'] ?? 0),
-                'inProgress' => (int) (($statusCounts['screening'] ?? 0) + ($statusCounts['shortlisted'] ?? 0) + ($statusCounts['interview'] ?? 0) + ($statusCounts['offered'] ?? 0) + ($statusCounts['hired'] ?? 0)),
-                'pending' => (int) ($statusCounts['pending'] ?? 0),
-                'rejected' => (int) ($statusCounts['rejected'] ?? 0),
-                'profileViews' => ProfileView::where('profile_user_id', $user->id)
-                    ->whereHas('viewerUser')
-                    ->count(),
-                'postImpressions' => PostImpression::whereHas('post', function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                })->count(),
-                'searchAppearances' => SearchAppearance::where('profile_user_id', $user->id)
-                    ->whereHas('searcherUser')
-                    ->count(),
-                'connections' => $this->connectionsCount($user->id),
-                'pendingInvitations' => Connection::where('receiver_id', $user->id)
-                    ->where('status', 'pending')
-                    ->count(),
-                'unreadNotifications' => AppNotification::where('user_id', $user->id)
-                    ->whereNull('read_at')
-                    ->count(),
-                'averageScore' => $averageScore ? round($averageScore) : 0,
-            ],
-            'profile_strength' => ProfileCompletion::forJobSeeker($jobSeeker),
-            'recent_jobs' => $recentJobs,
-            'recent_applications' => $recentApplications,
-        ]);
+            $averageScore = Application::where('job_seeker_id', $jobSeeker->id)
+                ->where('final_score', '>', 0)
+                ->avg('final_score');
+
+            return [
+                'stats' => [
+                    'totalJobs' => JobPosting::acceptingApplications()->count(),
+                    'myApplications' => Application::where('job_seeker_id', $jobSeeker->id)->count(),
+                    'savedJobs' => SavedJob::where('job_seeker_id', $jobSeeker->id)->count(),
+                    'shortlisted' => (int) ($statusCounts['shortlisted'] ?? 0),
+                    'inProgress' => (int) (($statusCounts['screening'] ?? 0) + ($statusCounts['shortlisted'] ?? 0) + ($statusCounts['interview'] ?? 0) + ($statusCounts['offered'] ?? 0) + ($statusCounts['hired'] ?? 0)),
+                    'pending' => (int) ($statusCounts['pending'] ?? 0),
+                    'rejected' => (int) ($statusCounts['rejected'] ?? 0),
+                    'profileViews' => ProfileView::where('profile_user_id', $user->id)
+                        ->whereHas('viewerUser')
+                        ->count(),
+                    'postImpressions' => PostImpression::whereHas('post', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })->count(),
+                    'searchAppearances' => SearchAppearance::where('profile_user_id', $user->id)
+                        ->whereHas('searcherUser')
+                        ->count(),
+                    'connections' => $this->connectionsCount($user->id),
+                    'pendingInvitations' => Connection::where('receiver_id', $user->id)
+                        ->where('status', 'pending')
+                        ->count(),
+                    'unreadNotifications' => AppNotification::where('user_id', $user->id)
+                        ->whereNull('read_at')
+                        ->count(),
+                    'averageScore' => $averageScore ? round($averageScore) : 0,
+                ],
+                'profile_strength' => ProfileCompletion::forJobSeeker($jobSeeker),
+                'recent_jobs' => $recentJobs,
+                'recent_applications' => $recentApplications,
+            ];
+        });
+
+        return response()->json($data);
     }
 
     private function connectionsCount(int $userId): int
