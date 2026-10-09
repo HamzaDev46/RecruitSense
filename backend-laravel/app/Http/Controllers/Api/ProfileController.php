@@ -24,7 +24,7 @@ class ProfileController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user()->load('jobSeeker.experiences', 'jobSeeker.resume');
+        $user = $request->user()->loadMissing('jobSeeker.experiences', 'jobSeeker.resume');
 
         if ($user->role !== 'jobseeker') {
             return response()->json(['message' => 'Only job seekers can access this profile'], 403);
@@ -33,7 +33,7 @@ class ProfileController extends Controller
         return response()->json(Cache::remember(
             UserCache::profile($user->id),
             UserCache::PROFILE_TTL,
-            fn () => $this->profilePayload($user->fresh()->load('jobSeeker.experiences', 'jobSeeker.resume'), $request)
+            fn () => $this->profilePayload($user, $request)
         ));
     }
 
