@@ -58,6 +58,36 @@ Route::get('/migrate-run', function () {
     }
 });
 
+Route::get('/test-mail-diagnostic', function (Request $request) {
+    $email = $request->query('email', 'humzazahoor4557@gmail.com');
+    try {
+        $user = \App\Models\User::where('email', $email)->first();
+        if (!$user) {
+            $user = new \App\Models\User(['name' => 'Diagnostic Test', 'email' => $email, 'role' => 'jobseeker']);
+        }
+        $verifyUrl = \App\Http\Controllers\Api\AuthController::generateVerificationUrl($user);
+        \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\EmailVerificationMail($user, $verifyUrl));
+        return response()->json([
+            'status' => 'success',
+            'sent_to' => $email,
+            'verify_url' => $verifyUrl,
+            'mailer' => config('mail.default'),
+            'host' => config('mail.mailers.smtp.host'),
+            'port' => config('mail.mailers.smtp.port'),
+            'from' => config('mail.from.address'),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'mailer' => config('mail.default'),
+            'host' => config('mail.mailers.smtp.host'),
+            'port' => config('mail.mailers.smtp.port'),
+            'username' => config('mail.mailers.smtp.username'),
+        ], 500);
+    }
+});
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
