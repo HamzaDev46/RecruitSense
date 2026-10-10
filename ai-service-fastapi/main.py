@@ -35,7 +35,7 @@ app.include_router(quiz_router)
 app.include_router(rag_router)
 
 
-@app.get("/", tags=["System"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["System"])
 async def root():
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -58,7 +58,7 @@ async def root():
     )
 
 
-@app.get("/health", tags=["System"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["System"])
 async def health_check():
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -71,10 +71,10 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 7860))
     print("=" * 60)
-    print(f"🚀 RecruitSense FastAPI AI Microservice running on http://127.0.0.1:{port}")
-    print(f"📚 Swagger UI Docs: http://127.0.0.1:{port}/docs")
-    print(f"📖 ReDoc: http://127.0.0.1:{port}/redoc")
+    print(f"🚀 RecruitSense FastAPI AI Microservice running on port {port}")
+    print(f"📚 Swagger UI Docs: http://0.0.0.0:{port}/docs")
+    print(f"📖 ReDoc: http://0.0.0.0:{port}/redoc")
     print("=" * 60)
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
