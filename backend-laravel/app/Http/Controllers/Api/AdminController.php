@@ -160,7 +160,14 @@ class AdminController extends Controller
         $user->forceFill([
             'account_status' => $data['account_status'],
             'admin_note' => trim((string) ($data['admin_note'] ?? '')) ?: null,
-        ])->save();
+        ]);
+
+        if ($request->has('email_verified') || $request->has('verify_email')) {
+            $shouldVerify = $request->boolean('email_verified') || $request->boolean('verify_email');
+            $user->email_verified_at = $shouldVerify ? ($user->email_verified_at ?: now()) : null;
+        }
+
+        $user->save();
 
         if ($user->account_status === 'suspended') {
             $user->tokens()->delete();
@@ -321,6 +328,7 @@ class AdminController extends Controller
             'email_notifications' => $request->input('email_notifications', $request->input('emailNotifications')),
             'maintenance_mode' => $request->input('maintenance_mode', $request->input('maintenanceMode')),
             'auto_verify_companies' => $request->input('auto_verify_companies', $request->input('autoVerifyCompanies')),
+            'require_email_verification' => $request->input('require_email_verification', $request->input('requireEmailVerification', false)),
         ];
 
         $validator = Validator::make($input, [
@@ -330,6 +338,7 @@ class AdminController extends Controller
             'email_notifications' => ['required', 'boolean'],
             'maintenance_mode' => ['required', 'boolean'],
             'auto_verify_companies' => ['required', 'boolean'],
+            'require_email_verification' => ['required', 'boolean'],
         ]);
 
         if ($validator->fails()) {

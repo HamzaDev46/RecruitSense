@@ -90,13 +90,33 @@ class AuthController extends Controller
 
         $this->ensureRoleProfile($user, $request->all());
 
+        $requireVerification = AdminSetting::getValue('require_email_verification', false);
+
+        if (!$requireVerification) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Registration successful! Welcome to RecruitSense.',
+                'requires_verification' => false,
+                'email' => $user->email,
+                'user' => $user->fresh(),
+                'token' => $token,
+            ], 201);
+        }
+
         $verifyUrl = self::generateVerificationUrl($user);
-        \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
+        try {
+            \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Email send failed: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox and verify your email to activate your account.',
+            'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox to activate your account.',
             'requires_verification' => true,
             'email' => $user->email,
+            'verify_url' => $verifyUrl,
             'user' => $user,
         ], 201);
     }
@@ -185,12 +205,17 @@ class AuthController extends Controller
         }
 
         $verifyUrl = self::generateVerificationUrl($user);
-        \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
+        try {
+            \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Email resend failed: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'A fresh verification link has been sent to ' . $user->email . '. Please check your inbox.',
+            'message' => 'A fresh verification link has been generated. Please check your inbox or use the link below.',
             'requires_verification' => true,
             'email' => $user->email,
+            'verify_url' => $verifyUrl,
         ], 200);
     }
 
@@ -387,13 +412,22 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        // Check if account email is verified (skip for admin if needed, but enforce for jobseeker and company)
+        // Check if account email is verified
         if (!$user->email_verified_at && $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Your email address is not verified yet. Please check your inbox or resend the activation link.',
-                'requires_verification' => true,
-                'email' => $user->email,
-            ], 403);
+            $requireVerification = AdminSetting::getValue('require_email_verification', false);
+
+            if (!$requireVerification) {
+                // If verification is not required by admin (e.g. cloud hosting where SMTP is blocked), auto-verify
+                $user->forceFill(['email_verified_at' => now(), 'account_status' => 'active'])->save();
+            } else {
+                $verifyUrl = self::generateVerificationUrl($user);
+                return response()->json([
+                    'message' => 'Your email address is not verified yet. Please check your inbox or click the activation link.',
+                    'requires_verification' => true,
+                    'email' => $user->email,
+                    'verify_url' => $verifyUrl,
+                ], 403);
+            }
         }
 
         if (($user->account_status ?? 'active') === 'suspended') {

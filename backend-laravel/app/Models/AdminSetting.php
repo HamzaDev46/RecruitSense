@@ -17,6 +17,7 @@ class AdminSetting extends Model
             'email_notifications' => true,
             'maintenance_mode' => false,
             'auto_verify_companies' => true,
+            'require_email_verification' => false,
         ];
     }
 

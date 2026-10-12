@@ -14,6 +14,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
   const [unverifiedEmail, setUnverifiedEmail] = useState(null)
+  const [directVerifyUrl, setDirectVerifyUrl] = useState('')
   const [resending, setResending] = useState(false)
 
   const finishLogin = useCallback((user, token, message = `Welcome back, ${user.name}!`) => {
@@ -36,6 +37,7 @@ const LoginPage = () => {
     e.preventDefault()
     setLoading(true)
     setUnverifiedEmail(null)
+    setDirectVerifyUrl('')
     try {
       const res = await api.post('/login', form)
       const { token, user } = res.data
@@ -43,6 +45,9 @@ const LoginPage = () => {
     } catch (err) {
       if (err.response?.data?.requires_verification) {
         setUnverifiedEmail(err.response?.data?.email || form.email)
+        if (err.response?.data?.verify_url) {
+          setDirectVerifyUrl(err.response?.data?.verify_url)
+        }
       }
       const errors = err.response?.data?.errors
       if (errors) {
@@ -60,7 +65,10 @@ const LoginPage = () => {
     setResending(true)
     try {
       const res = await api.post('/resend-verification', { email: unverifiedEmail })
-      toast.success(res.data.message || 'Activation link re-sent!')
+      if (res.data?.verify_url) {
+        setDirectVerifyUrl(res.data.verify_url)
+      }
+      toast.success(res.data.message || 'Activation link generated!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not resend email.')
     } finally {
@@ -99,6 +107,14 @@ const LoginPage = () => {
             <p className="text-xs text-amber-700 leading-relaxed">
               We sent a verification link to <strong>{unverifiedEmail}</strong>. Please verify your email before logging in.
             </p>
+            {directVerifyUrl && (
+              <a
+                href={directVerifyUrl}
+                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-center block shadow-sm shadow-emerald-600/30"
+              >
+                Activate Account Instantly Now
+              </a>
+            )}
             <button
               type="button"
               onClick={handleResend}

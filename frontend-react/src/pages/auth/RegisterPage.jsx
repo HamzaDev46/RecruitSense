@@ -53,6 +53,7 @@ const RegisterPage = () => {
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const [directVerifyUrl, setDirectVerifyUrl] = useState('')
 
   const emailValidation = form.email ? validateTrustedEmail(form.email) : null
 
@@ -96,9 +97,12 @@ const RegisterPage = () => {
       const res = await api.post('/register', payload)
       if (res.data.requires_verification) {
         setRegisteredEmail(res.data.email || form.email)
+        if (res.data.verify_url) {
+          setDirectVerifyUrl(res.data.verify_url)
+        }
         setVerificationSent(true)
         setCooldown(60)
-        toast.success(res.data.message || 'Verification email sent! Please check your inbox.')
+        toast.success(res.data.message || 'Verification link generated! Please activate your account.')
       } else {
         const { token, user } = res.data
         finishRegistration(user, token)
@@ -120,7 +124,10 @@ const RegisterPage = () => {
     setResending(true)
     try {
       const res = await api.post('/resend-verification', { email: registeredEmail })
-      toast.success(res.data.message || 'Fresh verification link sent!')
+      if (res.data.verify_url) {
+        setDirectVerifyUrl(res.data.verify_url)
+      }
+      toast.success(res.data.message || 'Fresh verification link generated!')
       setCooldown(60)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not resend email.')
@@ -178,6 +185,16 @@ const RegisterPage = () => {
             </div>
 
             <div className="space-y-3 pt-2">
+              {directVerifyUrl && (
+                <a
+                  href={directVerifyUrl}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Activate Account Instantly Now
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleResend}
