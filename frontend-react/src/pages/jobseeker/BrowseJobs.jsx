@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 import {
@@ -337,10 +338,14 @@ const BrowseJobs = () => {
           {/* Left - Job List */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-y-auto max-h-[42vh] lg:max-h-none">
             {loading ? (
-              <div className="p-4 space-y-3">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
-                ))}
+              <div className="p-4">
+                <PageContentLoader
+                  compact
+                  count={3}
+                  type="list"
+                  title="Loading job listings..."
+                  subtitle="Fetching opportunities..."
+                />
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6">

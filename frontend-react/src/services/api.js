@@ -10,13 +10,46 @@ const api = axios.create({
   }
 })
 
-// Automatically add token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+let activeRequestsCount = 0
+
+function emitLoadingState() {
+  const isLoading = activeRequestsCount > 0
+  window.dispatchEvent(
+    new CustomEvent('recruitsense-api-loading', {
+      detail: { loading: isLoading, count: activeRequestsCount }
+    })
+  )
+}
+
+// Automatically add token to every request and track loading
+api.interceptors.request.use(
+  (config) => {
+    activeRequestsCount++
+    emitLoadingState()
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1)
+    emitLoadingState()
+    return Promise.reject(error)
   }
-  return config
-})
+)
+
+api.interceptors.response.use(
+  (response) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1)
+    emitLoadingState()
+    return response
+  },
+  (error) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1)
+    emitLoadingState()
+    return Promise.reject(error)
+  }
+)
 
 export default api

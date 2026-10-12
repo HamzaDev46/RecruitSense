@@ -16,6 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const filterOptions = [

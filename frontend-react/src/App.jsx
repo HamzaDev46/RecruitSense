@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { Brain } from 'lucide-react'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
+import GlobalNetworkLoader from './components/common/GlobalNetworkLoader'
 
 const pageImports = {
   landing: () => import('./pages/LandingPage'),
@@ -208,6 +209,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <GlobalNetworkLoader />
       <Toaster position="top-right" />
       <AppErrorBoundary>
         <RouteClickSpinner />

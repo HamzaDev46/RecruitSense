@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import OnboardingGuideModal from '../../components/jobseeker/OnboardingGuideModal'
 import CompanyLogo from '../../components/CompanyLogo'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
@@ -246,6 +247,14 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
+        {loading ? (
+          <PageContentLoader
+            type="dashboard"
+            title="Loading your career dashboard..."
+            subtitle="Fetching your applications, profile metrics, and personalized job matches..."
+          />
+        ) : (
+          <>
         <section className="md:hidden mb-6 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -672,6 +681,8 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       <OnboardingGuideModal

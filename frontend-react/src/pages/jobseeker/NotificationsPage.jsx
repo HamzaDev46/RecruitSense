@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   ClipboardList, User, Building2, Briefcase, CheckCircle,
   XCircle, Upload, Bell, Flag, Search, RefreshCw, X, Calendar
 } from 'lucide-react'
 import AdminLayout from '../../components/admin/AdminLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -34,26 +35,22 @@ const ActivityLog = () => {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let mounted = true
-    const fetchActivity = async () => {
-      setLoading(true)
-      try {
-        const res = await api.get('/admin/activity-log')
-        if (mounted) setLogs(res.data.activities || [])
-      } catch (err) {
-        if (mounted) {
-          const msg = err.response?.data?.message || 'Failed to load activity log'
-          toast.error(msg === 'Unauthorized' ? 'Admin access required.' : msg)
-        }
-      } finally {
-        if (mounted) setLoading(false)
-      }
+  const fetchActivity = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/activity-log')
+      setLogs(res.data?.activities || [])
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to load activity log'
+      toast.error(msg === 'Unauthorized' ? 'Admin access required.' : msg)
+    } finally {
+      setLoading(false)
     }
-
-    fetchActivity()
-    return () => { mounted = false }
   }, [])
+
+  useEffect(() => {
+    fetchActivity()
+  }, [fetchActivity])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -140,10 +137,13 @@ const ActivityLog = () => {
           </div>
 
           {loading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <div key={item} className="h-16 bg-gray-50 rounded-2xl animate-pulse" />
-              ))}
+            <div className="p-6">
+              <PageContentLoader
+                type="list"
+                count={5}
+                title="Loading audit log..."
+                subtitle="Fetching recent platform-wide actions and events..."
+              />
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center">

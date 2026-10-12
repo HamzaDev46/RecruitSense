@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle, FileText, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -201,7 +202,15 @@ const ResumeUpload = () => {
               <h3 className="font-bold text-gray-900 mb-4">Current Resume</h3>
 
               {loading ? (
-                <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+                <div className="py-2">
+                  <PageContentLoader
+                    compact
+                    count={1}
+                    type="list"
+                    title="Loading resume..."
+                    subtitle="Fetching uploaded resume..."
+                  />
+                </div>
               ) : resume ? (
                 <>
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">

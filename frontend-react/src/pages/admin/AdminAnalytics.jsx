@@ -11,6 +11,7 @@ import {
   Pie, Cell, Legend, AreaChart, Area
 } from 'recharts'
 import AdminLayout from '../../components/admin/AdminLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 

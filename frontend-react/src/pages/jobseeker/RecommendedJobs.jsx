@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import {
   formatDeadline,

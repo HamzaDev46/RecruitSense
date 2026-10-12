@@ -35,6 +35,7 @@ import {
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
 import CandidateRAGChatModal from '../../components/company/CandidateRAGChatModal'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
@@ -1386,10 +1387,14 @@ const CompanyApplicants = () => {
         <div className="grid lg:grid-cols-5 gap-4 lg:gap-6">
           <section className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {loading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="h-28 bg-gray-100 rounded-xl animate-pulse" />
-                ))}
+              <div className="p-4">
+                <PageContentLoader
+                  compact
+                  count={4}
+                  type="list"
+                  title="Loading candidate applicants..."
+                  subtitle="Calculating match scores and parsing resumes..."
+                />
               </div>
             ) : filteredApplications.length === 0 ? (
               <div className="p-8 text-center">

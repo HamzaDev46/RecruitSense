@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { useAuth } from '../../context/useAuth'
 
@@ -234,21 +235,12 @@ const CandidateDiscovery = () => {
 
         {/* Candidate Cards Grid */}
         {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gray-200" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-2/3" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  </div>
-                </div>
-                <div className="h-12 bg-gray-100 rounded-xl" />
-                <div className="h-9 bg-gray-100 rounded-xl" />
-              </div>
-            ))}
-          </div>
+          <PageContentLoader
+            title="Discovering Registered Candidates..."
+            subtitle="Fetching top talent profiles, skills, and portfolio details from RecruitSense..."
+            type="cards"
+            count={6}
+          />
         ) : candidates.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center space-y-3">
             <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">

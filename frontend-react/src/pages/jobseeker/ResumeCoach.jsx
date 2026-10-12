@@ -15,6 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const scoreClass = (score) => {
@@ -99,11 +100,12 @@ const ResumeCoach = () => {
         </div>
 
         {loading ? (
-          <div className="grid lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <div key={item} className="h-40 bg-white border border-gray-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <PageContentLoader
+            type="cards"
+            count={6}
+            title="Analyzing your resume & career profile..."
+            subtitle="AI Coach is evaluating your skills, match gaps, and suggested improvements..."
+          />
         ) : !insights ? (
           <div className="bg-white border border-dashed border-gray-200 rounded-xl p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />

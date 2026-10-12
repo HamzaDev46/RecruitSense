@@ -33,6 +33,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import CompanyLogo from '../../components/CompanyLogo'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
@@ -667,11 +668,12 @@ const MyApplications = () => {
         </div>
 
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="h-28 bg-white rounded-xl border border-gray-100 animate-pulse" />
-            ))}
-          </div>
+          <PageContentLoader
+            title="Loading Your Job Applications..."
+            subtitle="Fetching application timeline, match scores, assessment status, and interview schedules..."
+            type="list"
+            count={4}
+          />
         ) : filteredApplications.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-gray-200 p-14 text-center">
             <ClipboardList className="w-14 h-14 mx-auto mb-4 text-gray-200" />

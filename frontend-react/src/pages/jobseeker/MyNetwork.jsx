@@ -3,6 +3,7 @@ import { Building2, Check, Clock, MapPin, MessageCircle, Search, UserCheck, User
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const initials = (name = 'User') => name
@@ -232,6 +233,15 @@ const MyNetwork = () => {
           <p className="text-gray-500 text-sm mt-1">Manage connections, invitations, and people you may know.</p>
         </div>
 
+        {loading ? (
+          <PageContentLoader
+            type="cards"
+            count={6}
+            title="Loading your professional network..."
+            subtitle="Fetching connections, pending invitations, and networking suggestions..."
+          />
+        ) : (
+          <>
         <div className="grid sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           {[
             { label: 'Connections', value: connections.length, icon: <Users className="w-5 h-5" />, color: 'text-sky-600', bg: 'bg-sky-50' },
@@ -409,6 +419,8 @@ const MyNetwork = () => {
             </div>
           </aside>
         </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   )

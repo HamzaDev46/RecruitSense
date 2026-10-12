@@ -17,6 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, isJobExpired } from '../../utils/jobDetails'
 
@@ -438,6 +439,7 @@ const CompanyDashboard = () => {
             </div>
           </div>
 
+          
           <div className="mt-6 grid md:grid-cols-3 gap-3">
             <div className="rounded-xl bg-amber-50 p-4">
               <p className="text-xs font-semibold uppercase text-amber-700">Next action</p>
@@ -463,6 +465,14 @@ const CompanyDashboard = () => {
           </div>
         </div>
 
+        {loading ? (
+          <PageContentLoader
+            type="dashboard"
+            title="Loading hiring dashboard..."
+            subtitle="Fetching pipeline metrics, applicant conversion rates, and interview schedules..."
+          />
+        ) : (
+          <>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {priorityCards.map((card, index) => (
             <PriorityCard
@@ -741,6 +751,8 @@ const CompanyDashboard = () => {
             <p className="text-sm text-gray-500 mt-1">{stats.quiz_questions} soft-skill questions configured.</p>
           </button>
         </div>
+          </>
+        )}
       </div>
     </CompanyLayout>
   )

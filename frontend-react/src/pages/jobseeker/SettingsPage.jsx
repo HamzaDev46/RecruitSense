@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 import { validateTrustedEmail } from '../../utils/emailValidation'
@@ -276,11 +277,12 @@ const SettingsPage = () => {
         </div>
 
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="h-44 bg-white border border-gray-100 rounded-lg animate-pulse" />
-            ))}
-          </div>
+          <PageContentLoader
+            type="cards"
+            count={4}
+            title="Loading your account settings..."
+            subtitle="Fetching security preferences, notification alerts, and profile options..."
+          />
         ) : (
           <>
             <div className="grid lg:grid-cols-2 gap-6">

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import ApplyJobModal from '../../components/jobseeker/ApplyJobModal'
 import CompanyLogo from '../../components/CompanyLogo'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import {
   formatDeadline,
@@ -148,11 +149,12 @@ const SavedJobs = () => {
         </div>
 
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="h-40 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-            ))}
-          </div>
+          <PageContentLoader
+            type="cards"
+            count={3}
+            title="Loading your saved jobs..."
+            subtitle="Fetching bookmarked opportunities and deadlines..."
+          />
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-12 text-center">
             <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-3" />

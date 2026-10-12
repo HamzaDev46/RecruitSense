@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const emptyForm = {

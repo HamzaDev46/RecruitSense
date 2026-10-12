@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const dateFilterOptions = [
@@ -508,10 +509,14 @@ const CompanyInterviews = () => {
           </div>
 
           {loading ? (
-            <div className="p-5 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-28 rounded-xl bg-gray-100 animate-pulse" />
-              ))}
+            <div className="p-4">
+              <PageContentLoader
+                compact
+                count={3}
+                type="cards"
+                title="Loading candidates ready for interview..."
+                subtitle="Fetching shortlisted applicants..."
+              />
             </div>
           ) : readyCandidates.length === 0 ? (
             <div className="p-6 text-center">
@@ -587,10 +592,14 @@ const CompanyInterviews = () => {
           </div>
 
           {loading ? (
-            <div className="p-5 space-y-3">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-28 rounded-xl bg-gray-100 animate-pulse" />
-              ))}
+            <div className="p-4">
+              <PageContentLoader
+                compact
+                count={3}
+                type="list"
+                title="Loading interview schedule..."
+                subtitle="Fetching scheduled video and in-person interviews..."
+              />
             </div>
           ) : filteredInterviews.length === 0 ? (
             <div className="p-10 text-center">

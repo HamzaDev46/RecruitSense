@@ -3,6 +3,7 @@ import { Banknote, Briefcase, Eye, FileText, MapPin, MessageCircle, Search, Time
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
 
@@ -137,11 +138,12 @@ const SearchPageContent = ({ initialQuery }) => {
         </div>
 
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="h-32 bg-white border border-gray-100 rounded-lg animate-pulse" />
-            ))}
-          </div>
+          <PageContentLoader
+            type="list"
+            count={4}
+            title="Searching across RecruitSense..."
+            subtitle="Looking for jobs, people, and matching opportunities..."
+          />
         ) : totalCount === 0 ? (
           <EmptyState query={initialQuery.trim()} />
         ) : (

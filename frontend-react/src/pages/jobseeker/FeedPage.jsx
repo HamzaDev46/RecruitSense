@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import PostCard from '../../components/posts/PostCard'
 import CreatePostModal from '../../components/posts/CreatePostModal'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import { useAuth } from '../../context/useAuth'
 
@@ -238,11 +239,12 @@ const FeedPage = () => {
 
           {/* Posts Stream */}
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-56 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-              ))}
-            </div>
+            <PageContentLoader
+              type="cards"
+              count={3}
+              title="Loading community feed..."
+              subtitle="Fetching discussions, thoughts, and career updates..."
+            />
           ) : displayedPosts.length === 0 ? (
             <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-12 text-center shadow-xs">
               <div className="w-14 h-14 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center mx-auto mb-3">

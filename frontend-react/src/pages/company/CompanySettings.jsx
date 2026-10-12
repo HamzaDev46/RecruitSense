@@ -27,6 +27,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
@@ -1064,10 +1065,11 @@ const CompanySettings = () => {
         </div>
 
         {loading ? (
-          <div className="grid lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
-            <div className="h-80 rounded-2xl border border-gray-100 bg-white animate-pulse" />
-            <div className="h-96 rounded-2xl border border-gray-100 bg-white animate-pulse" />
-          </div>
+          <PageContentLoader
+            type="dashboard"
+            title="Loading company settings..."
+            subtitle="Fetching organization profile, branding assets, and hiring configuration..."
+          />
         ) : (
           <div className="grid lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
             <aside className="space-y-4">

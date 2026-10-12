@@ -20,6 +20,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import CompanyLayout from '../../components/company/CompanyLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
@@ -444,10 +445,14 @@ const MessagesPage = () => {
 
             <div className="overflow-y-auto flex-1">
               {loading ? (
-                <div className="p-4 space-y-3">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
-                  ))}
+                <div className="p-4">
+                  <PageContentLoader
+                    compact
+                    count={4}
+                    type="list"
+                    title="Loading chats..."
+                    subtitle="Fetching conversations..."
+                  />
                 </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-8 text-center">

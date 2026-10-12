@@ -16,6 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 
 const emptyForm = {
@@ -306,12 +307,13 @@ const JobAlerts = () => {
 
           <div>
             {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-44 bg-white border border-gray-100 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : alerts.length === 0 ? (
+            <PageContentLoader
+              type="cards"
+              count={3}
+              title="Loading your job alerts..."
+              subtitle="Fetching your customized match triggers and notifications..."
+            />
+          ) : alerts.length === 0 ? (
               <div className="bg-white border border-dashed border-gray-200 rounded-xl p-12 text-center">
                 <BellRing className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <h2 className="font-bold text-gray-900">No job alerts yet</h2>

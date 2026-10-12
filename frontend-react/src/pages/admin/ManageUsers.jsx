@@ -6,6 +6,7 @@ import {
   ShieldCheck, ExternalLink, RefreshCw, CheckCircle2, User
 } from 'lucide-react'
 import AdminLayout from '../../components/admin/AdminLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -155,10 +156,13 @@ const ManageUsers = () => {
           </div>
 
           {loading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
-              ))}
+            <div className="p-6">
+              <PageContentLoader
+                type="table"
+                count={5}
+                title="Loading job seekers..."
+                subtitle="Fetching candidate accounts, verifications, and details..."
+              />
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center">

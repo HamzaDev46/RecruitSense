@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../../components/admin/AdminLayout'
+import PageContentLoader from '../../components/common/PageContentLoader'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -177,6 +178,14 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
 
+        {loading ? (
+          <PageContentLoader
+            type="dashboard"
+            title="Loading administrative dashboard..."
+            subtitle="Fetching platform statistics, active jobs, and verification queues..."
+          />
+        ) : (
+          <>
         {/* Primary 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {primaryCards.map((card, idx) => (
@@ -533,7 +542,8 @@ const AdminDashboard = () => {
             )}
           </div>
         </motion.div>
-
+          </>
+        )}
       </div>
     </AdminLayout>
   )
