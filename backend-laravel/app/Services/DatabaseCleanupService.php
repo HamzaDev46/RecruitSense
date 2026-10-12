@@ -70,12 +70,15 @@ class DatabaseCleanupService
                 // 4. Delete JobSeeker Data
                 if (!empty($jobSeekerIds)) {
                     Resume::whereIn('job_seeker_id', $jobSeekerIds)->delete();
-                    JobAlert::whereIn('job_seeker_id', $jobSeekerIds)->delete();
                     SavedJob::whereIn('job_seeker_id', $jobSeekerIds)->delete();
                     JobExperience::whereIn('job_seeker_id', $jobSeekerIds)->delete();
-                    SearchAppearance::whereIn('job_seeker_id', $jobSeekerIds)->delete();
                     $deletedCounts['job_seekers'] = JobSeeker::whereIn('id', $jobSeekerIds)->delete();
                 }
+
+                JobAlert::whereIn('user_id', $nonAdminUserIds)->delete();
+                SearchAppearance::whereIn('profile_user_id', $nonAdminUserIds)
+                    ->orWhereIn('searcher_user_id', $nonAdminUserIds)
+                    ->delete();
 
                 // 5. Delete Company & Job Data
                 if (!empty($companyIds)) {
