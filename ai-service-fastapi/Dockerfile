@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=7860 \
+    PORT=10000 \
     HOME=/home/user
 
 # Install system dependencies
@@ -31,7 +31,7 @@ COPY --chown=user:user . .
 # Ensure chroma_db directory exists and is writable
 RUN mkdir -p chroma_db
 
-EXPOSE 7860
+EXPOSE 10000
 
-# Run FastAPI with Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run FastAPI with Uvicorn dynamically on $PORT
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"]
