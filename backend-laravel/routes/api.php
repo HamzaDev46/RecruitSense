@@ -58,13 +58,6 @@ Route::get('/migrate-run', function () {
     }
 });
 
-Route::get('/clean-test-users', function (Request $request) {
-    if ($request->query('secret') !== 'recruitsense_wipe_2026') {
-        return response()->json(['error' => 'Unauthorized. Secret key required.'], 403);
-    }
-    $result = \App\Services\DatabaseCleanupService::cleanNonAdminAccounts();
-    return response()->json($result);
-});
 
 Route::get('/test-mail-diagnostic', function (Request $request) {
     $email = $request->query('email', 'humzazahoor4557@gmail.com');
