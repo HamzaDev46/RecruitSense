@@ -347,7 +347,12 @@ class ApplicationController extends Controller
         $application->status = Application::STATUS_SHORTLISTED;
         $application->save();
 
-        Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
+        try {
+            Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
+            \Illuminate\Support\Facades\Log::info("Shortlist email sent to candidate: {$application->jobSeeker->user->email}");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Shortlist email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
+        }
 
         if ($previousStatus !== Application::STATUS_SHORTLISTED) {
             $this->createNotification(
@@ -389,7 +394,12 @@ class ApplicationController extends Controller
         $application->save();
 
         if ($previousStatus !== Application::STATUS_REJECTED) {
-            Mail::to($application->jobSeeker->user->email)->send(new RejectionMail($application));
+            try {
+                Mail::to($application->jobSeeker->user->email)->send(new RejectionMail($application));
+                \Illuminate\Support\Facades\Log::info("Rejection email sent to candidate: {$application->jobSeeker->user->email}");
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Rejection email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
+            }
 
             $this->createNotification(
                 $application->jobSeeker->user->id,
@@ -459,7 +469,12 @@ class ApplicationController extends Controller
             ->format('M d, Y h:i A');
         $type = $previousSchedule ? 'interview_rescheduled' : 'interview_scheduled';
 
-        Mail::to($application->jobSeeker->user->email)->send(new InterviewScheduledMail($application, (bool) $previousSchedule));
+        try {
+            Mail::to($application->jobSeeker->user->email)->send(new InterviewScheduledMail($application, (bool) $previousSchedule));
+            \Illuminate\Support\Facades\Log::info("Interview email sent to candidate: {$application->jobSeeker->user->email}");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Interview email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
+        }
 
         $this->createNotification(
             $application->jobSeeker->user->id,
@@ -779,15 +794,22 @@ class ApplicationController extends Controller
             ? $application->offer_start_date->format('M j, Y')
             : null;
 
-        if ($status === Application::STATUS_SHORTLISTED) {
-            Mail::to($candidateUser->email)->send(new ShortlistMail($application));
-        } elseif ($status === Application::STATUS_REJECTED) {
-            Mail::to($candidateUser->email)->send(new RejectionMail($application));
-        } elseif (in_array($status, [Application::STATUS_OFFERED, Application::STATUS_HIRED], true)) {
-            Mail::to($candidateUser->email)->send(new OfferDecisionMail(
-                $application,
-                $status === Application::STATUS_HIRED
-            ));
+        try {
+            if ($status === Application::STATUS_SHORTLISTED) {
+                Mail::to($candidateUser->email)->send(new ShortlistMail($application));
+                \Illuminate\Support\Facades\Log::info("Pipeline Shortlist mail sent to: {$candidateUser->email}");
+            } elseif ($status === Application::STATUS_REJECTED) {
+                Mail::to($candidateUser->email)->send(new RejectionMail($application));
+                \Illuminate\Support\Facades\Log::info("Pipeline Rejection mail sent to: {$candidateUser->email}");
+            } elseif (in_array($status, [Application::STATUS_OFFERED, Application::STATUS_HIRED], true)) {
+                Mail::to($candidateUser->email)->send(new OfferDecisionMail(
+                    $application,
+                    $status === Application::STATUS_HIRED
+                ));
+                \Illuminate\Support\Facades\Log::info("Pipeline Offer/Hired mail sent to: {$candidateUser->email}");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Pipeline status mail failed for {$candidateUser->email}: " . $e->getMessage());
         }
 
         $type = match ($status) {

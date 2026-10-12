@@ -98,9 +98,10 @@ class CloudEmailService
                     ->subject($subject)
                     ->html($htmlContent);
             });
+            Log::info("Email successfully sent via SMTP to: {$toEmail}");
             return true;
         } catch (\Throwable $e) {
-            Log::warning('SMTP Mail sending failed: ' . $e->getMessage());
+            Log::error("SMTP Mail sending failed to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }

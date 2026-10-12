@@ -97,7 +97,6 @@ class AuthController extends Controller
             'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox and verify your email to activate your account.',
             'requires_verification' => true,
             'email' => $user->email,
-            'verification_url' => $verifyUrl,
             'user' => $user,
         ], 201);
     }
@@ -192,7 +191,6 @@ class AuthController extends Controller
             'message' => 'A fresh verification link has been sent to ' . $user->email . '. Please check your inbox.',
             'requires_verification' => true,
             'email' => $user->email,
-            'verification_url' => $verifyUrl,
         ], 200);
     }
 
@@ -455,12 +453,16 @@ class AuthController extends Controller
 
     private function sendWelcomeMail(User $user): void
     {
-        if ($user->role === 'company') {
-            Mail::to($user->email)->send(new CompanyWelcomeMail($user));
-        }
-
-        if ($user->role === 'jobseeker') {
-            Mail::to($user->email)->send(new JobSeekerWelcomeMail($user));
+        try {
+            if ($user->role === 'company') {
+                Mail::to($user->email)->send(new CompanyWelcomeMail($user));
+                \Illuminate\Support\Facades\Log::info("Company welcome email sent to: {$user->email}");
+            } elseif ($user->role === 'jobseeker') {
+                Mail::to($user->email)->send(new JobSeekerWelcomeMail($user));
+                \Illuminate\Support\Facades\Log::info("Jobseeker welcome email sent to: {$user->email}");
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Welcome email failed for {$user->email}: " . $e->getMessage());
         }
     }
 }

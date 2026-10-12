@@ -39,14 +39,14 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME', 'smtps'),
+            'scheme' => env('MAIL_SCHEME', null),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', 'smtp.gmail.com'),
             'port' => (int) env('MAIL_PORT', 465),
             'username' => env('MAIL_USERNAME', 'hamzazahoor4556@gmail.com'),
             'password' => env('MAIL_PASSWORD', 'oakaimjspbvrecwx'),
             'encryption' => env('MAIL_ENCRYPTION', 'ssl'),
-            'timeout' => (int) env('MAIL_TIMEOUT', 10),
+            'timeout' => (int) env('MAIL_TIMEOUT', 15),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 

@@ -121,14 +121,25 @@ class MessageController extends Controller
 
             $this->syncLastMessageAt($conversation);
 
-            AppNotification::create([
-                'user_id' => $user->id,
-                'type' => 'new_message',
-                'title' => 'New Message from ' . ($currentUser->company?->name ?: $currentUser->name),
-                'message' => Str::limit($initialBody, 120),
-                'link' => '/messages?conversation=' . $conversation->id,
-                'actor_user_id' => $currentUser->id,
-            ]);
+            try {
+                if ($user->notificationEnabledFor('message_received')) {
+                    AppNotification::create([
+                        'user_id' => $user->id,
+                        'actor_id' => $currentUser->id,
+                        'type' => 'message_received',
+                        'title' => 'New message',
+                        'message' => ($currentUser->company?->name ?: $currentUser->name) . ' sent you a message: ' . Str::limit($initialBody, 100),
+                        'data' => [
+                            'link' => '/messages?conversation=' . $conversation->id,
+                            'conversation_id' => $conversation->id,
+                            'sender_id' => $currentUser->id,
+                        ],
+                    ]);
+                    UserCache::forgetUnreadNotifications($user->id);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to create start message notification: ' . $e->getMessage());
+            }
 
             UserCache::forgetUnreadMessages($user->id);
         }
