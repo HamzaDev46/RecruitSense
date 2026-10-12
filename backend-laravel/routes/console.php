@@ -18,3 +18,15 @@ Artisan::command('users:clean-non-admins', function () {
     }
 })->purpose('Safely delete all non-admin accounts and related data');
 
+Artisan::command('db:seed-50-companies', function () {
+    $this->info('Starting mass seeding of 50+ companies and 500+ jobs...');
+    $result = \App\Services\MassCompanySeederService::seed50Companies();
+    if ($result['status'] === 'success') {
+        $this->info($result['message']);
+        $this->info("Total Companies: {$result['total_companies']} | Total Jobs: {$result['total_jobs']}");
+    } else {
+        $this->error('Error: ' . $result['message']);
+    }
+})->purpose('Seed 50 diverse companies with at least 10 jobs each');
+
+

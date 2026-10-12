@@ -59,6 +59,14 @@ Route::get('/migrate-run', function () {
 });
 
 
+Route::get('/seed-50-companies', function (Request $request) {
+    if ($request->query('secret') !== 'recruitsense_seed_2026') {
+        return response()->json(['error' => 'Unauthorized. Secret key required.'], 403);
+    }
+    $result = \App\Services\MassCompanySeederService::seed50Companies();
+    return response()->json($result);
+});
+
 Route::get('/test-mail-diagnostic', function (Request $request) {
     $email = $request->query('email', 'humzazahoor4557@gmail.com');
     
