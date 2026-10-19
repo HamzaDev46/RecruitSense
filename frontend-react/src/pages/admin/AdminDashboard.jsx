@@ -135,22 +135,47 @@ const AdminDashboard = () => {
     <AdminLayout>
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Hero Header Banner */}
+        {/* Hero Header Banner with Ambient Floating Glow Orbs */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-950/20 border border-slate-800/80"
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-gradient-to-r from-slate-950 via-indigo-950 to-purple-950 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-950/25 border border-slate-800/80"
         >
-          <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute left-1/3 bottom-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Animated Ambient Light Orbs */}
+          <motion.div
+            animate={{
+              x: [0, 25, 0],
+              y: [0, -15, 0],
+              scale: [1, 1.1, 1],
+              opacity: [0.15, 0.3, 0.15],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute right-0 top-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none"
+          />
+          <motion.div
+            animate={{
+              x: [0, -20, 0],
+              y: [0, 15, 0],
+              scale: [1, 1.15, 1],
+              opacity: [0.1, 0.25, 0.1],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute left-1/4 bottom-0 w-80 h-80 bg-gradient-to-tr from-purple-500/20 to-pink-500/10 rounded-full blur-3xl pointer-events-none"
+          />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-indigo-300 border border-white/10">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                Executive Control Dashboard
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-indigo-300 border border-white/15 shadow-inner"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-spin" style={{ animationDuration: '6s' }} />
+                <span>Executive Control Dashboard</span>
+              </motion.div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-200">
                 Platform Intelligence & Oversight
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -159,21 +184,25 @@ const AdminDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={fetchDashboardData}
                 disabled={loading}
                 className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-lg backdrop-blur-md"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 Sync Data
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('/admin/broadcast')}
-                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/30"
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/35 ring-1 ring-white/20"
               >
-                <Bell className="w-3.5 h-3.5" />
+                <Bell className="w-3.5 h-3.5 animate-bounce" style={{ animationDuration: '2s' }} />
                 Broadcast
-              </button>
+              </motion.button>
             </div>
           </div>
         </motion.div>
@@ -186,37 +215,60 @@ const AdminDashboard = () => {
           />
         ) : (
           <>
-        {/* Primary 4 Metric Cards */}
+        {/* Primary 4 Metric Cards with Staggered Entrance & Interactive Hover Lift */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {primaryCards.map((card, idx) => (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{
+                delay: idx * 0.08,
+                type: 'spring',
+                stiffness: 300,
+                damping: 24,
+              }}
+              whileHover={{
+                y: -6,
+                scale: 1.018,
+                transition: { duration: 0.2 },
+              }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate(card.path)}
-              className="bg-white rounded-2xl p-5 border border-gray-100/80 hover:border-indigo-200 shadow-sm hover:shadow-lg transition-all cursor-pointer group relative overflow-hidden"
+              className="bg-white rounded-2xl p-5 border border-gray-100/90 hover:border-indigo-200/90 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all cursor-pointer group relative overflow-hidden"
             >
+              {/* Subtle Animated Top Highlight Line on Hover */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
               <div className="flex items-center justify-between mb-4">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold ${card.glow} group-hover:scale-110 transition-transform`}>
+                <motion.div
+                  whileHover={{ rotate: 8, scale: 1.12 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold ${card.glow} shadow-sm`}
+                >
                   {card.icon}
-                </div>
-                <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
+                </motion.div>
+                <span className="text-[11px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 flex items-center gap-1 group-hover:text-indigo-600 group-hover:bg-indigo-50/50 group-hover:border-indigo-100 transition-all">
                   {card.trend}
-                  <ArrowUpRight className="w-3 h-3" />
+                  <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </span>
               </div>
 
               <div>
-                <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                <motion.p
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight"
+                >
                   {loading ? '—' : card.value}
-                </p>
+                </motion.p>
                 <p className="text-xs font-bold text-gray-700 mt-1">{card.label}</p>
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">{card.sub}</p>
               </div>
             </motion.div>
           ))}
         </div>
+
 
         {/* Middle Row: Recruitment Funnel & User Growth Trends */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -324,34 +376,34 @@ const AdminDashboard = () => {
 
             {/* Pipeline Stage Pills */}
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-50 text-xs">
-              <div className="flex items-center gap-2 p-2 bg-amber-50/60 rounded-xl">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 p-2 bg-amber-50/70 hover:bg-amber-100/70 rounded-xl transition-colors cursor-default">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 <div>
                   <p className="text-[10px] text-gray-500 font-semibold">Pending</p>
                   <p className="font-bold text-gray-900">{stats.pending || 0}</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-emerald-50/60 rounded-xl">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 p-2 bg-emerald-50/70 hover:bg-emerald-100/70 rounded-xl transition-colors cursor-default">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <div>
                   <p className="text-[10px] text-gray-500 font-semibold">Shortlisted</p>
                   <p className="font-bold text-gray-900">{stats.shortlisted || 0}</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-purple-50/60 rounded-xl">
-                <span className="w-2 h-2 rounded-full bg-purple-500" />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 p-2 bg-purple-50/70 hover:bg-purple-100/70 rounded-xl transition-colors cursor-default">
+                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
                 <div>
                   <p className="text-[10px] text-gray-500 font-semibold">Offered</p>
                   <p className="font-bold text-gray-900">{stats.offered || 0}</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-teal-50/60 rounded-xl">
-                <span className="w-2 h-2 rounded-full bg-teal-500" />
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 p-2 bg-teal-50/70 hover:bg-teal-100/70 rounded-xl transition-colors cursor-default">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                 <div>
                   <p className="text-[10px] text-gray-500 font-semibold">Hired</p>
                   <p className="font-bold text-gray-900">{stats.hired || 0}</p>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         </div>
@@ -363,7 +415,7 @@ const AdminDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+            className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
           >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/40">
               <div className="flex items-center gap-2.5">
@@ -375,12 +427,13 @@ const AdminDashboard = () => {
                   <p className="text-[11px] text-gray-400">Newly registered employer organizations</p>
                 </div>
               </div>
-              <button
+              <motion.button
+                whileHover={{ x: 3 }}
                 onClick={() => navigate('/admin/companies')}
                 className="text-xs text-indigo-600 font-bold hover:text-indigo-700 flex items-center gap-1"
               >
                 View all <ArrowRight className="w-3 h-3" />
-              </button>
+              </motion.button>
             </div>
 
             <div className="divide-y divide-gray-50 p-2">
@@ -394,8 +447,15 @@ const AdminDashboard = () => {
                   <p className="text-xs">No companies registered yet</p>
                 </div>
               ) : (
-                recentCompanies.map((company) => (
-                  <div key={company.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-gray-50/80 transition-colors">
+                recentCompanies.map((company, cIdx) => (
+                  <motion.div
+                    key={company.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.35 + cIdx * 0.05 }}
+                    whileHover={{ x: 4, backgroundColor: 'rgba(248, 250, 252, 0.9)' }}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl transition-all"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
                         {initials(company.name)}
@@ -407,17 +467,19 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
                         {company.job_postings_count || 0} jobs
                       </span>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => navigate('/admin/companies')}
                         className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                      </button>
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
@@ -428,7 +490,7 @@ const AdminDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+            className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
           >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/40">
               <div className="flex items-center gap-2.5">
@@ -440,12 +502,13 @@ const AdminDashboard = () => {
                   <p className="text-[11px] text-gray-400">Latest active career opportunities</p>
                 </div>
               </div>
-              <button
+              <motion.button
+                whileHover={{ x: 3 }}
                 onClick={() => navigate('/admin/jobs')}
                 className="text-xs text-indigo-600 font-bold hover:text-indigo-700 flex items-center gap-1"
               >
                 View all <ArrowRight className="w-3 h-3" />
-              </button>
+              </motion.button>
             </div>
 
             <div className="divide-y divide-gray-50 p-2">
@@ -459,8 +522,15 @@ const AdminDashboard = () => {
                   <p className="text-xs">No jobs posted yet</p>
                 </div>
               ) : (
-                recentJobs.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-gray-50/80 transition-colors">
+                recentJobs.map((job, jIdx) => (
+                  <motion.div
+                    key={job.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + jIdx * 0.05 }}
+                    whileHover={{ x: 4, backgroundColor: 'rgba(248, 250, 252, 0.9)' }}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl transition-all"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
                         {job.title?.charAt(0)}
@@ -472,17 +542,19 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100/60">
                         {job.applications_count || 0} apps
                       </span>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => navigate('/admin/jobs')}
                         className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                      </button>
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
@@ -494,7 +566,7 @@ const AdminDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+          className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
         >
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/40">
             <div className="flex items-center gap-2.5">
@@ -502,16 +574,23 @@ const AdminDashboard = () => {
                 <Activity className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="font-bold text-gray-900 text-sm">Real-Time Platform Audit Stream</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-gray-900 text-sm">Real-Time Platform Audit Stream</h2>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                  </span>
+                </div>
                 <p className="text-[11px] text-gray-400">Live feed of user registrations, company onboarding, and applications</p>
               </div>
             </div>
-            <button
+            <motion.button
+              whileHover={{ x: 3 }}
               onClick={() => navigate('/admin/activity')}
               className="text-xs text-indigo-600 font-bold hover:text-indigo-700 flex items-center gap-1"
             >
               Full Audit Trail <ArrowRight className="w-3 h-3" />
-            </button>
+            </motion.button>
           </div>
 
           <div className="divide-y divide-gray-50 p-2">
@@ -525,10 +604,17 @@ const AdminDashboard = () => {
                 <p className="text-xs">No activity logged yet</p>
               </div>
             ) : (
-              recentActivity.slice(0, 5).map((item) => (
-                <div key={item.id} className="p-3.5 hover:bg-gray-50/80 rounded-2xl transition-colors flex items-center justify-between gap-4">
+              recentActivity.slice(0, 5).map((item, aIdx) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.45 + aIdx * 0.05 }}
+                  whileHover={{ x: 4, backgroundColor: 'rgba(248, 250, 252, 0.9)' }}
+                  className="p-3.5 rounded-2xl transition-all flex items-center justify-between gap-4"
+                >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 shadow-sm shadow-indigo-500/50" />
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-gray-900 truncate">{item.title}</p>
                       <p className="text-[11px] text-gray-500 truncate">{item.message}</p>
@@ -537,7 +623,7 @@ const AdminDashboard = () => {
                   <span className="text-[10px] font-semibold text-gray-400 whitespace-nowrap bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
                     {item.time}
                   </span>
-                </div>
+                </motion.div>
               ))
             )}
           </div>

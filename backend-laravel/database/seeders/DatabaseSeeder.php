@@ -139,5 +139,8 @@ class DatabaseSeeder extends Seeder
                 'correct_answer' => 'Use plain business language focusing on impact, timeline, and proposed solutions',
             ]
         );
+
+        // 7. Seed Specialized Companies & Jobs (ACCA, CA, Mobile Apps, MERN, Laravel, AI Developers)
+        $this->call(SpecializedJobsSeeder::class);
     }
 }

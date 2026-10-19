@@ -26,7 +26,7 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "llama3.2:3b")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-3b-preview")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_RAG_MODEL", "gpt-4o-mini")
@@ -330,35 +330,38 @@ def _generate_smart_direct_answer(question: str, context_blocks: List[str]) -> s
     is_proj = any(k in q_lower for k in ["project", "built", "developed", "portfolio"])
     is_contact = any(k in q_lower for k in ["contact", "email", "phone", "address", "location", "linkedin"])
 
+    def _sanitize_line(t: str) -> str:
+        # Strip unprintable or private-use unicode glyphs from PDF icon fonts
+        t = re.sub(r"[\uE000-\uF8FF\uF000-\uFFFF\u25A0-\u25FF\uFFFD\uF15B\uF14A\u2713\u2714\u25AA\u25AB]", "", t)
+        t = re.sub(r"^[•\-\*\s]+", "", t).strip()
+        return t
+
     extracted_lines = []
     for line in joined_context.split("\n"):
-        clean = line.strip()
-        if not clean or clean.startswith("### SECTION:"):
+        clean = _sanitize_line(line)
+        if not clean or clean.startswith("### SECTION:") or len(clean) < 4:
             continue
         extracted_lines.append(clean)
 
     if not extracted_lines:
-        return "Based on the candidate's resume, here is the relevant context retrieved:\n\n" + joined_context[:800]
+        return "Based on the candidate's verified resume dossier, no direct match was identified for this inquiry."
 
-    # Structure into clean bullet points
+    # Structure into clean, professional bullet points without icon debris
     bullets = []
-    for line in extracted_lines[:15]:
-        if line.startswith(("-", "*", "•")):
-            bullets.append(f"{line}")
-        else:
-            bullets.append(f"• {line}")
+    for line in extracted_lines[:12]:
+        bullets.append(f"• {line}")
 
-    header = "Based on the candidate's resume analysis:"
+    header = "Based on the candidate's verified resume dossier:"
     if is_skills:
-        header = "Here are the candidate's skills and technical competencies identified from their resume:"
+        header = "Candidate skills and technical competencies identified in the resume:"
     elif is_exp:
-        header = "Here is the candidate's work experience and background from their resume:"
+        header = "Candidate professional work history and background from the resume:"
     elif is_edu:
-        header = "Here are the candidate's educational qualifications from their resume:"
+        header = "Candidate academic qualifications and degrees listed:"
     elif is_proj:
-        header = "Here are the key projects highlighted in the candidate's resume:"
+        header = "Key projects and practical initiatives documented in the resume:"
     elif is_contact:
-        header = "Here is the candidate's contact and profile details from their resume:"
+        header = "Candidate contact and profile details on record:"
 
     return f"{header}\n\n" + "\n".join(bullets)
 
@@ -460,7 +463,7 @@ Answer:"""
 
     # Option A: Groq Turbo Cloud Inference (0.3s response time if API key provided)
     groq_key = os.getenv("GROQ_API_KEY", "").strip() or GROQ_API_KEY
-    groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip()
+    groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
 
     if groq_key:
         try:

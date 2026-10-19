@@ -75,3 +75,46 @@ html.rs-dark .hover\:bg-gray-50:hover,
 html.rs-dark .hover\:bg-gray-100:hover {
   background-color: #1f2937 !important;
 }
+
+/* Professional Animation Utilities */
+@keyframes rs-float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes rs-pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes rs-shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-float-slow {
+  animation: rs-float-slow 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: rs-pulse-glow 4s ease-in-out infinite;
+}
+
+.animate-shimmer-sweep {
+  animation: rs-shimmer-sweep 2.5s infinite;
+}
+

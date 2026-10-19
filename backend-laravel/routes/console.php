@@ -29,4 +29,10 @@ Artisan::command('db:seed-50-companies', function () {
     }
 })->purpose('Seed 50 diverse companies with at least 10 jobs each');
 
+Artisan::command('db:seed-specialized-jobs', function () {
+    $this->info('Starting seeding of ACCA, CA, Mobile, MERN, Laravel, and AI developer jobs across 2 companies...');
+    $this->call(\Database\Seeders\SpecializedJobsSeeder::class);
+    $this->info('Specialized companies and jobs seeded successfully!');
+})->purpose('Seed ACCA, CA, Mobile Apps, MERN, Laravel, and AI jobs for two distinct companies');
+
 
