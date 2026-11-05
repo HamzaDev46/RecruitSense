@@ -328,7 +328,7 @@ class AdminController extends Controller
             'email_notifications' => $request->input('email_notifications', $request->input('emailNotifications')),
             'maintenance_mode' => $request->input('maintenance_mode', $request->input('maintenanceMode')),
             'auto_verify_companies' => $request->input('auto_verify_companies', $request->input('autoVerifyCompanies')),
-            'require_email_verification' => $request->input('require_email_verification', $request->input('requireEmailVerification', false)),
+            'require_email_verification' => $request->input('require_email_verification', $request->input('requireEmailVerification', true)),
         ];
 
         $validator = Validator::make($input, [

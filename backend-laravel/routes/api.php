@@ -62,14 +62,14 @@ Route::get('/migrate-run', function () {
 
 
 Route::get('/test-mail-diagnostic', function (Request $request) {
-    $email = $request->query('email', 'humzazahoor4557@gmail.com');
+    $email = $request->query('email', config('mail.from.address', 'hamzazahoor4556@gmail.com'));
     
-    // Check direct network connectivity from Render container to Gmail ports
-    $socket465 = @fsockopen('smtp.gmail.com', 465, $errno465, $errstr465, 5);
+    // Check direct network connectivity from server to Gmail ports
+    $socket465 = @fsockopen('smtp.gmail.com', 465, $errno465, $errstr465, 4);
     $canConnect465 = is_resource($socket465);
     if ($canConnect465) { fclose($socket465); }
 
-    $socket587 = @fsockopen('smtp.gmail.com', 587, $errno587, $errstr587, 5);
+    $socket587 = @fsockopen('smtp.gmail.com', 587, $errno587, $errstr587, 4);
     $canConnect587 = is_resource($socket587);
     if ($canConnect587) { fclose($socket587); }
 
@@ -84,53 +84,42 @@ Route::get('/test-mail-diagnostic', function (Request $request) {
     try {
         $user = \App\Models\User::where('email', $email)->first();
         if (!$user) {
-            $user = new \App\Models\User(['name' => 'Diagnostic Test', 'email' => $email, 'role' => 'jobseeker']);
+            $user = new \App\Models\User(['name' => 'Diagnostic Test User', 'email' => $email, 'role' => 'jobseeker']);
         }
         $verifyUrl = \App\Http\Controllers\Api\AuthController::generateVerificationUrl($user);
 
-        // 1. If RESEND_API_KEY is configured, test CloudEmailService via HTTPS Port 443
-        $resendKey = env('RESEND_API_KEY', config('services.resend.key'));
-        if (!empty($resendKey)) {
-            $cloudSent = \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
-            if ($cloudSent) {
-                return response()->json([
-                    'status' => 'success',
-                    'channel' => 'Resend HTTPS API (Port 443)',
-                    'sent_to' => $email,
-                    'verify_url' => $verifyUrl,
-                    'note' => 'Email sent directly over HTTPS bypassing cloud firewall'
-                ]);
-            }
-        }
+        // Test delivery via CloudEmailService (Brevo HTTPS -> Resend HTTPS -> SMTP Fallback)
+        $sent = \App\Services\CloudEmailService::sendVerification($user, $verifyUrl);
 
-        \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\EmailVerificationMail($user, $verifyUrl));
+        $brevoKey = config('services.brevo.key', env('BREVO_API_KEY'));
+        $resendKey = config('services.resend.key', env('RESEND_API_KEY'));
+
         return response()->json([
-            'status' => 'success',
-            'channel' => 'SMTP Socket',
+            'status' => $sent ? 'success' : 'failed',
+            'message' => $sent ? 'Email delivered successfully!' : 'Could not deliver email through any provider. Check laravel.log.',
             'sent_to' => $email,
             'verify_url' => $verifyUrl,
-            'mailer' => config('mail.default'),
-            'host' => config('mail.mailers.smtp.host'),
-            'port' => config('mail.mailers.smtp.port'),
-            'encryption' => config('mail.mailers.smtp.encryption'),
-            'from' => config('mail.from.address'),
+            'providers' => [
+                'brevo_configured' => !empty($brevoKey),
+                'resend_configured' => !empty($resendKey),
+                'smtp_host' => config('mail.mailers.smtp.host'),
+                'smtp_port' => config('mail.mailers.smtp.port'),
+                'smtp_encryption' => config('mail.mailers.smtp.encryption'),
+                'smtp_username' => config('mail.mailers.smtp.username'),
+            ],
             'network_tests' => [
-                'smtp_gmail_465' => $canConnect465 ? 'OPEN' : "BLOCKED/FAILED ($errstr465)",
-                'smtp_gmail_587' => $canConnect587 ? 'OPEN' : "BLOCKED/FAILED ($errstr587)",
+                'smtp_gmail_465' => $canConnect465 ? 'OPEN' : "BLOCKED ($errstr465)",
+                'smtp_gmail_587' => $canConnect587 ? 'OPEN' : "BLOCKED ($errstr587)",
             ]
-        ]);
+        ], $sent ? 200 : 500);
     } catch (\Throwable $e) {
         return response()->json([
             'status' => 'error',
             'message' => $e->getMessage(),
             'mailer' => config('mail.default'),
-            'host' => config('mail.mailers.smtp.host'),
-            'port' => config('mail.mailers.smtp.port'),
-            'encryption' => config('mail.mailers.smtp.encryption'),
-            'username' => config('mail.mailers.smtp.username'),
             'network_tests' => [
-                'smtp_gmail_465' => $canConnect465 ? 'OPEN' : "BLOCKED/FAILED ($errstr465)",
-                'smtp_gmail_587' => $canConnect587 ? 'OPEN' : "BLOCKED/FAILED ($errstr587)",
+                'smtp_gmail_465' => $canConnect465 ? 'OPEN' : "BLOCKED ($errstr465)",
+                'smtp_gmail_587' => $canConnect587 ? 'OPEN' : "BLOCKED ($errstr587)",
             ]
         ], 500);
     }

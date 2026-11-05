@@ -149,7 +149,7 @@ class ApplicationController extends Controller
             if ($isAutoShortlisted) {
                 // 1. Send Shortlist email to candidate
                 try {
-                    Mail::to($user->email)->send(new ShortlistMail($application));
+                    \App\Services\CloudEmailService::sendMailable($user->email, $user->name, new ShortlistMail($application));
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::warning('Auto-shortlist email sending failed: ' . $e->getMessage());
                 }
@@ -348,7 +348,7 @@ class ApplicationController extends Controller
         $application->save();
 
         try {
-            Mail::to($application->jobSeeker->user->email)->send(new ShortlistMail($application));
+            \App\Services\CloudEmailService::sendMailable($application->jobSeeker->user->email, $application->jobSeeker->user->name, new ShortlistMail($application));
             \Illuminate\Support\Facades\Log::info("Shortlist email sent to candidate: {$application->jobSeeker->user->email}");
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Shortlist email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
@@ -395,7 +395,7 @@ class ApplicationController extends Controller
 
         if ($previousStatus !== Application::STATUS_REJECTED) {
             try {
-                Mail::to($application->jobSeeker->user->email)->send(new RejectionMail($application));
+                \App\Services\CloudEmailService::sendMailable($application->jobSeeker->user->email, $application->jobSeeker->user->name, new RejectionMail($application));
                 \Illuminate\Support\Facades\Log::info("Rejection email sent to candidate: {$application->jobSeeker->user->email}");
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Rejection email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
@@ -470,7 +470,7 @@ class ApplicationController extends Controller
         $type = $previousSchedule ? 'interview_rescheduled' : 'interview_scheduled';
 
         try {
-            Mail::to($application->jobSeeker->user->email)->send(new InterviewScheduledMail($application, (bool) $previousSchedule));
+            \App\Services\CloudEmailService::sendMailable($application->jobSeeker->user->email, $application->jobSeeker->user->name, new InterviewScheduledMail($application, (bool) $previousSchedule));
             \Illuminate\Support\Facades\Log::info("Interview email sent to candidate: {$application->jobSeeker->user->email}");
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Interview email failed for {$application->jobSeeker->user->email}: " . $e->getMessage());
@@ -796,13 +796,13 @@ class ApplicationController extends Controller
 
         try {
             if ($status === Application::STATUS_SHORTLISTED) {
-                Mail::to($candidateUser->email)->send(new ShortlistMail($application));
+                \App\Services\CloudEmailService::sendMailable($candidateUser->email, $candidateUser->name, new ShortlistMail($application));
                 \Illuminate\Support\Facades\Log::info("Pipeline Shortlist mail sent to: {$candidateUser->email}");
             } elseif ($status === Application::STATUS_REJECTED) {
-                Mail::to($candidateUser->email)->send(new RejectionMail($application));
+                \App\Services\CloudEmailService::sendMailable($candidateUser->email, $candidateUser->name, new RejectionMail($application));
                 \Illuminate\Support\Facades\Log::info("Pipeline Rejection mail sent to: {$candidateUser->email}");
             } elseif (in_array($status, [Application::STATUS_OFFERED, Application::STATUS_HIRED], true)) {
-                Mail::to($candidateUser->email)->send(new OfferDecisionMail(
+                \App\Services\CloudEmailService::sendMailable($candidateUser->email, $candidateUser->name, new OfferDecisionMail(
                     $application,
                     $status === Application::STATUS_HIRED
                 ));

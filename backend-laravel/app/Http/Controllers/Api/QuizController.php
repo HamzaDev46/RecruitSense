@@ -636,7 +636,7 @@ class QuizController extends Controller
             $application->save();
 
             try {
-                Mail::to($user->email)->send(new ShortlistMail($application));
+                \App\Services\CloudEmailService::sendMailable($user->email, $user->name, new ShortlistMail($application));
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::warning('Auto-shortlist email after quiz failed: ' . $e->getMessage());
             }

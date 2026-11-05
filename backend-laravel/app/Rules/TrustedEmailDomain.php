@@ -50,6 +50,7 @@ class TrustedEmailDomain implements ValidationRule
 
         // RecruitSense Platform & System
         'recruitsense.com',
+        'recruitsense.online',
     ];
 
     /**

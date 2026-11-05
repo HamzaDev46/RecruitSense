@@ -42,6 +42,7 @@ export const TRUSTED_EMAIL_DOMAINS = [
 
   // Platform
   'recruitsense.com',
+  'recruitsense.online',
 ]
 
 /**

@@ -28,9 +28,22 @@ class AuthController extends Controller
     public static function generateVerificationUrl(User $user): string
     {
         $hash = hash_hmac('sha256', $user->id . '|' . $user->email . '|' . ($user->created_at?->timestamp ?? 0), config('app.key'));
-        $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+        
+        $frontendUrl = null;
+        $origin = request()?->header('Origin') ?: request()?->header('Referer');
+        if (!empty($origin)) {
+            $parsed = parse_url($origin);
+            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+                $frontendUrl = "{$parsed['scheme']}://{$parsed['host']}{$port}";
+            }
+        }
 
-        if (empty($frontendUrl) || str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1')) {
+        if (empty($frontendUrl)) {
+            $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+        }
+
+        if (empty($frontendUrl)) {
             $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
         }
 
@@ -90,10 +103,14 @@ class AuthController extends Controller
 
         $this->ensureRoleProfile($user, $request->all());
 
-        $requireVerification = AdminSetting::getValue('require_email_verification', false);
+        $requireVerification = AdminSetting::getValue('require_email_verification', true);
 
         if (!$requireVerification) {
             $user->forceFill(['email_verified_at' => now()])->save();
+            try {
+                $this->sendWelcomeMail($user);
+            } catch (\Throwable) {
+            }
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
@@ -233,8 +250,20 @@ class AuthController extends Controller
 
         if ($user) {
             $token = Password::broker()->createToken($user);
-            $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
-            if (empty($frontendUrl) || str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1')) {
+            
+            $frontendUrl = null;
+            $origin = request()?->header('Origin') ?: request()?->header('Referer');
+            if (!empty($origin)) {
+                $parsed = parse_url($origin);
+                if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                    $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+                    $frontendUrl = "{$parsed['scheme']}://{$parsed['host']}{$port}";
+                }
+            }
+            if (empty($frontendUrl)) {
+                $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+            }
+            if (empty($frontendUrl)) {
                 $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
             }
             $resetUrl = $frontendUrl . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
@@ -414,7 +443,7 @@ class AuthController extends Controller
 
         // Check if account email is verified
         if (!$user->email_verified_at && $user->role !== 'admin') {
-            $requireVerification = AdminSetting::getValue('require_email_verification', false);
+            $requireVerification = AdminSetting::getValue('require_email_verification', true);
 
             if (!$requireVerification) {
                 // If verification is not required by admin (e.g. cloud hosting where SMTP is blocked), auto-verify
@@ -489,10 +518,10 @@ class AuthController extends Controller
     {
         try {
             if ($user->role === 'company') {
-                Mail::to($user->email)->send(new CompanyWelcomeMail($user));
+                \App\Services\CloudEmailService::sendMailable($user->email, $user->name, new CompanyWelcomeMail($user));
                 \Illuminate\Support\Facades\Log::info("Company welcome email sent to: {$user->email}");
             } elseif ($user->role === 'jobseeker') {
-                Mail::to($user->email)->send(new JobSeekerWelcomeMail($user));
+                \App\Services\CloudEmailService::sendMailable($user->email, $user->name, new JobSeekerWelcomeMail($user));
                 \Illuminate\Support\Facades\Log::info("Jobseeker welcome email sent to: {$user->email}");
             }
         } catch (\Throwable $e) {
