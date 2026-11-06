@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /jobs
+Disallow: /admin/
+Disallow: /company/
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /messages
+Disallow: /notifications
+
+Sitemap: https://recruitsense.online/sitemap.xml
+
