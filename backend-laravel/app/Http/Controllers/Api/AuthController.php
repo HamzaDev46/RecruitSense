@@ -40,11 +40,11 @@ class AuthController extends Controller
         }
 
         if (empty($frontendUrl)) {
-            $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+            $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruitsense.online'), '/');
         }
 
         if (empty($frontendUrl)) {
-            $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
+            $frontendUrl = 'https://recruitsense.online';
         }
 
         return "{$frontendUrl}/verify-email?id={$user->id}&email=" . urlencode($user->email) . "&token={$hash}";
@@ -261,10 +261,10 @@ class AuthController extends Controller
                 }
             }
             if (empty($frontendUrl)) {
-                $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruit-sense-oyqm.vercel.app'), '/');
+                $frontendUrl = rtrim((string) config('services.frontend.url', 'https://recruitsense.online'), '/');
             }
             if (empty($frontendUrl)) {
-                $frontendUrl = 'https://recruit-sense-oyqm.vercel.app';
+                $frontendUrl = 'https://recruitsense.online';
             }
             $resetUrl = $frontendUrl . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($user->email);
 

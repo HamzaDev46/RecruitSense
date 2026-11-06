@@ -11,6 +11,22 @@ class AppErrorBoundary extends Component {
 
   componentDidCatch(error) {
     console.error('RecruitSense page crashed:', error)
+
+    // Automatically recover from stale Vite chunks on new Vercel deployments
+    const isChunkError =
+      error?.name === 'ChunkLoadError' ||
+      error?.message?.includes('dynamically imported module') ||
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed')
+
+    if (isChunkError) {
+      const lastReload = sessionStorage.getItem('rs_chunk_retry')
+      const now = Date.now()
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem('rs_chunk_retry', String(now))
+        window.location.reload()
+      }
+    }
   }
 
   reloadPage = () => {
