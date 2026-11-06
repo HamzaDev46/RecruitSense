@@ -25,6 +25,7 @@ import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import OnboardingGuideModal from '../../components/jobseeker/OnboardingGuideModal'
 import CompanyLogo from '../../components/CompanyLogo'
 import PageContentLoader from '../../components/common/PageContentLoader'
+import { CardSkeleton } from '../../components/common/Skeletons'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 import { formatDeadline, formatJobType, formatSalary, formatWorkMode } from '../../utils/jobDetails'
@@ -267,9 +268,7 @@ const Dashboard = () => {
           </div>
 
           {loading && mobileMixedItems.length === 0 ? (
-            [1, 2, 3].map((item) => (
-              <div key={item} className="h-28 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-            ))
+            <CardSkeleton count={2} />
           ) : mobileMixedItems.length === 0 ? (
             <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-8 text-center">
               <Newspaper className="w-10 h-10 text-gray-300 mx-auto mb-3" />

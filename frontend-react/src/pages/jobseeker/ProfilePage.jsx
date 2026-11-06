@@ -39,6 +39,7 @@ import CompanyLayout from '../../components/company/CompanyLayout'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
 import PostCard from '../../components/posts/PostCard'
 import ReportContentModal from '../../components/ReportContentModal'
+import { ProfileSkeleton } from '../../components/common/Skeletons'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 
@@ -875,10 +876,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-6xl mx-auto space-y-4">
-          <div className="h-64 bg-white rounded-lg border border-gray-100 animate-pulse" />
-          <div className="h-32 bg-white rounded-lg border border-gray-100 animate-pulse" />
-        </div>
+        <ProfileSkeleton />
       </Layout>
     )
   }
