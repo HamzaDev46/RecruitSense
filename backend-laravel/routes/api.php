@@ -167,6 +167,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profiles/{user}', [ProfileController::class, 'showByUser']);
     Route::get('/profiles/{user}/posts', [PostController::class, 'userPosts']);
     Route::post('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/reminder-email', [ProfileController::class, 'sendProfileReminderEmail']);
     Route::post('/profile/experiences', [ProfileController::class, 'storeExperience']);
     Route::put('/profile/experiences/{experience}', [ProfileController::class, 'updateExperience']);
     Route::delete('/profile/experiences/{experience}', [ProfileController::class, 'destroyExperience']);
@@ -190,6 +191,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Recommended job routes
     Route::get('/recommended-jobs', [RecommendedJobController::class, 'index']);
+    Route::post('/recommended-jobs/email', [RecommendedJobController::class, 'sendEmail']);
 
     // Job alert routes
     Route::get('/job-alerts', [JobAlertController::class, 'index']);

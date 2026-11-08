@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminBroadcastMail;
 use App\Models\AdminSetting;
 use App\Models\AppNotification;
 use App\Models\Application;
@@ -13,6 +14,8 @@ use App\Models\User;
 use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -270,6 +273,7 @@ class AdminController extends Controller
             'title' => ['required', 'string', 'max:120'],
             'message' => ['required', 'string', 'max:1500'],
             'target' => ['required', Rule::in(['all', 'jobseeker', 'company'])],
+            'send_email' => ['nullable', 'boolean'],
         ]);
 
         if ($validator->fails()) {
@@ -279,10 +283,12 @@ class AdminController extends Controller
         $data = $validator->validated();
         $roles = $data['target'] === 'all' ? ['jobseeker', 'company'] : [$data['target']];
         $sent = 0;
+        $emailsSent = 0;
+        $shouldSendEmail = !empty($data['send_email']);
 
         User::whereIn('role', $roles)
             ->where('account_status', '!=', 'suspended')
-            ->chunkById(100, function ($users) use ($data, $request, &$sent) {
+            ->chunkById(100, function ($users) use ($data, $request, $shouldSendEmail, &$sent, &$emailsSent) {
                 foreach ($users as $user) {
                     AppNotification::create([
                         'user_id' => $user->id,
@@ -298,12 +304,27 @@ class AdminController extends Controller
 
                     UserCache::forgetUnreadNotifications($user->id);
                     $sent++;
+
+                    if ($shouldSendEmail && filled($user->email)) {
+                        try {
+                            Mail::to($user->email)->send(new AdminBroadcastMail(
+                                $user,
+                                $data['title'],
+                                $data['message'],
+                                $request->user()->name ?? 'Platform Administration'
+                            ));
+                            $emailsSent++;
+                        } catch (\Throwable $e) {
+                            Log::warning("Failed to dispatch broadcast email to {$user->email}: " . $e->getMessage());
+                        }
+                    }
                 }
             });
 
         return response()->json([
             'message' => 'Broadcast sent successfully',
             'sent_count' => $sent,
+            'emails_sent' => $emailsSent,
         ], 201);
     }
 

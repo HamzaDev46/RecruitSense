@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import {
   Bell, Send, Users, Building2, UserCheck, Sparkles,
   CheckCircle2, AlertTriangle, ShieldAlert, Info, Flame,
-  Eye, RefreshCw, MessageSquare
+  Eye, RefreshCw, MessageSquare, Mail
 } from 'lucide-react'
 import AdminLayout from '../../components/admin/AdminLayout'
 import api from '../../services/api'
@@ -34,10 +34,12 @@ const Broadcast = () => {
   const [form, setForm] = useState({
     title: '',
     message: '',
-    target: 'all'
+    target: 'all',
+    send_email: false,
   })
   const [sending, setSending] = useState(false)
   const [sentCount, setSentCount] = useState(null)
+  const [emailCount, setEmailCount] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -49,9 +51,17 @@ const Broadcast = () => {
     setSending(true)
     try {
       const res = await api.post('/admin/broadcast', form)
-      setSentCount(res.data.sent_count || 0)
-      toast.success(`Broadcast announcement sent to ${res.data.sent_count || 0} active users!`)
-      setForm({ title: '', message: '', target: 'all' })
+      const count = res.data.sent_count || 0
+      const emails = res.data.emails_sent || 0
+      setSentCount(count)
+      setEmailCount(emails)
+      
+      if (form.send_email && emails > 0) {
+        toast.success(`Broadcast posted to ${count} users and emailed to ${emails} active inboxes!`)
+      } else {
+        toast.success(`Broadcast announcement sent to ${count} active users!`)
+      }
+      setForm({ title: '', message: '', target: 'all', send_email: false })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send broadcast announcement')
     } finally {
@@ -60,12 +70,14 @@ const Broadcast = () => {
   }
 
   const applyTemplate = (tpl) => {
+    const isMaintenance = tpl.label === 'Platform Maintenance'
     setForm(prev => ({
       ...prev,
       title: tpl.title,
       message: tpl.message,
+      send_email: isMaintenance ? true : prev.send_email,
     }))
-    toast.success(`Applied template: "${tpl.label}"`)
+    toast.success(`Applied template: "${tpl.label}"${isMaintenance ? ' (Email notice enabled)' : ''}`)
   }
 
   const targets = [
@@ -178,6 +190,25 @@ const Broadcast = () => {
                 />
               </div>
 
+              {/* Email Announcement Option */}
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50/80 transition cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.send_email}
+                  onChange={(e) => setForm({ ...form, send_email: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                    Also Send as Official Email Announcement (e.g. Maintenance Notice)
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Sends a branded RecruitSense email notice directly to the inboxes of all targeted active users.
+                  </p>
+                </div>
+              </label>
+
               {/* Submit Button */}
               <button
                 type="submit"
@@ -208,9 +239,16 @@ const Broadcast = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" /> Live Notification Preview
                 </span>
-                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full uppercase">
-                  Target: {form.target}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {form.send_email && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Mail className="w-2.5 h-2.5" /> Email Enabled
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full uppercase">
+                    Target: {form.target}
+                  </span>
+                </div>
               </div>
 
               {/* Simulated Notification Card */}

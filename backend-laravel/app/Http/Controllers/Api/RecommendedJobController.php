@@ -1,11 +1,14 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
 use App\Http\Controllers\Controller;
+use App\Mail\RecommendedJobsMail;
 use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\SavedJob;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class RecommendedJobController extends Controller
@@ -18,7 +21,36 @@ class RecommendedJobController extends Controller
             return response()->json(['message' => 'Only job seekers can view recommended jobs'], 403);
         }
 
-        $jobSeeker = $user->jobSeeker;
+        $result = $this->computeRecommendations($user->jobSeeker);
+
+        return response()->json($result);
+    }
+
+    public function sendEmail(Request $request)
+    {
+        $user = $request->user()->load('jobSeeker.resume', 'jobSeeker.experiences');
+
+        if ($user->role !== 'jobseeker' || !$user->jobSeeker) {
+            return response()->json(['message' => 'Only job seekers can receive recommended jobs email'], 403);
+        }
+
+        $result = $this->computeRecommendations($user->jobSeeker);
+        $recommendations = $result['recommendations'];
+
+        if (empty($recommendations)) {
+            return response()->json(['message' => 'No matching jobs available right now. Update your skills or resume to get matches.'], 404);
+        }
+
+        Mail::to($user->email)->send(new RecommendedJobsMail($user, $recommendations));
+
+        return response()->json([
+            'message' => 'Recommended jobs email sent successfully to ' . $user->email,
+            'count' => count($recommendations),
+        ]);
+    }
+
+    public function computeRecommendations($jobSeeker): array
+    {
         $jobs = JobPosting::with('company')
             ->acceptingApplications()
             ->latest()
@@ -50,12 +82,13 @@ class RecommendedJobController extends Controller
                 ];
             })
             ->sortByDesc('match_score')
-            ->values();
+            ->values()
+            ->all();
 
-        return response()->json([
+        return [
             'candidate_skills' => $candidateSkills,
             'recommendations' => $recommendations,
-        ]);
+        ];
     }
 
     private function normalizeSkills(?string $skills): array

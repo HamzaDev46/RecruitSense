@@ -35,4 +35,86 @@ Artisan::command('db:seed-specialized-jobs', function () {
     $this->info('Specialized companies and jobs seeded successfully!');
 })->purpose('Seed ACCA, CA, Mobile Apps, MERN, Laravel, and AI jobs for two distinct companies');
 
+Artisan::command('recruitsense:send-job-recommendations {email?}', function (?string $email = null) {
+    $this->info('Scanning candidates for AI job recommendations...');
+    $query = \App\Models\User::where('role', 'jobseeker')
+        ->where('account_status', '!=', 'suspended')
+        ->with('jobSeeker.resume', 'jobSeeker.experiences');
+
+    if ($email) {
+        $query->where('email', $email);
+    }
+
+    $controller = app(\App\Http\Controllers\Api\RecommendedJobController::class);
+    $sent = 0;
+
+    $query->chunkById(50, function ($users) use ($controller, &$sent) {
+        foreach ($users as $user) {
+            if (!$user->jobSeeker || !filled($user->email)) {
+                continue;
+            }
+
+            try {
+                $result = $controller->computeRecommendations($user->jobSeeker);
+                $recommendations = $result['recommendations'] ?? [];
+
+                if (!empty($recommendations)) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                        new \App\Mail\RecommendedJobsMail($user, $recommendations)
+                    );
+                    $this->line("✓ Sent recommendations to {$user->email} (" . count($recommendations) . " matches)");
+                    $sent++;
+                }
+            } catch (\Throwable $e) {
+                $this->warn("Failed sending to {$user->email}: " . $e->getMessage());
+            }
+        }
+    });
+
+    $this->info("Complete! Dispatched {$sent} job recommendation email(s).");
+})->purpose('Dispatch AI recommended job matches to active job seekers');
+
+Artisan::command('recruitsense:send-profile-reminders {--min=0} {--max=79} {email?}', function (?string $email = null) {
+    $min = (int) ($this->option('min') ?? 0);
+    $max = (int) ($this->option('max') ?? 79);
+
+    $this->info("Scanning job seekers with profile completion between {$min}% and {$max}%...");
+    $query = \App\Models\User::where('role', 'jobseeker')
+        ->where('account_status', '!=', 'suspended')
+        ->with('jobSeeker.resume', 'jobSeeker.experiences');
+
+    if ($email) {
+        $query->where('email', $email);
+    }
+
+    $sent = 0;
+    $query->chunkById(50, function ($users) use ($min, $max, &$sent) {
+        foreach ($users as $user) {
+            if (!$user->jobSeeker || !filled($user->email)) {
+                continue;
+            }
+
+            $summary = \App\Support\ProfileCompletion::forJobSeeker($user->jobSeeker);
+            $completion = $summary['completion'] ?? 0;
+
+            if ($completion >= $min && $completion <= $max) {
+                $missingTasks = collect($summary['tasks'] ?? [])->where('complete', false)->values()->all();
+
+                try {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                        new \App\Mail\ProfileCompletionReminderMail($user, $completion, $missingTasks)
+                    );
+                    $this->line("✓ Sent profile reminder to {$user->email} ({$completion}% complete)");
+                    $sent++;
+                } catch (\Throwable $e) {
+                    $this->warn("Failed sending to {$user->email}: " . $e->getMessage());
+                }
+            }
+        }
+    });
+
+    $this->info("Complete! Dispatched {$sent} profile completion reminder email(s).");
+})->purpose('Dispatch profile completion nudge emails to job seekers with incomplete profiles');
+
+
 

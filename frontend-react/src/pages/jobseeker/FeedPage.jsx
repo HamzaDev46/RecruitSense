@@ -212,11 +212,10 @@ const FeedPage = () => {
             <button
               type="button"
               onClick={() => setActiveTab('community')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'community'
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${activeTab === 'community'
                   ? 'bg-sky-600 text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Users className="w-4 h-4" />
               <span>Community Network (Other Users)</span>
@@ -224,11 +223,10 @@ const FeedPage = () => {
             <button
               type="button"
               onClick={() => setActiveTab('mine')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'mine'
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${activeTab === 'mine'
                   ? 'bg-sky-600 text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <User className="w-4 h-4" />
               <span>My Posts</span>
@@ -236,11 +234,10 @@ const FeedPage = () => {
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'all'
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 ${activeTab === 'all'
                   ? 'bg-sky-600 text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Sparkles className="w-4 h-4" />
               <span>All Feed</span>
@@ -285,9 +282,8 @@ const FeedPage = () => {
                 <div
                   id={`post-${post.id}`}
                   key={post.id}
-                  className={`rounded-2xl transition-all ${
-                    highlightedPostId === post.id ? 'ring-2 ring-sky-500 ring-offset-4 ring-offset-[#f3f2ef]' : ''
-                  }`}
+                  className={`rounded-2xl transition-all ${highlightedPostId === post.id ? 'ring-2 ring-sky-500 ring-offset-4 ring-offset-[#f3f2ef]' : ''
+                    }`}
                 >
                   <PostCard
                     post={post}

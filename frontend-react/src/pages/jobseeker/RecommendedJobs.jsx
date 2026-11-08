@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Banknote, Bookmark, BookmarkCheck, Briefcase, CheckCircle2, MapPin, Search, Sparkles, Timer, X, XCircle } from 'lucide-react'
+import { Banknote, Bookmark, BookmarkCheck, Briefcase, CheckCircle2, Mail, MapPin, Search, Sparkles, Timer, X, XCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../../components/jobseeker/DashboardLayout'
@@ -28,12 +28,25 @@ const RecommendedJobs = () => {
   const [recommendations, setRecommendations] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [emailing, setEmailing] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [applyModal, setApplyModal] = useState({
     open: false,
     job: null,
     loading: false,
   })
+
+  const handleEmailRecommendations = async () => {
+    setEmailing(true)
+    try {
+      const res = await api.post('/recommended-jobs/email')
+      toast.success(res.data.message || 'Job matches sent to your email!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to email recommended jobs')
+    } finally {
+      setEmailing(false)
+    }
+  }
 
   const loadRecommendations = async () => {
     setLoading(true)
@@ -156,12 +169,26 @@ const RecommendedJobs = () => {
             <h1 className="text-2xl font-bold text-gray-900">Recommended Jobs</h1>
             <p className="text-sm text-gray-500 mt-1">Jobs ranked by your profile and resume skills.</p>
           </div>
-          <button
-            onClick={loadRecommendations}
-            className="w-full sm:w-auto px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleEmailRecommendations}
+              disabled={emailing || recommendations.length === 0}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm font-semibold hover:bg-indigo-100 transition disabled:opacity-50 cursor-pointer"
+            >
+              {emailing ? (
+                <div className="w-4 h-4 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              Email Me Matches
+            </button>
+            <button
+              onClick={loadRecommendations}
+              className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition cursor-pointer"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-6">

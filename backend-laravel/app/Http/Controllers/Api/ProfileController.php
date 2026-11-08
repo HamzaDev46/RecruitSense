@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ProfileCompletionReminderMail;
 use App\Models\AppNotification;
 use App\Models\Application;
 use App\Models\Connection;
@@ -17,6 +18,7 @@ use App\Support\ProfileCompletion;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -477,5 +479,24 @@ class ProfileController extends Controller
             'data' => $data,
         ]);
         UserCache::forgetUnreadNotifications($userId);
+    }
+
+    public function sendProfileReminderEmail(Request $request)
+    {
+        $user = $request->user()->loadMissing('jobSeeker.experiences', 'jobSeeker.resume');
+        if ($user->role !== 'jobseeker' || !$user->jobSeeker) {
+            return response()->json(['message' => 'Only job seekers can receive profile reminders'], 403);
+        }
+
+        $summary = ProfileCompletion::forJobSeeker($user->jobSeeker);
+        $completion = $summary['completion'] ?? 0;
+        $missingTasks = collect($summary['tasks'] ?? [])->where('complete', false)->values()->all();
+
+        Mail::to($user->email)->send(new ProfileCompletionReminderMail($user, $completion, $missingTasks));
+
+        return response()->json([
+            'message' => "Profile reminder email sent to {$user->email} (Profile is {$completion}% complete)",
+            'completion' => $completion,
+        ]);
     }
 }
