@@ -274,6 +274,7 @@ class AdminController extends Controller
             'message' => ['required', 'string', 'max:1500'],
             'target' => ['required', Rule::in(['all', 'jobseeker', 'company'])],
             'send_email' => ['nullable', 'boolean'],
+            'test_email' => ['nullable', 'email'],
         ]);
 
         if ($validator->fails()) {
@@ -285,10 +286,12 @@ class AdminController extends Controller
         $sent = 0;
         $emailsSent = 0;
         $shouldSendEmail = !empty($data['send_email']);
+        $sentBy = $request->user()->name ?? 'Platform Administration';
 
+        // 1. Create In-App Notifications for targeted users
         User::whereIn('role', $roles)
             ->where('account_status', '!=', 'suspended')
-            ->chunkById(100, function ($users) use ($data, $request, $shouldSendEmail, &$sent, &$emailsSent) {
+            ->chunkById(100, function ($users) use ($data, $request, &$sent) {
                 foreach ($users as $user) {
                     AppNotification::create([
                         'user_id' => $user->id,
@@ -304,22 +307,79 @@ class AdminController extends Controller
 
                     UserCache::forgetUnreadNotifications($user->id);
                     $sent++;
+                }
+            });
 
-                    if ($shouldSendEmail && filled($user->email)) {
+        // 2. Fast Email Dispatch (Single test or batched BCC so requests never time out)
+        if ($shouldSendEmail) {
+            if (!empty($data['test_email'])) {
+                // Test mode: Send directly to the specified test email
+                try {
+                    Mail::to($data['test_email'])->send(new AdminBroadcastMail(
+                        $data['title'],
+                        $data['message'],
+                        null,
+                        $sentBy,
+                        'Admin Tester'
+                    ));
+                    $emailsSent = 1;
+                } catch (\Throwable $e) {
+                    Log::error("Failed to send test broadcast email to {$data['test_email']}: " . $e->getMessage());
+                    return response()->json([
+                        'message' => 'Broadcast saved, but email sending failed: ' . $e->getMessage(),
+                        'sent_count' => $sent,
+                        'emails_sent' => 0,
+                    ], 500);
+                }
+            } else {
+                // Mass mode: Collect valid real emails and batch via BCC (max 30 per SMTP connection)
+                $emails = User::whereIn('role', $roles)
+                    ->where('account_status', '!=', 'suspended')
+                    ->whereNotNull('email')
+                    ->pluck('email')
+                    ->filter(function ($email) {
+                        return filter_var($email, FILTER_VALIDATE_EMAIL) && !str_ends_with(strtolower($email), '@example.com');
+                    })
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                // If all emails are example.com (e.g. fresh seed), try any valid email up to 25
+                if (empty($emails)) {
+                    $emails = User::whereIn('role', $roles)
+                        ->where('account_status', '!=', 'suspended')
+                        ->whereNotNull('email')
+                        ->limit(25)
+                        ->pluck('email')
+                        ->filter(fn ($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+                        ->unique()
+                        ->values()
+                        ->all();
+                }
+
+                if (!empty($emails)) {
+                    $chunks = array_chunk($emails, 30);
+                    $fromAddress = config('mail.from.address', 'support@recruitsense.online');
+
+                    foreach ($chunks as $chunk) {
                         try {
-                            Mail::to($user->email)->send(new AdminBroadcastMail(
-                                $user,
-                                $data['title'],
-                                $data['message'],
-                                $request->user()->name ?? 'Platform Administration'
-                            ));
-                            $emailsSent++;
+                            Mail::to($fromAddress)
+                                ->bcc($chunk)
+                                ->send(new AdminBroadcastMail(
+                                    $data['title'],
+                                    $data['message'],
+                                    null,
+                                    $sentBy,
+                                    'RecruitSense Member'
+                                ));
+                            $emailsSent += count($chunk);
                         } catch (\Throwable $e) {
-                            Log::warning("Failed to dispatch broadcast email to {$user->email}: " . $e->getMessage());
+                            Log::error("Failed to dispatch broadcast BCC batch: " . $e->getMessage());
                         }
                     }
                 }
-            });
+            }
+        }
 
         return response()->json([
             'message' => 'Broadcast sent successfully',

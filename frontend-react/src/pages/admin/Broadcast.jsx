@@ -36,6 +36,7 @@ const Broadcast = () => {
     message: '',
     target: 'all',
     send_email: false,
+    test_email: '',
   })
   const [sending, setSending] = useState(false)
   const [sentCount, setSentCount] = useState(null)
@@ -56,12 +57,14 @@ const Broadcast = () => {
       setSentCount(count)
       setEmailCount(emails)
       
-      if (form.send_email && emails > 0) {
-        toast.success(`Broadcast posted to ${count} users and emailed to ${emails} active inboxes!`)
+      if (form.send_email && form.test_email) {
+        toast.success(`Broadcast posted & test email delivered to ${form.test_email}!`)
+      } else if (form.send_email && emails > 0) {
+        toast.success(`Broadcast posted to ${count} users & batched to ${emails} inboxes!`)
       } else {
         toast.success(`Broadcast announcement sent to ${count} active users!`)
       }
-      setForm({ title: '', message: '', target: 'all', send_email: false })
+      setForm({ title: '', message: '', target: 'all', send_email: false, test_email: '' })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send broadcast announcement')
     } finally {
@@ -191,23 +194,43 @@ const Broadcast = () => {
               </div>
 
               {/* Email Announcement Option */}
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50/80 transition cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.send_email}
-                  onChange={(e) => setForm({ ...form, send_email: e.target.checked })}
-                  className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
-                />
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-indigo-600" />
-                    Also Send as Official Email Announcement (e.g. Maintenance Notice)
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Sends a branded RecruitSense email notice directly to the inboxes of all targeted active users.
-                  </p>
-                </div>
-              </label>
+              <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.send_email}
+                    onChange={(e) => setForm({ ...form, send_email: e.target.checked })}
+                    className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                      Also Send as Official Email Announcement (e.g. Maintenance Notice)
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Batched via ultra-fast BCC delivery so all recipients receive their notice in seconds without lag.
+                    </p>
+                  </div>
+                </label>
+
+                {form.send_email && (
+                  <div className="pt-2 border-t border-indigo-100">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block mb-1">
+                      Send Test Email Only (Optional)
+                    </label>
+                    <input
+                      type="email"
+                      value={form.test_email}
+                      onChange={(e) => setForm({ ...form, test_email: e.target.value })}
+                      placeholder="e.g. your_email@gmail.com (Leave empty to email all users)"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Tip: Enter your own email to test the layout immediately before broadcasting to all platform members.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Submit Button */}
               <button

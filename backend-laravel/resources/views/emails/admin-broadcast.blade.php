@@ -19,7 +19,7 @@
         <!-- Body -->
         <div style="padding:35px 30px;">
             <p style="color:#64748b; font-size:14px; margin:0 0 15px 0;">
-                Hello <strong>{{ $user->name }}</strong>,
+                Hello <strong>{{ $recipientName ?? ($user->name ?? 'RecruitSense Member') }}</strong> 👋,
             </p>
 
             <h2 style="color:#0f172a; font-size:20px; margin:0 0 16px 0; font-weight:700; line-height:1.4;">

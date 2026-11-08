@@ -13,18 +13,20 @@ class AdminBroadcastMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public User $user;
+    public ?User $user;
     public string $broadcastTitle;
     public string $broadcastMessage;
     public string $sentBy;
     public string $frontendUrl;
+    public string $recipientName;
 
-    public function __construct(User $user, string $broadcastTitle, string $broadcastMessage, string $sentBy = 'Platform Administration')
+    public function __construct(string $broadcastTitle, string $broadcastMessage, ?User $user = null, string $sentBy = 'Platform Administration', ?string $recipientName = null)
     {
         $this->user = $user;
         $this->broadcastTitle = $broadcastTitle;
         $this->broadcastMessage = $broadcastMessage;
         $this->sentBy = $sentBy;
+        $this->recipientName = $recipientName ?? ($user ? $user->name : 'RecruitSense Member');
         $this->frontendUrl = rtrim(config('services.frontend.url', env('FRONTEND_URL', 'https://recruitsense.online')), '/');
     }
 
@@ -41,6 +43,7 @@ class AdminBroadcastMail extends Mailable
             view: 'emails.admin-broadcast',
             with: [
                 'user' => $this->user,
+                'recipientName' => $this->recipientName,
                 'title' => $this->broadcastTitle,
                 'messageContent' => $this->broadcastMessage,
                 'sentBy' => $this->sentBy,
@@ -49,4 +52,3 @@ class AdminBroadcastMail extends Mailable
         );
     }
 }
-
