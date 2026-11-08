@@ -59,7 +59,9 @@ Artisan::command('recruitsense:send-job-recommendations {email?}', function (?st
                 $recommendations = $result['recommendations'] ?? [];
 
                 if (!empty($recommendations)) {
-                    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                    \App\Services\CloudEmailService::sendMailable(
+                        $user->email,
+                        $user->name,
                         new \App\Mail\RecommendedJobsMail($user, $recommendations)
                     );
                     $this->line("✓ Sent recommendations to {$user->email} (" . count($recommendations) . " matches)");
@@ -101,7 +103,9 @@ Artisan::command('recruitsense:send-profile-reminders {--min=0} {--max=79} {emai
                 $missingTasks = collect($summary['tasks'] ?? [])->where('complete', false)->values()->all();
 
                 try {
-                    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                    \App\Services\CloudEmailService::sendMailable(
+                        $user->email,
+                        $user->name,
                         new \App\Mail\ProfileCompletionReminderMail($user, $completion, $missingTasks)
                     );
                     $this->line("✓ Sent profile reminder to {$user->email} ({$completion}% complete)");

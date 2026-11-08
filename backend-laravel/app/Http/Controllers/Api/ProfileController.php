@@ -13,6 +13,7 @@ use App\Models\ProfileView;
 use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Services\CloudEmailService;
 use App\Support\ImageHelper;
 use App\Support\ProfileCompletion;
 use App\Support\UserCache;
@@ -492,7 +493,7 @@ class ProfileController extends Controller
         $completion = $summary['completion'] ?? 0;
         $missingTasks = collect($summary['tasks'] ?? [])->where('complete', false)->values()->all();
 
-        Mail::to($user->email)->send(new ProfileCompletionReminderMail($user, $completion, $missingTasks));
+        CloudEmailService::sendMailable($user->email, $user->name, new ProfileCompletionReminderMail($user, $completion, $missingTasks));
 
         return response()->json([
             'message' => "Profile reminder email sent to {$user->email} (Profile is {$completion}% complete)",

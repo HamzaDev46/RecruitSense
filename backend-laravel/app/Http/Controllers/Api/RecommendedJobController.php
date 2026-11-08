@@ -7,8 +7,8 @@ use App\Mail\RecommendedJobsMail;
 use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\SavedJob;
+use App\Services\CloudEmailService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class RecommendedJobController extends Controller
@@ -41,7 +41,7 @@ class RecommendedJobController extends Controller
             return response()->json(['message' => 'No matching jobs available right now. Update your skills or resume to get matches.'], 404);
         }
 
-        Mail::to($user->email)->send(new RecommendedJobsMail($user, $recommendations));
+        CloudEmailService::sendMailable($user->email, $user->name, new RecommendedJobsMail($user, $recommendations));
 
         return response()->json([
             'message' => 'Recommended jobs email sent successfully to ' . $user->email,
