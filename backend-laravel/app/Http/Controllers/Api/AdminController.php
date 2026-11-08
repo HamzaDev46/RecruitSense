@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\ContentReport;
 use App\Models\JobPosting;
 use App\Models\User;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -89,7 +90,7 @@ class AdminController extends Controller
             ->get()
             ->map(function ($user) use ($storageUrl) {
                 $profile = $user->jobSeeker;
-                $user->profile_image_url = $profile?->profile_image ? $storageUrl . $profile->profile_image : null;
+                $user->profile_image_url = ImageHelper::url($profile?->profile_image, $storageUrl);
                 $user->headline = $profile?->headline ?: null;
                 $user->location = $profile?->location ?: null;
                 return $user;

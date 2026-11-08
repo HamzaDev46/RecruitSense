@@ -494,8 +494,8 @@ const ProfilePage = () => {
 
     try {
       const resizedFile = await resizeImageFile(file, field === 'cover_image'
-        ? { maxWidth: 1800, maxHeight: 900, quality: 0.82, namePrefix: 'cover' }
-        : { maxWidth: 900, maxHeight: 900, quality: 0.86, namePrefix: 'profile' })
+        ? { maxWidth: 1600, maxHeight: 800, quality: 0.80, namePrefix: 'cover' }
+        : { maxWidth: 500, maxHeight: 500, quality: 0.82, namePrefix: 'profile' })
 
       setFiles({ ...files, [field]: resizedFile })
       setPreviews({
@@ -970,7 +970,12 @@ const ProfilePage = () => {
                     aria-label={profileImages.profile ? 'View profile photo' : 'Change profile photo'}
                   >
                     {profileImages.profile ? (
-                      <img src={profileImages.profile} alt={profile.name} className="w-32 h-32 rounded-full object-cover object-top border-4 border-white shadow-sm" />
+                      <img
+                        src={profileImages.profile}
+                        alt={profile.name}
+                        className="w-32 h-32 rounded-full object-cover object-top border-4 border-white shadow-sm"
+                        onError={() => setProfileImages((prev) => ({ ...prev, profile: '' }))}
+                      />
                     ) : (
                       <span className="w-32 h-32 rounded-full bg-sky-600 text-white border-4 border-white shadow-sm flex items-center justify-center text-4xl font-bold">
                         {initials}
@@ -1718,7 +1723,15 @@ const ProfilePage = () => {
                 <div className="flex items-end gap-4">
                   <div className="-mt-14 relative z-10">
                     {previews.profile || profileImages.profile ? (
-                      <img src={previews.profile || profileImages.profile} alt={form.name} className="w-28 h-28 rounded-full object-cover object-top border-4 border-white shadow-sm" />
+                      <img
+                        src={previews.profile || profileImages.profile}
+                        alt={form.name}
+                        className="w-28 h-28 rounded-full object-cover object-top border-4 border-white shadow-sm"
+                        onError={() => {
+                          setPreviews((prev) => ({ ...prev, profile: '' }))
+                          setProfileImages((prev) => ({ ...prev, profile: '' }))
+                        }}
+                      />
                     ) : (
                       <div className="w-28 h-28 rounded-full bg-sky-600 text-white border-4 border-white shadow-sm flex items-center justify-center text-3xl font-bold">
                         {initials}

@@ -43,15 +43,17 @@ const formatTime = (value) => {
 }
 
 const Avatar = ({ user, size = 'w-11 h-11' }) => {
+  const [imgError, setImgError] = useState(false)
   const isCompanyUser = user?.role === 'company'
 
   return (
     <div className="relative shrink-0">
-      {user?.profile_image_url ? (
+      {user?.profile_image_url && !imgError ? (
         <img
           src={user.profile_image_url}
           alt={user.name}
           className={`${size} rounded-full object-cover object-top border border-gray-100 shadow-sm`}
+          onError={() => setImgError(true)}
         />
       ) : (
         <div

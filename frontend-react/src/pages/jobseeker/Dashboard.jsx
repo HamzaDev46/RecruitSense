@@ -326,13 +326,23 @@ const Dashboard = () => {
                 <article key={item.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                   <div className="flex items-start gap-3">
                     {post.author?.profile_image_url ? (
-                      <img
-                        src={post.author.profile_image_url}
-                        alt={post.author.name}
-                        className="w-11 h-11 rounded-full object-cover object-top border border-gray-100"
-                      />
+                      <>
+                        <img
+                          src={post.author.profile_image_url}
+                          alt={post.author.name}
+                          className="w-11 h-11 rounded-full object-cover object-top border border-gray-100 shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            const fallback = e.currentTarget.parentElement?.querySelector('.post-avatar-fallback')
+                            if (fallback) fallback.classList.remove('hidden')
+                          }}
+                        />
+                        <div className="post-avatar-fallback hidden w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
+                          {(post.author?.name || 'U').charAt(0)}
+                        </div>
+                      </>
                     ) : (
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
                         {(post.author?.name || 'U').charAt(0)}
                       </div>
                     )}

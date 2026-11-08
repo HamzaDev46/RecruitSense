@@ -95,12 +95,15 @@ const actionLabel = (notification, role) => {
 }
 
 const ActorAvatar = ({ actor }) => {
-  if (actor?.profile_image_url) {
+  const [imgError, setImgError] = useState(false)
+
+  if (actor?.profile_image_url && !imgError) {
     return (
       <img
         src={actor.profile_image_url}
         alt={actor.name}
         className="w-11 h-11 rounded-full object-cover object-top border border-gray-100"
+        onError={() => setImgError(true)}
       />
     )
   }

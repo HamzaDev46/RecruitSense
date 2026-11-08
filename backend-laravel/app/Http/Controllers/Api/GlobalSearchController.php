@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -198,7 +199,7 @@ class GlobalSearchController extends Controller
             'company' => $jobSeeker?->company,
             'skills' => $jobSeeker?->skills,
             'is_connected' => in_array($user->id, $connectedIds, true),
-            'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl),
         ];
     }
 

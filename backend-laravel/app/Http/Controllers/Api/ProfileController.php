@@ -12,6 +12,7 @@ use App\Models\ProfileView;
 use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use App\Support\ProfileCompletion;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
@@ -226,8 +227,21 @@ class ProfileController extends Controller
 
     private function replaceFile($jobSeeker, string $field, $file, string $directory): void
     {
-        if ($jobSeeker->{$field}) {
+        if ($jobSeeker->{$field} && !str_starts_with($jobSeeker->{$field}, 'data:')) {
             Storage::disk('public')->delete($jobSeeker->{$field});
+        }
+
+        // Store as Base64 Data URI directly in MySQL for 100% persistence
+        // across ephemeral cloud container sleep / restarts (Render Free Tier)
+        try {
+            $realPath = $file->getRealPath();
+            if ($realPath && file_exists($realPath) && filesize($realPath) <= 4 * 1024 * 1024) {
+                $mime = $file->getMimeType() ?: 'image/jpeg';
+                $jobSeeker->{$field} = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($realPath));
+                return;
+            }
+        } catch (\Throwable $e) {
+            // fallback to disk storage
         }
 
         $jobSeeker->{$field} = $file->store($directory, 'public');
@@ -366,8 +380,8 @@ class ProfileController extends Controller
                 'cover_image' => $jobSeeker->cover_image,
                 'cover_position' => $jobSeeker->cover_position ?: 'center center',
                 'profile_visibility' => $jobSeeker->profile_visibility ?: 'public',
-                'profile_image_url' => $jobSeeker->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
-                'cover_image_url' => $jobSeeker->cover_image ? $storageUrl . $jobSeeker->cover_image : null,
+                'profile_image_url' => ImageHelper::url($jobSeeker->profile_image, $storageUrl),
+                'cover_image_url' => ImageHelper::url($jobSeeker->cover_image, $storageUrl),
             ],
             'experiences' => $jobSeeker->experiences->values()->map(fn ($experience) => [
                 'id' => $experience->id,
@@ -417,7 +431,7 @@ class ProfileController extends Controller
                 'headline' => $jobSeeker?->headline,
                 'location' => $jobSeeker?->location,
                 'company' => $jobSeeker?->company,
-                'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+                'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl),
             ] : null,
         ];
     }
@@ -439,7 +453,7 @@ class ProfileController extends Controller
                 'headline' => $jobSeeker?->headline,
                 'location' => $jobSeeker?->location,
                 'company' => $jobSeeker?->company,
-                'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+                'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl),
             ] : null,
         ];
     }

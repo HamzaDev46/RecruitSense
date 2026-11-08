@@ -10,6 +10,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -397,9 +398,8 @@ class MessageController extends Controller
             'headline' => $jobSeeker?->headline ?: ($company?->industry ? $company->industry . ' company' : null),
             'location' => $jobSeeker?->location,
             'company' => $jobSeeker?->company ?: $company?->name,
-            'profile_image_url' => $jobSeeker?->profile_image
-                ? $storageUrl . $jobSeeker->profile_image
-                : $company?->logo_url,
+            'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl)
+                ?: ImageHelper::url($company?->logo_path ?: $company?->logo_url, $storageUrl),
         ];
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\User;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -114,9 +115,8 @@ class NotificationController extends Controller
             'role' => $user->role,
             'headline' => $jobSeeker?->headline ?: ($company?->industry ? $company->industry . ' company' : null),
             'company' => $jobSeeker?->company ?: $company?->name,
-            'profile_image_url' => $jobSeeker?->profile_image
-                ? $storageUrl . $jobSeeker->profile_image
-                : $company?->logo_url,
+            'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl)
+                ?: ImageHelper::url($company?->logo_path ?: $company?->logo_url, $storageUrl),
         ];
     }
 }

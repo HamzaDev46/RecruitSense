@@ -25,12 +25,15 @@ const formatDate = (value) => {
 const wasEdited = (item) => Boolean(item?.updated_at && item?.created_at && item.updated_at !== item.created_at)
 
 const Avatar = ({ user, size = 'w-11 h-11' }) => {
-  if (user?.profile_image_url) {
+  const [imgError, setImgError] = useState(false)
+
+  if (user?.profile_image_url && !imgError) {
     return (
       <img
         src={user.profile_image_url}
         alt={user.name}
         className={`${size} rounded-full object-cover object-top border border-gray-100`}
+        onError={() => setImgError(true)}
       />
     )
   }

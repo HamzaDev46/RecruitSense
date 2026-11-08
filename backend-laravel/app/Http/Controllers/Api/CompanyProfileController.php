@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Support\ImageHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -103,8 +104,19 @@ class CompanyProfileController extends Controller
 
     private function replaceFile(Company $company, string $field, $file, string $directory): void
     {
-        if ($company->{$field}) {
+        if ($company->{$field} && !str_starts_with($company->{$field}, 'data:')) {
             Storage::disk('public')->delete($company->{$field});
+        }
+
+        try {
+            $realPath = $file->getRealPath();
+            if ($realPath && file_exists($realPath) && filesize($realPath) <= 4 * 1024 * 1024) {
+                $mime = $file->getMimeType() ?: 'image/jpeg';
+                $company->{$field} = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($realPath));
+                return;
+            }
+        } catch (\Throwable $e) {
+            // fallback
         }
 
         $company->{$field} = $file->store($directory, 'public');
@@ -128,8 +140,8 @@ class CompanyProfileController extends Controller
             'founded_year' => $company->founded_year,
             'logo_path' => $company->logo_path,
             'cover_image' => $company->cover_image,
-            'logo_url' => $company->logo_path ? $storageUrl . $company->logo_path : null,
-            'cover_image_url' => $company->cover_image ? $storageUrl . $company->cover_image : null,
+            'logo_url' => ImageHelper::url($company->logo_path, $storageUrl),
+            'cover_image_url' => ImageHelper::url($company->cover_image, $storageUrl),
             'updated_at' => $company->updated_at?->toISOString(),
         ];
     }

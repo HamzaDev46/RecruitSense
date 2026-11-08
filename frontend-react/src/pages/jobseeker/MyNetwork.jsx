@@ -14,12 +14,15 @@ const initials = (name = 'User') => name
   .toUpperCase()
 
 const PersonAvatar = ({ user, size = 'w-14 h-14', textSize = 'text-lg' }) => {
-  if (user.profile_image_url) {
+  const [imgError, setImgError] = useState(false)
+
+  if (user.profile_image_url && !imgError) {
     return (
       <img
         src={user.profile_image_url}
         alt={user.name}
         className={`${size} rounded-full object-cover object-top border border-gray-100`}
+        onError={() => setImgError(true)}
       />
     )
   }

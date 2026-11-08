@@ -194,13 +194,23 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {user?.profile_image_url ? (
-              <img
-                src={user.profile_image_url}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover object-top border border-gray-100"
-              />
+              <>
+                <img
+                  src={user.profile_image_url}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full object-cover object-top border border-gray-100 shrink-0"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fallback = e.currentTarget.parentElement?.querySelector('.modal-avatar-fallback')
+                    if (fallback) fallback.classList.remove('hidden')
+                  }}
+                />
+                <div className="modal-avatar-fallback hidden w-10 h-10 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  {initials(user?.name)}
+                </div>
+              </>
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                 {initials(user?.name)}
               </div>
             )}

@@ -16,6 +16,7 @@ use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Rules\TrustedEmailDomain;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -405,7 +406,7 @@ class AccountSettingsController extends Controller
                     'headline' => $profile?->headline,
                     'company' => $profile?->company,
                     'location' => $profile?->location,
-                    'profile_image_url' => $profile?->profile_image ? $storageUrl . $profile->profile_image : null,
+                    'profile_image_url' => ImageHelper::url($profile?->profile_image, $storageUrl),
                     'blocked_at' => $block->created_at?->toISOString(),
                 ];
             })

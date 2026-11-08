@@ -11,6 +11,7 @@ use App\Models\PostComment;
 use App\Models\PostImpression;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -619,7 +620,7 @@ class PostController extends Controller
             'headline' => $jobSeeker?->headline,
             'company' => $jobSeeker?->company,
             'location' => $jobSeeker?->location,
-            'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl),
         ];
     }
 

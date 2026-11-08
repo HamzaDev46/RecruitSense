@@ -164,10 +164,14 @@ const Sidebar = ({ mobileOpen = false, onClose }) => {
             <img
               src={profilePhoto}
               alt={user?.name || 'Profile'}
-              className="w-10 h-10 rounded-full object-cover object-top border border-gray-100"
+              className="w-10 h-10 rounded-full object-cover object-top border border-gray-100 shrink-0"
+              onError={() => {
+                setProfilePhoto('')
+                saveCachedProfilePhoto(user?.id, '')
+              }}
             />
           ) : (
-            <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
               {user?.name?.charAt(0).toUpperCase()}
             </div>
           )}

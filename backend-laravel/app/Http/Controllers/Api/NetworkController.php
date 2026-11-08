@@ -8,6 +8,7 @@ use App\Models\Connection;
 use App\Models\SearchAppearance;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -421,7 +422,7 @@ class NetworkController extends Controller
             'headline' => $jobSeeker?->headline,
             'location' => $jobSeeker?->location,
             'company' => $jobSeeker?->company,
-            'profile_image_url' => $jobSeeker?->profile_image ? $storageUrl . $jobSeeker->profile_image : null,
+            'profile_image_url' => ImageHelper::url($jobSeeker?->profile_image, $storageUrl),
         ];
     }
 

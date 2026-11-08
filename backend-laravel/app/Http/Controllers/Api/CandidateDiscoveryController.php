@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\JobSeeker;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Support\ImageHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -109,7 +110,7 @@ class CandidateDiscoveryController extends Controller
                 'company' => $profile?->company,
                 'education' => $profile?->education,
                 'skills' => $skillsArray,
-                'profile_image_url' => $profile?->profile_image ? $storageUrl . $profile->profile_image : null,
+                'profile_image_url' => ImageHelper::url($profile?->profile_image, $storageUrl),
                 'experiences_count' => $profile?->experiences ? $profile->experiences->count() : 0,
                 'has_resume' => (bool) $profile?->resume,
                 'conversation_id' => $existingConversations[$user->id] ?? null,
