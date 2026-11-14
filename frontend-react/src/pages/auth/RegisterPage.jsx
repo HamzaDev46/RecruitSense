@@ -12,6 +12,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
 import GoogleAuthButton from '../../components/auth/GoogleAuthButton'
 import { validateTrustedEmail } from '../../utils/emailValidation'
+import { getPasswordStrength } from '../../utils/passwordStrength'
+import PasswordStrengthSlider from '../../components/auth/PasswordStrengthSlider'
 
 const INDUSTRY_OPTIONS = [
   'Software & IT',
@@ -58,6 +60,7 @@ const RegisterPage = () => {
 
   const emailValidation = form.email ? validateTrustedEmail(form.email) : null
   const isPasswordActive = Boolean(isEnteringPassword || (form.password && form.password.length > 0))
+  const passwordStrength = getPasswordStrength(form.password)
 
   useEffect(() => {
     if (cooldown <= 0) return undefined
@@ -443,11 +446,13 @@ const RegisterPage = () => {
                         ease: 'easeInOut',
                       } : { duration: 0.3 }}
                       className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
-                        isPasswordActive
-                          ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 shadow-md shadow-purple-500/30 ring-2 ring-purple-100 text-white'
-                          : 'bg-gray-100 text-gray-400'
+                        passwordStrength.isFullyValid
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/30 ring-2 ring-emerald-100 text-white'
+                          : isPasswordActive
+                            ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 shadow-md shadow-purple-500/30 ring-2 ring-purple-100 text-white'
+                            : 'bg-gray-100 text-gray-400'
                       }`}
-                      title={isPasswordActive ? 'Password Protected' : 'Security Shield'}
+                      title={passwordStrength.isFullyValid ? 'Strong Password' : isPasswordActive ? 'Password Protected' : 'Security Shield'}
                     >
                       <ShieldCheck className="w-4 h-4" />
                     </motion.div>
@@ -462,6 +467,9 @@ const RegisterPage = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Real-time Animated Password Strength Slider */}
+                <PasswordStrengthSlider password={form.password} />
               </div>
 
               <button

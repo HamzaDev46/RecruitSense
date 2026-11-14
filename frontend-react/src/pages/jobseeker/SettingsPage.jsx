@@ -27,6 +27,7 @@ import PageContentLoader from '../../components/common/PageContentLoader'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
 import { validateTrustedEmail } from '../../utils/emailValidation'
+import PasswordStrengthSlider from '../../components/auth/PasswordStrengthSlider'
 
 const defaultPreferences = {
   profile_visibility: 'public',
@@ -388,17 +389,7 @@ const SettingsPage = () => {
                       placeholder="••••••••"
                       className={inputClass()}
                     />
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${passwordForm.password.length >= 8 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
-                        {passwordForm.password.length >= 8 ? '✓' : '○'} 8+ chars
-                      </span>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${/[A-Z]/.test(passwordForm.password) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
-                        {/[A-Z]/.test(passwordForm.password) ? '✓' : '○'} 1 Capital (A-Z)
-                      </span>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${/[^A-Za-z0-9]/.test(passwordForm.password) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
-                        {/[^A-Za-z0-9]/.test(passwordForm.password) ? '✓' : '○'} 1 Special (!@#$)
-                      </span>
-                    </div>
+                    <PasswordStrengthSlider password={passwordForm.password} />
                   </Field>
                   <Field label="Confirm password">
                     <input
