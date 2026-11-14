@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Brain, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/useAuth'
@@ -12,10 +12,13 @@ const LoginPage = () => {
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isEnteringPassword, setIsEnteringPassword] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
   const [unverifiedEmail, setUnverifiedEmail] = useState(null)
   const [directVerifyUrl, setDirectVerifyUrl] = useState('')
   const [resending, setResending] = useState(false)
+
+  const isPasswordActive = Boolean(isEnteringPassword || (form.password && form.password.length > 0))
 
   const finishLogin = useCallback((user, token, message = `Welcome back, ${user.name}!`) => {
     login(user, token)
@@ -150,17 +153,50 @@ const LoginPage = () => {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="Enter your password"
+                onFocus={() => setIsEnteringPassword(true)}
+                onBlur={() => setIsEnteringPassword(false)}
+                placeholder="••••••••"
                 required
-                className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className={`w-full pl-11 pr-24 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
+                  isPasswordActive
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+                    : 'border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                }`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {/* Animated Password Character/Symbol */}
+                <motion.div
+                  animate={isPasswordActive ? {
+                    scale: [1, 1.15, 1],
+                    rotate: [0, -6, 6, 0],
+                  } : {
+                    scale: 1,
+                    rotate: 0,
+                  }}
+                  transition={isPasswordActive ? {
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  } : { duration: 0.3 }}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                    isPasswordActive
+                      ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 shadow-md shadow-purple-500/30 ring-2 ring-purple-100 text-white'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                  title={isPasswordActive ? 'Password Protected' : 'Security Shield'}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                </motion.div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-600 p-0.5 transition-colors"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
           </div>
 

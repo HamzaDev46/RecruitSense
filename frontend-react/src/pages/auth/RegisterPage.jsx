@@ -157,54 +157,12 @@ const RegisterPage = () => {
         className={`bg-white rounded-3xl shadow-2xl p-8 w-full ${form.role === 'company' ? 'max-w-xl' : 'max-w-md'} transition-all duration-300 relative z-10`}
       >
         <div className="text-center mb-8">
-          <motion.div
-            animate={isPasswordActive ? {
-              scale: [1, 1.15, 1.05],
-              rotate: [0, -6, 6, 0],
-            } : {
-              scale: 1,
-              rotate: 0,
-            }}
-            transition={isPasswordActive ? {
-              duration: 1.6,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            } : { duration: 0.3 }}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg cursor-pointer relative transition-all duration-300 ${
-              isPasswordActive
-                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 shadow-purple-500/40 ring-4 ring-purple-100'
-                : 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/25'
-            }`}
+          <div
+            className="w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/25 cursor-pointer"
             onClick={() => navigate('/')}
           >
-            {isPasswordActive ? (
-              <motion.div
-                key="shield"
-                initial={{ scale: 0, rotate: -25 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 18 }}
-              >
-                <ShieldCheck className="w-8 h-8 text-white drop-shadow-md" />
-              </motion.div>
-            ) : (
-              <Brain className="w-8 h-8 text-white" />
-            )}
-
-            {/* Floating Security Badge over Top Icon */}
-            <AnimatePresence>
-              {isPasswordActive && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5, scale: 0.7 }}
-                  animate={{ opacity: 1, y: -14, scale: 1 }}
-                  exit={{ opacity: 0, y: 5, scale: 0.7 }}
-                  className="absolute -top-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 border border-white/40 tracking-wider uppercase whitespace-nowrap"
-                >
-                  <Sparkles className="w-2.5 h-2.5 animate-spin" />
-                  <span>Security Mode</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+            <Brain className="w-8 h-8 text-white" />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900">
             {verificationSent ? 'Verify Your Email' : form.role === 'company' ? 'Register Your Company' : 'Create Candidate Account'}
           </h1>
@@ -257,72 +215,30 @@ const RegisterPage = () => {
         ) : (
           <>
             {/* Role Selector */}
-            <div className="flex gap-3 mb-6 relative">
+            <div className="flex gap-3 mb-6">
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: 'jobseeker' })}
-                className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   form.role === 'jobseeker'
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 <UserCheck className="w-4 h-4" />
                 Job Seeker
-                <AnimatePresence>
-                  {isPasswordActive && form.role === 'jobseeker' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.7 }}
-                      animate={{
-                        opacity: 1,
-                        y: -12,
-                        scale: [1, 1.06, 1],
-                      }}
-                      exit={{ opacity: 0, y: 8, scale: 0.7 }}
-                      transition={{
-                        y: { type: 'spring', stiffness: 400, damping: 25 },
-                        scale: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }
-                      }}
-                      className="absolute -top-3.5 right-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/40 tracking-wide uppercase"
-                    >
-                      <Lock className="w-2.5 h-2.5 animate-pulse" />
-                      <span>Protected</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </button>
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: 'company' })}
-                className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   form.role === 'company'
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
                 Company (HR)
-                <AnimatePresence>
-                  {isPasswordActive && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.7 }}
-                      animate={{
-                        opacity: 1,
-                        y: -12,
-                        scale: [1, 1.08, 1],
-                      }}
-                      exit={{ opacity: 0, y: 8, scale: 0.7 }}
-                      transition={{
-                        y: { type: 'spring', stiffness: 400, damping: 25 },
-                        scale: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }
-                      }}
-                      className="absolute -top-3.5 right-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/40 tracking-wide uppercase"
-                    >
-                      <Lock className="w-2.5 h-2.5 animate-pulse" />
-                      <span>HR Protected</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </button>
             </div>
 
@@ -505,19 +421,46 @@ const RegisterPage = () => {
                     onBlur={() => setIsEnteringPassword(false)}
                     placeholder="••••••••"
                     required
-                    className={`w-full pl-11 pr-12 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
+                    className={`w-full pl-11 pr-24 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
                       isPasswordActive
                         ? 'border-indigo-500 ring-2 ring-indigo-500/20'
                         : 'border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
                     }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {/* Animated Password Character/Symbol from screenshot */}
+                    <motion.div
+                      animate={isPasswordActive ? {
+                        scale: [1, 1.15, 1],
+                        rotate: [0, -6, 6, 0],
+                      } : {
+                        scale: 1,
+                        rotate: 0,
+                      }}
+                      transition={isPasswordActive ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      } : { duration: 0.3 }}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                        isPasswordActive
+                          ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-600 shadow-md shadow-purple-500/30 ring-2 ring-purple-100 text-white'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                      title={isPasswordActive ? 'Password Protected' : 'Security Shield'}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                    </motion.div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-gray-600 p-0.5 transition-colors"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
