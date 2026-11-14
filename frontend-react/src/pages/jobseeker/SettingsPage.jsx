@@ -201,6 +201,22 @@ const SettingsPage = () => {
 
   const savePassword = async (event) => {
     event.preventDefault()
+    if (passwordForm.password.length < 8) {
+      toast.error('New password must be at least 8 characters long.')
+      return
+    }
+    if (!/[A-Z]/.test(passwordForm.password)) {
+      toast.error('New password must contain at least one capital letter (A-Z).')
+      return
+    }
+    if (!/[^A-Za-z0-9]/.test(passwordForm.password)) {
+      toast.error('New password must contain at least one special character (e.g. !@#$%^&*).')
+      return
+    }
+    if (passwordForm.password !== passwordForm.password_confirmation) {
+      toast.error('Passwords do not match.')
+      return
+    }
     setSavingPassword(true)
 
     try {
@@ -210,7 +226,7 @@ const SettingsPage = () => {
         password: '',
         password_confirmation: '',
       })
-      toast.success('Password updated')
+      toast.success('Password updated successfully')
     } catch (err) {
       toast.error(firstError(err, 'Failed to update password'))
     } finally {
@@ -369,8 +385,20 @@ const SettingsPage = () => {
                       type="password"
                       value={passwordForm.password}
                       onChange={(event) => setPasswordForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder="Min 8 chars, 1 capital & 1 special char"
                       className={inputClass()}
                     />
+                    <div className="flex flex-wrap gap-2 mt-1.5">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${passwordForm.password.length >= 8 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
+                        {passwordForm.password.length >= 8 ? '✓' : '○'} 8+ chars
+                      </span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${/[A-Z]/.test(passwordForm.password) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
+                        {/[A-Z]/.test(passwordForm.password) ? '✓' : '○'} 1 Capital (A-Z)
+                      </span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${/[^A-Za-z0-9]/.test(passwordForm.password) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'}`}>
+                        {/[^A-Za-z0-9]/.test(passwordForm.password) ? '✓' : '○'} 1 Special (!@#$)
+                      </span>
+                    </div>
                   </Field>
                   <Field label="Confirm password">
                     <input

@@ -53,7 +53,6 @@ const RegisterPage = () => {
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
-  const [directVerifyUrl, setDirectVerifyUrl] = useState('')
 
   const emailValidation = form.email ? validateTrustedEmail(form.email) : null
 
@@ -88,6 +87,19 @@ const RegisterPage = () => {
       }
     }
 
+    if (form.password.length < 8) {
+      toast.error('Password must be at least 8 characters long.')
+      return
+    }
+    if (!/[A-Z]/.test(form.password)) {
+      toast.error('Password must contain at least one capital letter (A-Z).')
+      return
+    }
+    if (!/[^A-Za-z0-9]/.test(form.password)) {
+      toast.error('Password must contain at least one special character (e.g. !@#$%^&*).')
+      return
+    }
+
     setLoading(true)
     try {
       const payload = {
@@ -97,12 +109,9 @@ const RegisterPage = () => {
       const res = await api.post('/register', payload)
       if (res.data.requires_verification) {
         setRegisteredEmail(res.data.email || form.email)
-        if (res.data.verify_url) {
-          setDirectVerifyUrl(res.data.verify_url)
-        }
         setVerificationSent(true)
         setCooldown(60)
-        toast.success(res.data.message || 'Verification link generated! Please activate your account.')
+        toast.success(res.data.message || 'Verification link sent! Please activate your account via your email.')
       } else {
         const { token, user } = res.data
         finishRegistration(user, token)
@@ -124,10 +133,7 @@ const RegisterPage = () => {
     setResending(true)
     try {
       const res = await api.post('/resend-verification', { email: registeredEmail })
-      if (res.data.verify_url) {
-        setDirectVerifyUrl(res.data.verify_url)
-      }
-      toast.success(res.data.message || 'Fresh verification link generated!')
+      toast.success(res.data.message || 'Fresh verification link sent to your email!')
       setCooldown(60)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not resend email.')
@@ -185,16 +191,6 @@ const RegisterPage = () => {
             </div>
 
             <div className="space-y-3 pt-2">
-              {directVerifyUrl && (
-                <a
-                  href={directVerifyUrl}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Activate Account Instantly Now
-                </a>
-              )}
-
               <button
                 type="button"
                 onClick={handleResend}
@@ -418,7 +414,7 @@ const RegisterPage = () => {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    placeholder="Min 6 characters"
+                    placeholder="Min 8 chars (1 capital & 1 special char)"
                     required
                     className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
@@ -429,6 +425,37 @@ const RegisterPage = () => {
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
+                </div>
+
+                {/* Real-time Password Scheme Checklist */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                      form.password.length >= 8
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {form.password.length >= 8 ? '✓' : '○'} 8+ Characters
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                      /[A-Z]/.test(form.password)
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {/[A-Z]/.test(form.password) ? '✓' : '○'} 1 Capital Letter (A-Z)
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                      /[^A-Za-z0-9]/.test(form.password)
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {/[^A-Za-z0-9]/.test(form.password) ? '✓' : '○'} 1 Special Char (!@#$%)
+                  </span>
                 </div>
               </div>
 

@@ -23,6 +23,23 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    if (form.password.length < 8) {
+      toast.error('Password must be at least 8 characters long.')
+      return
+    }
+    if (!/[A-Z]/.test(form.password)) {
+      toast.error('Password must contain at least one capital letter (A-Z).')
+      return
+    }
+    if (!/[^A-Za-z0-9]/.test(form.password)) {
+      toast.error('Password must contain at least one special character (e.g. !@#$%^&*).')
+      return
+    }
+    if (form.password !== form.password_confirmation) {
+      toast.error('Passwords do not match.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -98,7 +115,7 @@ const ResetPasswordPage = () => {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="Min 6 characters"
+                placeholder="Min 8 chars (1 capital & 1 special char)"
                 required
                 className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
@@ -109,6 +126,37 @@ const ResetPasswordPage = () => {
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
+            </div>
+
+            {/* Real-time Password Scheme Checklist */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                  form.password.length >= 8
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {form.password.length >= 8 ? '✓' : '○'} 8+ Chars
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                  /[A-Z]/.test(form.password)
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {/[A-Z]/.test(form.password) ? '✓' : '○'} 1 Capital (A-Z)
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                  /[^A-Za-z0-9]/.test(form.password)
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {/[^A-Za-z0-9]/.test(form.password) ? '✓' : '○'} 1 Special (!@#$)
+              </span>
             </div>
           </div>
 

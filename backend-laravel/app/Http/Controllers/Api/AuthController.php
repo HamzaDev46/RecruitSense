@@ -73,8 +73,19 @@ class AuthController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users', new TrustedEmailDomain()],
-            'password' => 'required|string|min:6',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[^A-Za-z0-9]/',
+            ],
             'role' => 'required|in:company,jobseeker',
+        ];
+
+        $messages = [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain at least one uppercase letter (A-Z) and at least one special character (e.g. !@#$%^&*).',
         ];
 
         if ($isCompany) {
@@ -87,7 +98,7 @@ class AuthController extends Controller
             $rules['phone'] = 'nullable|string|max:50';
         }
 
-        $validator = Validator::make($request->all(), $rules);
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -133,7 +144,6 @@ class AuthController extends Controller
             'message' => 'Registration successful. An activation link has been sent to your email. Please check your inbox to activate your account.',
             'requires_verification' => true,
             'email' => $user->email,
-            'verify_url' => $verifyUrl,
             'user' => $user,
         ], 201);
     }
@@ -229,10 +239,9 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'message' => 'A fresh verification link has been generated. Please check your inbox or use the link below.',
+            'message' => 'A fresh verification link has been sent to your email. Please check your inbox.',
             'requires_verification' => true,
             'email' => $user->email,
-            'verify_url' => $verifyUrl,
         ], 200);
     }
 
@@ -281,7 +290,17 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'token' => 'required|string',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[^A-Za-z0-9]/',
+                'confirmed',
+            ],
+        ], [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.regex' => 'Password must contain at least one uppercase letter (A-Z) and at least one special character (e.g. !@#$%^&*).',
         ]);
 
         if ($validator->fails()) {
