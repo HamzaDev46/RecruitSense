@@ -105,16 +105,8 @@ const LoginPage = () => {
               Account Not Activated
             </div>
             <p className="text-xs text-amber-700 leading-relaxed">
-              We sent a verification link to <strong>{unverifiedEmail}</strong>. Please verify your email before logging in.
+              We sent a verification link to <strong>{unverifiedEmail}</strong>. Please verify your email via your inbox before logging in.
             </p>
-            {directVerifyUrl && (
-              <a
-                href={directVerifyUrl}
-                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-center block shadow-sm shadow-emerald-600/30"
-              >
-                Activate Account Instantly Now
-              </a>
-            )}
             <button
               type="button"
               onClick={handleResend}

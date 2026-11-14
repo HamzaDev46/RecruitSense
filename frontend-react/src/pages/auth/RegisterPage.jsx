@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Brain, Mail, Lock, User, Eye, EyeOff, ArrowRight,
   Briefcase, UserCheck, CheckCircle2, AlertCircle, ShieldAlert,
-  Send, RefreshCw, Building2, MapPin, Globe, Users
+  Send, RefreshCw, Building2, MapPin, Globe, Users,
+  ShieldCheck, Sparkles
 } from 'lucide-react'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
@@ -38,6 +39,7 @@ const RegisterPage = () => {
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isEnteringPassword, setIsEnteringPassword] = useState(false)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -55,6 +57,7 @@ const RegisterPage = () => {
   const [cooldown, setCooldown] = useState(0)
 
   const emailValidation = form.email ? validateTrustedEmail(form.email) : null
+  const isPasswordActive = Boolean(isEnteringPassword || (form.password && form.password.length > 0))
 
   useEffect(() => {
     if (cooldown <= 0) return undefined
@@ -154,12 +157,54 @@ const RegisterPage = () => {
         className={`bg-white rounded-3xl shadow-2xl p-8 w-full ${form.role === 'company' ? 'max-w-xl' : 'max-w-md'} transition-all duration-300 relative z-10`}
       >
         <div className="text-center mb-8">
-          <div
-            className="w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/25 cursor-pointer"
+          <motion.div
+            animate={isPasswordActive ? {
+              scale: [1, 1.15, 1.05],
+              rotate: [0, -6, 6, 0],
+            } : {
+              scale: 1,
+              rotate: 0,
+            }}
+            transition={isPasswordActive ? {
+              duration: 1.6,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            } : { duration: 0.3 }}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg cursor-pointer relative transition-all duration-300 ${
+              isPasswordActive
+                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 shadow-purple-500/40 ring-4 ring-purple-100'
+                : 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/25'
+            }`}
             onClick={() => navigate('/')}
           >
-            <Brain className="w-8 h-8 text-white" />
-          </div>
+            {isPasswordActive ? (
+              <motion.div
+                key="shield"
+                initial={{ scale: 0, rotate: -25 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+              >
+                <ShieldCheck className="w-8 h-8 text-white drop-shadow-md" />
+              </motion.div>
+            ) : (
+              <Brain className="w-8 h-8 text-white" />
+            )}
+
+            {/* Floating Security Badge over Top Icon */}
+            <AnimatePresence>
+              {isPasswordActive && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5, scale: 0.7 }}
+                  animate={{ opacity: 1, y: -14, scale: 1 }}
+                  exit={{ opacity: 0, y: 5, scale: 0.7 }}
+                  className="absolute -top-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 border border-white/40 tracking-wider uppercase whitespace-nowrap"
+                >
+                  <Sparkles className="w-2.5 h-2.5 animate-spin" />
+                  <span>Security Mode</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
           <h1 className="text-2xl font-bold text-gray-900">
             {verificationSent ? 'Verify Your Email' : form.role === 'company' ? 'Register Your Company' : 'Create Candidate Account'}
           </h1>
@@ -212,30 +257,72 @@ const RegisterPage = () => {
         ) : (
           <>
             {/* Role Selector */}
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-3 mb-6 relative">
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: 'jobseeker' })}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
+                className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   form.role === 'jobseeker'
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 <UserCheck className="w-4 h-4" />
                 Job Seeker
+                <AnimatePresence>
+                  {isPasswordActive && form.role === 'jobseeker' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.7 }}
+                      animate={{
+                        opacity: 1,
+                        y: -12,
+                        scale: [1, 1.06, 1],
+                      }}
+                      exit={{ opacity: 0, y: 8, scale: 0.7 }}
+                      transition={{
+                        y: { type: 'spring', stiffness: 400, damping: 25 },
+                        scale: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }
+                      }}
+                      className="absolute -top-3.5 right-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/40 tracking-wide uppercase"
+                    >
+                      <Lock className="w-2.5 h-2.5 animate-pulse" />
+                      <span>Protected</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </button>
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: 'company' })}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
+                className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   form.role === 'company'
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
-                Company
+                Company (HR)
+                <AnimatePresence>
+                  {isPasswordActive && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.7 }}
+                      animate={{
+                        opacity: 1,
+                        y: -12,
+                        scale: [1, 1.08, 1],
+                      }}
+                      exit={{ opacity: 0, y: 8, scale: 0.7 }}
+                      transition={{
+                        y: { type: 'spring', stiffness: 400, damping: 25 },
+                        scale: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }
+                      }}
+                      className="absolute -top-3.5 right-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/40 tracking-wide uppercase"
+                    >
+                      <Lock className="w-2.5 h-2.5 animate-pulse" />
+                      <span>HR Protected</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </button>
             </div>
 
@@ -414,9 +501,15 @@ const RegisterPage = () => {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    placeholder="Min 8 chars (1 capital & 1 special char)"
+                    onFocus={() => setIsEnteringPassword(true)}
+                    onBlur={() => setIsEnteringPassword(false)}
+                    placeholder="••••••••"
                     required
-                    className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className={`w-full pl-11 pr-12 py-3 border rounded-xl text-sm focus:outline-none transition-all ${
+                      isPasswordActive
+                        ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+                        : 'border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                    }`}
                   />
                   <button
                     type="button"
@@ -425,37 +518,6 @@ const RegisterPage = () => {
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
-                </div>
-
-                {/* Real-time Password Scheme Checklist */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
-                      form.password.length >= 8
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {form.password.length >= 8 ? '✓' : '○'} 8+ Characters
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
-                      /[A-Z]/.test(form.password)
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {/[A-Z]/.test(form.password) ? '✓' : '○'} 1 Capital Letter (A-Z)
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
-                      /[^A-Za-z0-9]/.test(form.password)
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {/[^A-Za-z0-9]/.test(form.password) ? '✓' : '○'} 1 Special Char (!@#$%)
-                  </span>
                 </div>
               </div>
 

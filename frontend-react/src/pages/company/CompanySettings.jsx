@@ -613,7 +613,7 @@ const CompanySettings = () => {
               type="password"
               value={passwordForm.password}
               onChange={(event) => setPasswordForm((current) => ({ ...current, password: event.target.value }))}
-              placeholder="Min 8 chars, 1 capital & 1 special char"
+              placeholder="••••••••"
               className={inputClass}
             />
             <div className="flex flex-wrap gap-2 mt-1.5">
