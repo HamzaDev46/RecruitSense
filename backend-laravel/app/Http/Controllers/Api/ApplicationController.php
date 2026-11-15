@@ -670,16 +670,18 @@ class ApplicationController extends Controller
 
         $path = Storage::disk('public')->path($resume->file_path);
         $candidateName = Str::slug($application->jobSeeker?->user?->name ?: 'candidate');
-        $fileName = $candidateName . '-resume.pdf';
+        $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf';
+        $mime = Storage::disk('public')->mimeType($resume->file_path) ?: ($ext === 'pdf' ? 'application/pdf' : 'image/' . $ext);
+        $fileName = $candidateName . '-resume.' . $ext;
 
         if ($request->boolean('download')) {
             return response()->download($path, $fileName, [
-                'Content-Type' => 'application/pdf',
+                'Content-Type' => $mime,
             ]);
         }
 
         return response()->file($path, [
-            'Content-Type' => 'application/pdf',
+            'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
     }

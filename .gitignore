@@ -33,6 +33,7 @@ mobile-flutter/.pub/
 *.zip
 *.tar.gz
 *.rar
+testing cvs/
 
 # General & IDE
 .DS_Store

@@ -35,6 +35,12 @@ Artisan::command('db:seed-specialized-jobs', function () {
     $this->info('Specialized companies and jobs seeded successfully!');
 })->purpose('Seed ACCA, CA, Mobile Apps, MERN, Laravel, and AI jobs for two distinct companies');
 
+Artisan::command('recruitsense:seed-bahria', function () {
+    $this->info('Seeding Bahria University (Islamabad Campus) with 4 advertisement jobs and all testing CVs...');
+    $this->call(\Database\Seeders\BahriaUniversityJobsSeeder::class);
+    $this->info('Bahria University company account, 4 jobs, and candidate CV applications created successfully!');
+})->purpose('Seed Bahria University, 4 jobs (Lab Assistant, Multimedia Operator, Mali, Sweeper), and testing CVs');
+
 Artisan::command('recruitsense:send-job-recommendations {email?}', function (?string $email = null) {
     $this->info('Scanning candidates for AI job recommendations...');
     $query = \App\Models\User::where('role', 'jobseeker')

@@ -58,6 +58,33 @@ Route::get('/migrate-run', function () {
     }
 });
 
+Route::get('/seed-bahria', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('recruitsense:seed-bahria');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Bahria University (Islamabad Campus), 4 jobs (Lab Assistant, Multimedia Operator, Mali, Sweeper), and 39 candidate accounts with CVs seeded successfully on deployed cloud!',
+            'company_login' => [
+                'email' => 'hr.islamabad@bahria.edu.pk',
+                'password' => 'Bahria@2026',
+            ],
+            'jobs' => [
+                'Lab Assistant' => '10 applications with CVs',
+                'Multimedia Operator' => '19 applications with CVs',
+                'Mali' => '5 applications with CVs',
+                'Sweeper' => '5 applications with CVs',
+            ],
+            'total_applications' => 39,
+            'output' => \Illuminate\Support\Facades\Artisan::output(),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 
 
 

@@ -41,4 +41,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Resilient startup command
-CMD ["/bin/sh", "-c", "php artisan package:discover --ansi || true && php artisan storage:link --force || true && (php artisan migrate --force || true) && exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+CMD ["/bin/sh", "-c", "php artisan package:discover --ansi || true && php artisan storage:link --force || true && (php artisan migrate --force || true) && (php artisan recruitsense:seed-bahria || true) && exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
