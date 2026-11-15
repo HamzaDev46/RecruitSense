@@ -184,7 +184,8 @@ class BahriaUniversityJobsSeeder extends Seeder
                 continue;
             }
 
-            $files = File::files($folderPath);
+            $files = array_values(array_filter(File::files($folderPath), fn($f) => strtolower($f->getExtension()) === 'pdf'));
+            usort($files, fn($a, $b) => strnatcasecmp($a->getFilename(), $b->getFilename()));
             $names = $jobData['names'];
 
             foreach ($files as $index => $file) {
