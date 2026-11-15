@@ -23,7 +23,9 @@ class ResumeController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'resume' => 'required|file|mimes:pdf|max:5120', // max 5MB, PDF only
+            'resume' => 'required_without:resumes|file|mimes:pdf|max:15360', // max 15MB, PDF only
+            'resumes' => 'required_without:resume|array|min:1|max:10',
+            'resumes.*' => 'file|mimes:pdf|max:10240',
         ]);
 
         if ($validator->fails()) {
@@ -37,8 +39,13 @@ class ResumeController extends Controller
             $existing->delete();
         }
 
-        // Store new file
-        $path = $request->file('resume')->store('resumes', 'public');
+        // Store new file (either single merged resume or primary file from resumes array)
+        $uploadedFile = $request->file('resume') ?? ($request->file('resumes')[0] ?? null);
+        if (!$uploadedFile) {
+            return response()->json(['message' => 'No resume file provided'], 422);
+        }
+
+        $path = $uploadedFile->store('resumes', 'public');
 
         $resume = Resume::create([
             'job_seeker_id' => $user->jobSeeker->id,
@@ -89,5 +96,30 @@ class ResumeController extends Controller
         UserCache::forgetProfile($user->id);
 
         return response()->json(['message' => 'Resume deleted successfully']);
+    }
+
+    /**
+     * Preview logged-in job seeker's resume inline
+     */
+    public function preview(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role !== 'jobseeker' || !$user->jobSeeker) {
+            return response()->json(['message' => 'Only job seekers can access this'], 403);
+        }
+
+        $resume = Resume::where('job_seeker_id', $user->jobSeeker->id)->first();
+        if (!$resume || !Storage::disk('public')->exists($resume->file_path)) {
+            return response()->json(['message' => 'No resume found'], 404);
+        }
+
+        $path = Storage::disk('public')->path($resume->file_path);
+        $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf';
+        $mime = Storage::disk('public')->mimeType($resume->file_path) ?: 'application/pdf';
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="my-resume.' . $ext . '"',
+        ]);
     }
 }

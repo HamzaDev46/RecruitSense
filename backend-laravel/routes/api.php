@@ -281,6 +281,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Resume routes
     Route::post('/resume/upload', [ResumeController::class, 'upload']);
     Route::get('/my-resume', [ResumeController::class, 'myResume']);
+    Route::get('/resume/preview', [ResumeController::class, 'preview']);
     Route::get('/resume-insights', [ResumeInsightController::class, 'show']);
     Route::delete('/resume', [ResumeController::class, 'destroy']);
     
