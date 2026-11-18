@@ -8,5 +8,12 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'https://recruitsense-gdox.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

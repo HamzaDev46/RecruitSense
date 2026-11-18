@@ -40,5 +40,5 @@ RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --opti
 ENV PORT=8000
 EXPOSE 8000
 
-# Resilient startup command
-CMD ["/bin/sh", "-c", "php artisan package:discover --ansi || true && php artisan storage:link --force || true && (php artisan migrate --force || true) && (php artisan recruitsense:seed-bahria || true) && exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+# Resilient instant startup command: binds to PORT immediately so Render health checks pass
+CMD ["/bin/sh", "-c", "php artisan storage:link --force || true; exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
