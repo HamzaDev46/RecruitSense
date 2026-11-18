@@ -509,9 +509,9 @@ class BahriaUniversityJobsSeeder extends Seeder
                     ]
                 );
 
-                // Create or update Application
+                // Create or update Application: all start in pending so HR manually evaluates, shortlists, or rejects
                 $score = $candidateInfo['score'] ?? 85;
-                $status = $candidateInfo['status'] ?? 'pending';
+                $status = 'pending';
 
                 Application::updateOrCreate(
                     [

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Activity,
+  Award,
   BarChart3,
   Bell,
   Brain,
@@ -27,6 +28,7 @@ const navItems = [
   { icon: <Activity className="w-5 h-5" />, label: 'Activity', path: '/company/activity-log' },
   { icon: <Briefcase className="w-5 h-5" />, label: 'Jobs', path: '/company/jobs' },
   { icon: <Users className="w-5 h-5" />, label: 'Applicants', path: '/company/applicants' },
+  { icon: <Award className="w-5 h-5" />, label: 'Score Rankings', path: '/company/rankings' },
   { icon: <Sparkles className="w-5 h-5" />, label: 'Find Talent', path: '/company/candidates' },
   { icon: <Calendar className="w-5 h-5" />, label: 'Interviews', path: '/company/interviews' },
   { icon: <Bell className="w-5 h-5" />, label: 'Notifications', path: '/notifications', countKey: 'notifications' },

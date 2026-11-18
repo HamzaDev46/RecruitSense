@@ -1177,6 +1177,15 @@ const CompanyApplicants = () => {
           <div className="grid grid-cols-2 sm:flex gap-2">
             <button
               type="button"
+              onClick={() => navigate('/company/rankings')}
+              className="h-11 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 flex items-center justify-center gap-2 shadow-sm"
+              title="View Candidate Score Rankings (Top to Bottom)"
+            >
+              <Award className="w-4 h-4 text-amber-500" />
+              Score Rankings
+            </button>
+            <button
+              type="button"
               onClick={exportApplicantsCsv}
               disabled={loading || filteredApplications.length === 0}
               className="h-11 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"

@@ -104,13 +104,11 @@ class ApplicationController extends Controller
                 2
             );
 
-            // AUTO-SCREENING LOGIC:
-            // If candidate achieves a high score (>= 75%), automatically advance to shortlisted
-            $isAutoShortlisted = $finalScore >= 75;
-            $status = $isAutoShortlisted ? Application::STATUS_SHORTLISTED : Application::STATUS_PENDING;
-            $companyNotes = $isAutoShortlisted
-                ? "✨ Automatically shortlisted by RecruitSense AI Auto-Screening (Match Score: {$finalScore}%)."
-                : null;
+            // MANUAL HR HIRING AUTHORITY:
+            // All applications start in pending status so HR retains 100% control to review, shortlist, or reject
+            $isAutoShortlisted = false;
+            $status = Application::STATUS_PENDING;
+            $companyNotes = "AI Match Score: {$finalScore}%. In review queue awaiting HR hiring decision.";
 
             $application->update([
                 'similarity_score' => $similarityScore,
@@ -149,56 +147,20 @@ class ApplicationController extends Controller
                 }
             }
 
-            if ($isAutoShortlisted) {
-                // 1. Send Shortlist email to candidate
-                try {
-                    \App\Services\CloudEmailService::sendMailable($user->email, $user->name, new ShortlistMail($application));
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning('Auto-shortlist email sending failed: ' . $e->getMessage());
-                }
-
-                // 2. Candidate In-app notification
-                $this->createNotification(
-                    $user->id,
-                    $job->company?->user_id,
-                    'application_shortlisted',
-                    '✨ Application Shortlisted!',
-                    'Great news! Your profile for ' . $job->title . ' was automatically shortlisted based on a strong AI match score (' . $finalScore . '%).',
-                    [
-                        'link' => '/my-applications?application=' . $application->id,
-                        'application_id' => $application->id,
-                        'job_id' => $job->id,
-                    ]
-                );
-
-                // 3. Recruiter High-Priority In-app notification
-                $this->createNotification(
-                    $job->company?->user_id,
-                    $user->id,
-                    'candidate_auto_shortlisted',
-                    '🔥 Star Candidate Auto-Shortlisted',
-                    $user->name . ' achieved a ' . $finalScore . '% AI match score for ' . $job->title . ' and was automatically shortlisted.',
-                    [
-                        'link' => '/company/applicants?application=' . $application->id,
-                        'application_id' => $application->id,
-                        'job_id' => $job->id,
-                        'final_score' => $finalScore,
-                    ]
-                );
-            } else {
-                $this->createNotification(
-                    $job->company?->user_id,
-                    $user->id,
-                    'candidate_applied',
-                    'New applicant',
-                    $user->name . ' applied for ' . $job->title . '.',
-                    [
-                        'link' => '/company/applicants?application=' . $application->id,
-                        'application_id' => $application->id,
-                        'job_id' => $job->id,
-                    ]
-                );
-            }
+            // Notify company about new applicant with score
+            $this->createNotification(
+                $job->company?->user_id,
+                $user->id,
+                'candidate_applied',
+                'New applicant received',
+                $user->name . ' applied for ' . $job->title . ' (Score: ' . $finalScore . '%). Awaiting HR review.',
+                [
+                    'link' => '/company/applicants?application=' . $application->id,
+                    'application_id' => $application->id,
+                    'job_id' => $job->id,
+                    'final_score' => $finalScore,
+                ]
+            );
 
             // Automation 2: Ensure skill assessment questions exist for this job/company
             $hasQuizQuestions = \App\Models\QuizQuestion::where('company_id', $job->company_id)->exists();
@@ -231,11 +193,9 @@ class ApplicationController extends Controller
             );
 
             return response()->json([
-                'message'             => $isAutoShortlisted
-                    ? 'Application submitted and automatically shortlisted by AI!'
-                    : 'Application submitted successfully',
+                'message'             => 'Application submitted successfully. Awaiting HR review.',
                 'application'         => $application,
-                'is_auto_shortlisted' => $isAutoShortlisted,
+                'is_auto_shortlisted' => false,
                 'ai_analysis'         => [
                     'similarity_score' => $similarityScore,
                     'skill_gap_score'  => $skillGapScore,

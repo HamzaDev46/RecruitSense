@@ -33,6 +33,7 @@ const pageImports = {
   companyActivityLog: () => import('./pages/company/CompanyActivityLog'),
   companyJobs: () => import('./pages/company/CompanyJobs'),
   companyApplicants: () => import('./pages/company/CompanyApplicants'),
+  companyRankings: () => import('./pages/company/CompanyRankings'),
   candidateDiscovery: () => import('./pages/company/CandidateDiscovery'),
   companyInterviews: () => import('./pages/company/CompanyInterviews'),
   companyQuiz: () => import('./pages/company/CompanyQuiz'),
@@ -74,6 +75,7 @@ const CompanyAnalytics = lazy(pageImports.companyAnalytics)
 const CompanyActivityLog = lazy(pageImports.companyActivityLog)
 const CompanyJobs = lazy(pageImports.companyJobs)
 const CompanyApplicants = lazy(pageImports.companyApplicants)
+const CompanyRankings = lazy(pageImports.companyRankings)
 const CandidateDiscovery = lazy(pageImports.candidateDiscovery)
 const CompanyInterviews = lazy(pageImports.companyInterviews)
 const CompanyQuiz = lazy(pageImports.companyQuiz)
@@ -96,7 +98,7 @@ const jobseekerPreloadKeys = [
 
 const companyPreloadKeys = [
   'companyDashboard', 'companyAnalytics', 'companyActivityLog',
-  'companyJobs', 'companyApplicants', 'companyInterviews',
+  'companyJobs', 'companyApplicants', 'companyRankings', 'companyInterviews',
   'notifications', 'messages', 'companyQuiz', 'companySettings',
 ]
 
@@ -339,6 +341,11 @@ function App() {
             <Route path="/company/applicants" element={
               <ProtectedRoute role="company">
                 <CompanyApplicants />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/rankings" element={
+              <ProtectedRoute role="company">
+                <CompanyRankings />
               </ProtectedRoute>
             } />
             <Route path="/company/candidates" element={
