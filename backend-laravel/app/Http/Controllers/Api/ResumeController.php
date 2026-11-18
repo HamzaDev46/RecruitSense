@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Resume;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
@@ -109,11 +110,32 @@ class ResumeController extends Controller
         }
 
         $resume = Resume::where('job_seeker_id', $user->jobSeeker->id)->first();
-        if (!$resume || !Storage::disk('public')->exists($resume->file_path)) {
+        if (!$resume || empty($resume->file_path)) {
             return response()->json(['message' => 'No resume found'], 404);
         }
 
-        $path = Storage::disk('public')->path($resume->file_path);
+        $disk = Storage::disk('public');
+        if (!$disk->exists($resume->file_path)) {
+            $baseTestingDir = base_path('database/data/testing_cvs');
+            if (File::isDirectory($baseTestingDir)) {
+                $baseName = basename($resume->file_path);
+                $all = File::allFiles($baseTestingDir);
+                foreach ($all as $f) {
+                    if ($f->getFilename() === $baseName || str_ends_with($baseName, '_' . $f->getFilename())) {
+                        $targetPath = $disk->path($resume->file_path);
+                        File::ensureDirectoryExists(dirname($targetPath));
+                        File::copy($f->getRealPath(), $targetPath);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$disk->exists($resume->file_path)) {
+            return response()->json(['message' => 'Resume file is not available'], 404);
+        }
+
+        $path = $disk->path($resume->file_path);
         $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf';
         $mime = Storage::disk('public')->mimeType($resume->file_path) ?: 'application/pdf';
 

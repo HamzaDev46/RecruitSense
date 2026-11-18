@@ -1103,29 +1103,28 @@ const CompanyApplicants = () => {
       return
     }
 
-    const previewWindow = mode === 'view'
-      ? window.open('', '_blank', 'noopener,noreferrer')
-      : null
-
-    if (previewWindow) {
-      previewWindow.document.write('<p style="font-family:Arial,sans-serif;padding:24px;color:#334155">Loading resume...</p>')
-    }
-
     setResumeAction(`${mode}-${application.id}`)
     try {
       const res = await api.get(`/applications/${application.id}/resume${mode === 'download' ? '?download=1' : ''}`, {
         responseType: 'blob',
       })
-      const blob = new Blob([res.data], { type: res.headers?.['content-type'] || 'application/pdf' })
+      const contentType = res.headers?.['content-type'] || 'application/pdf'
+      const blob = new Blob([res.data], { type: contentType })
       const url = window.URL.createObjectURL(blob)
 
       if (mode === 'view') {
-        if (previewWindow) {
-          previewWindow.location.href = url
-        } else {
-          window.open(url, '_blank', 'noopener,noreferrer')
+        const opened = window.open(url, '_blank')
+        if (!opened) {
+          // If popup is blocked by browser settings, trigger direct download fallback
+          const link = document.createElement('a')
+          link.href = url
+          link.download = resumeDownloadName(application)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          toast.info('Popup blocked: resume downloaded directly instead')
         }
-        window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000)
+        window.setTimeout(() => window.URL.revokeObjectURL(url), 120_000)
       } else {
         const link = document.createElement('a')
         link.href = url
@@ -1136,10 +1135,19 @@ const CompanyApplicants = () => {
         window.URL.revokeObjectURL(url)
       }
     } catch (err) {
-      if (previewWindow && !previewWindow.closed) {
-        previewWindow.close()
+      let message = 'Failed to open resume'
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text()
+          const parsed = JSON.parse(text)
+          if (parsed?.message) message = parsed.message
+        } catch {
+          // keep fallback
+        }
+      } else if (err.response?.data?.message) {
+        message = err.response.data.message
       }
-      toast.error(err.response?.data?.message || 'Failed to open resume')
+      toast.error(message)
     } finally {
       setResumeAction(null)
     }

@@ -15,6 +15,7 @@ use App\Mail\ShortlistMail;
 use App\Services\AIService;
 use App\Support\UserCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -653,6 +654,102 @@ class ApplicationController extends Controller
     }
 
     /**
+     * Resolves and auto-restores the physical resume file if ephemeral disk was reset.
+     */
+    protected function resolvePhysicalResumePath($resume, ?Application $application = null): ?string
+    {
+        if (!$resume || empty($resume->file_path)) {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+        if ($disk->exists($resume->file_path)) {
+            return $disk->path($resume->file_path);
+        }
+
+        // Auto-heal: If Render container restarted or disk was cleared, recover from committed testing_cvs
+        $baseTestingDir = base_path('database/data/testing_cvs');
+        if (!File::isDirectory($baseTestingDir)) {
+            $baseTestingDir = base_path('../testing cvs');
+        }
+
+        if (File::isDirectory($baseTestingDir)) {
+            $filePath = $resume->file_path;
+            $foundFile = null;
+
+            // 1. Check if the file_path contains job identifier (e.g. bahria_lab_1.pdf)
+            $folderMap = [
+                'lab' => 'lab Assisstant',
+                'multimedia' => 'Multimedia operator',
+                'mali' => 'Mali',
+                'sweeper' => 'sweeper',
+            ];
+
+            foreach ($folderMap as $key => $dirName) {
+                if (str_contains($filePath, "bahria_{$key}_")) {
+                    if (preg_match("/bahria_{$key}_(\d+)/i", $filePath, $m)) {
+                        $num = $m[1];
+                        $candidateFile = $baseTestingDir . DIRECTORY_SEPARATOR . $dirName . DIRECTORY_SEPARATOR . "{$num}.pdf";
+                        if (File::exists($candidateFile)) {
+                            $foundFile = $candidateFile;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 2. If not found by name pattern, check by application job title
+            if (!$foundFile && $application) {
+                $jobTitle = strtolower($application->jobPosting?->title ?? '');
+                $jobDir = match (true) {
+                    str_contains($jobTitle, 'lab') => 'lab Assisstant',
+                    str_contains($jobTitle, 'multimedia') => 'Multimedia operator',
+                    str_contains($jobTitle, 'mali') => 'Mali',
+                    str_contains($jobTitle, 'sweeper') => 'sweeper',
+                    default => null,
+                };
+
+                if ($jobDir) {
+                    $dirFullPath = $baseTestingDir . DIRECTORY_SEPARATOR . $jobDir;
+                    if (File::isDirectory($dirFullPath)) {
+                        $files = array_values(array_filter(File::files($dirFullPath), fn($f) => strtolower($f->getExtension()) === 'pdf'));
+                        usort($files, fn($a, $b) => strnatcasecmp($a->getFilename(), $b->getFilename()));
+                        if (!empty($files)) {
+                            if (preg_match('/(\d+)/', basename($filePath), $m)) {
+                                $idx = max(0, ((int)$m[1]) - 1);
+                                $foundFile = ($files[$idx % count($files)] ?? $files[0])->getRealPath();
+                            } else {
+                                $foundFile = $files[0]->getRealPath();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Fallback: match by basename if exact file exists anywhere in testing_cvs
+            if (!$foundFile) {
+                $baseName = basename($filePath);
+                $all = File::allFiles($baseTestingDir);
+                foreach ($all as $f) {
+                    if ($f->getFilename() === $baseName) {
+                        $foundFile = $f->getRealPath();
+                        break;
+                    }
+                }
+            }
+
+            if ($foundFile && File::exists($foundFile)) {
+                $targetPath = $disk->path($filePath);
+                File::ensureDirectoryExists(dirname($targetPath));
+                File::copy($foundFile, $targetPath);
+                return $targetPath;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Company views or downloads an applicant resume.
      */
     public function resume(Request $request, Application $application)
@@ -665,12 +762,12 @@ class ApplicationController extends Controller
         }
 
         $resume = $application->jobSeeker?->resume;
+        $path = $this->resolvePhysicalResumePath($resume, $application);
 
-        if (!$resume || !Storage::disk('public')->exists($resume->file_path)) {
+        if (!$path || !file_exists($path)) {
             return response()->json(['message' => 'Candidate resume is not available'], 404);
         }
 
-        $path = Storage::disk('public')->path($resume->file_path);
         $candidateName = Str::slug($application->jobSeeker?->user?->name ?: 'candidate');
         $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf';
         $mime = Storage::disk('public')->mimeType($resume->file_path) ?: ($ext === 'pdf' ? 'application/pdf' : 'image/' . $ext);
